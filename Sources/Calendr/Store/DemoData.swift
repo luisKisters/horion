@@ -20,11 +20,11 @@ enum DemoData {
 
     static let accounts: [CalendarAccount] = [
         CalendarAccount(id: acc1, name: "alex.rivera@example.com", calendars: [
-            CalendarInfo(id: personal, accountID: acc1, title: "Personal", colorHex: "#5C88E4", isDefault: true),
+            CalendarInfo(id: personal, accountID: acc1, title: "Personal", colorHex: "#6F97F0", isDefault: true),
             CalendarInfo(id: family, accountID: acc1, title: "Family", colorHex: "#EF8452"),
-            CalendarInfo(id: tasks, accountID: acc1, title: "Tasks", colorHex: "#BDBCBC"),
+            CalendarInfo(id: tasks, accountID: acc1, title: "Tasks", colorHex: "#B9B6C9"),
             CalendarInfo(id: school, accountID: acc1, title: "School Board", colorHex: "#F1C55D"),
-            CalendarInfo(id: feiertage, accountID: acc1, title: "Feiertage in Deutschland", colorHex: "#8236DD", icon: .feed, isWritable: false),
+            CalendarInfo(id: feiertage, accountID: acc1, title: "Feiertage in Deutschland", colorHex: "#DD6FAE", icon: .feed, isWritable: false),
             CalendarInfo(id: holidays, accountID: acc1, title: "Holidays in Germany", colorHex: "#80CF93", icon: .feed, isWritable: false),
             CalendarInfo(id: ferien, accountID: acc1, title: "Ferien Berlin", colorHex: "#80CF93", icon: .feed, isWritable: false),
         ]),
@@ -183,8 +183,8 @@ enum DemoData {
         CalendarEvent(id: "ref.\(id)", calendarID: cal, title: title, start: from, end: math.addDays(from, days), isAllDay: true, kind: kind, notes: notes)
     }
 
-    static let green = "#80CF93"
-    static let brown = "#6F422C"
+    static let green = "#EF8452"      // orange override tint (mockup v2: run, Dad <> Son, ...)
+    static let brown: String? = nil
 
     static func referenceWeekOneOffs() -> [CalendarEvent] {
         let mon = refWeekStart, tue = day(9, 29), wed = day(9, 30), thu = day(10, 1), fri = day(10, 2), sat = day(10, 3), sun = day(10, 4)
@@ -192,7 +192,7 @@ enum DemoData {
             allDay("bei-stabilem", tasks, "[P1] Bei stabilem Internet...", mon, kind: .task),
             ev("bikeshop", tasks, "[P2] Call the bike shop", mon, "09:00", "09:15", kind: .task),
             ev("zahnarzt", tasks, "[P3] Call the library", mon, "10:00", "10:15", kind: .task),
-            ev("dad-son", personal, "Dad <> Son", mon, "18:00", "19:00", color: green, bar2: brown),
+            ev("dad-son", personal, "Dad <> Son", mon, "18:00", "19:00", color: green),
             ev("chris", tasks, "[P1] Ask Chris: confirm the date", mon, "20:00", "20:15", kind: .task),
             ev("bouldern-fam", tasks, "[P0] Plan climbing + family dinner", mon, "20:10", "20:25", kind: .task),
             ev("fn", personal, "Fn?", mon, "21:00", "22:00"),
@@ -204,7 +204,7 @@ enum DemoData {
             allDay("halbjaehriges", personal, "Halbjähriges", wed),
             ev("mia-halbjahr", personal, "WRITE MIA ABOUT ANNIVERSARY", wed, "07:30", "08:00"),
             CalendarEvent(id: "ref.bouldern", calendarID: personal, title: "Bouldern", start: at(wed, "16:30"), end: at(wed, "18:30"), status: .declined),
-            ev("familienessen", personal, "Familienessen", wed, "16:30", "18:30", color: green, bar2: brown),
+            ev("familienessen", personal, "Familienessen", wed, "16:30", "18:30", color: green),
             ev("mia-alex-wed", personal, "Mia /  Alex", wed, "19:00", "22:30"),
 
             ev("wg-cleaning", personal, "Flat cleaning", thu, "18:00", "19:00"),
@@ -224,7 +224,7 @@ enum DemoData {
             ev("run", personal, "morning run", sun, "09:45", "11:30", status: .tentative, color: green),
             ev("dana", tasks, "[P1] Text Dana", sun, "09:40", "09:55", kind: .task),
             ev("tickticks", tasks, "[P0?] Sunday calendar review", sun, "17:15", "17:30", kind: .task),
-            ev("schnacken", personal, "Flat game night", sun, "19:00", "20:00", color: green, bar2: brown),
+            ev("schnacken", personal, "Flat game night", sun, "19:00", "20:00", color: green),
         ]
     }
 

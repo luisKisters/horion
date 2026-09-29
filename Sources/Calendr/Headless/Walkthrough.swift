@@ -236,7 +236,7 @@ enum Walkthrough {
         // 20. Menu bar
         d.section("Menu bar calendar: live label and upcoming popover")
         let label = Upcoming.menuBarLabel(m.upcoming)
-        d.check(label == "Meal Prep \u{00B7} in 4h 58m", "menu bar label: \(label)")
+        d.check(label == "Mathe \u{00B7} in 12m", "menu bar label: \(label)")
         d.check(m.upcoming.sections.first?.title == "Today" && m.upcoming.sections.dropFirst().first?.title == "Tomorrow", "popover sections")
         let pop = OffscreenWindow(MenuBarPopover().environment(m).environment(\.colorScheme, .dark), size: CGSize(width: 455, height: 820), chrome: false)
         pop.settle(6)

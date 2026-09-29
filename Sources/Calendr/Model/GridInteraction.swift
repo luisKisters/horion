@@ -7,11 +7,11 @@ struct GridGeometry: Equatable {
     var hourHeight: Double
     var dayCount: Int
     /// Left inset of events inside a day column; the right inset leaves room to click-create next to a full-width event.
-    var leftInset: Double = 1
-    var rightInset: Double = 12
+    var leftInset: Double = 3
+    var rightInset: Double = 8
     var bottomGap: Double = 3
     /// Height of pills (events shorter than 30 minutes).
-    var minEventHeight: Double = 11
+    var minEventHeight: Double = 17
 
     var totalHeight: Double { hourHeight * 24 }
     func yPos(_ m: Int) -> Double { Double(m) / 60 * hourHeight }
@@ -19,11 +19,15 @@ struct GridGeometry: Equatable {
 
     func rect(for p: PlacedEvent) -> CGRect {
         let x0 = Double(p.dayIndex) * dayWidth
+        if p.placement.chip {
+            // checkbox-only chip at the event's trailing edge
+            return CGRect(x: x0 + dayWidth - rightInset - 19, y: yPos(p.startMinute), width: 19, height: 19)
+        }
         let inner = dayWidth - leftInset - rightInset
         let x = x0 + leftInset + p.placement.left * inner
         let w = max(4, p.placement.width * inner)
-        let y = yPos(p.startMinute)
-        let h = max(minEventHeight, yPos(p.endMinute) - y - bottomGap)
+        let y = yPos(p.displayStart)
+        let h = p.event.kind == .task && p.isPill ? minEventHeight : max(minEventHeight, yPos(p.endMinute) - y - bottomGap)
         return CGRect(x: x, y: y, width: w, height: h)
     }
 }
@@ -31,6 +35,8 @@ struct GridGeometry: Equatable {
 enum GridHit: Equatable {
     case event(id: String, dayIndex: Int, startMinute: Int, endMinute: Int, resize: Bool)
     case empty(dayIndex: Int, minute: Int)
+    /// The round checkbox of a task capsule.
+    case checkbox(id: String)
 }
 
 struct GridPress {
@@ -51,6 +57,7 @@ extension AppModel {
         for pe in layout.timed[day].reversed() {
             let r = g.rect(for: pe)
             if r.contains(p) {
+                if pe.event.kind == .task, EventPainter.checkboxRect(in: r).insetBy(dx: -3, dy: -3).contains(p) { return .checkbox(id: pe.event.id) }
                 let nearBottom = pe.endMinute - pe.startMinute >= 30 && p.y > r.maxY - 6 && !pe.continuesToNext
                 return .event(id: pe.event.id, dayIndex: day, startMinute: pe.startMinute, endMinute: pe.endMinute, resize: nearBottom)
             }
@@ -78,6 +85,7 @@ extension AppModel {
         let day = max(0, min(g.dayCount - 1, Int(p.x / g.dayWidth)))
         let minute = g.minute(forY: p.y)
         switch pr.hit {
+        case .checkbox: return
         case .empty(let d0, let m0):
             let a = (m0 / 15) * 15
             let cur = (minute / 15) * 15
@@ -106,6 +114,8 @@ extension AppModel {
                 let double = pr.clickCount >= 2 || (lastClick.map { now - $0.time < 0.4 && $0.id == id } ?? false)
                 select(eventID: id, focusTitle: double)
                 lastClick = double ? nil : (now, d, s, id)
+            case .checkbox(let id):
+                toggleTask(id)
             case .empty(let d, let m):
                 select(eventID: nil)
                 deselect()
@@ -115,6 +125,7 @@ extension AppModel {
             return
         }
         guard let prev = dragPreview else { return }
+        dropSettle = (prev.dayIndex, prev.startMinute, prev.endMinute, (dropSettle?.tick ?? 0) + 1)
         switch prev.kind {
         case .create:
             let day = visibleDays[prev.dayIndex]
@@ -144,6 +155,6 @@ extension AppModel {
 
 extension GridHit {
     var dayIndex: Int {
-        switch self { case .event(_, let d, _, _, _): d; case .empty(let d, _): d }
+        switch self { case .event(_, let d, _, _, _): d; case .empty(let d, _): d; case .checkbox: 0 }
     }
 }

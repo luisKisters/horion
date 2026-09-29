@@ -43,7 +43,7 @@ struct LaunchOptions {
         return o
     }
 
-    /// "2026-09-29T02:32" interpreted in Europe/Berlin (the demo zone); also accepts full ISO 8601 with offset.
+    /// "2026-09-29T11:48" interpreted in Europe/Berlin (the demo zone); also accepts full ISO 8601 with offset.
     static func parseNow(_ s: String) -> Date? {
         let iso = ISO8601DateFormatter()
         if let d = iso.date(from: s) { return d }
@@ -54,5 +54,5 @@ struct LaunchOptions {
 }
 
 extension DemoData {
-    static var defaultNow: Date { math.date(year: 2026, month: 9, day: 29, hour: 2, minute: 32) }
+    static var defaultNow: Date { math.date(year: 2026, month: 9, day: 29, hour: 11, minute: 48) }
 }

@@ -14,7 +14,7 @@ public struct TimeSpan: Sendable {
 }
 
 public struct Placement: Equatable, Sendable {
-    public init(id: String, column: Int, columns: Int, left: Double, width: Double, z: Int) { self.id = id; self.column = column; self.columns = columns; self.left = left; self.width = width; self.z = z }
+    public init(id: String, column: Int, columns: Int, left: Double, width: Double, z: Int, shiftMinutes: Int = 0, chip: Bool = false) { self.id = id; self.column = column; self.columns = columns; self.left = left; self.width = width; self.z = z; self.shiftMinutes = shiftMinutes; self.chip = chip }
     public var id: String
     public var column: Int
     public var columns: Int
@@ -22,6 +22,10 @@ public struct Placement: Equatable, Sendable {
     public var left: Double
     public var width: Double
     public var z: Int
+    /// Task capsules are moved off their start time to a free slot (minutes, negative = up).
+    public var shiftMinutes: Int = 0
+    /// No free slot near the task's time: drawn as a 19pt checkbox-only chip at the trailing edge.
+    public var chip: Bool = false
 }
 
 public enum OverlapLayout {
@@ -40,21 +44,42 @@ public enum OverlapLayout {
     static func end(_ s: TimeSpan) -> Int { max(s.endMinute, s.startMinute + minLayoutMinutes) }
     static func overlaps(_ a: TimeSpan, _ b: TimeSpan) -> Bool { a.startMinute < end(b) && b.startMinute < end(a) }
 
+    /// Height of a task capsule in minutes (17pt at 0.8pt per minute, plus a 1pt gap).
+    public static let capsuleMinutes = 22
+    /// A capsule looks for a free slot this far from its own time before it degrades to a chip.
+    public static let slotSearchMinutes = 35
+
+    /// Blocks (events) cascade into columns. Task capsules never squeeze a block: they float on top at full width, stack
+    /// under each other, and keep clear of blocks that start near them (v2 design: capsules find a free slot within 35 min,
+    /// otherwise they become a checkbox-only chip).
     public static func layout(_ spans: [TimeSpan]) -> [Placement] {
         let blocks = spans.filter { !$0.isPill }
-        var joined = blocks
-        var floating: [TimeSpan] = []
-        for p in spans where p.isPill {
-            let hit = blocks.filter { overlaps(p, $0) }
-            if hit.isEmpty || hit.contains(where: { p.startMinute - $0.startMinute < floatAfterMinutes }) { joined.append(p) }
-            else { floating.append(p) }
-        }
-        var result = cascade(joined)
-        let byID = Dictionary(uniqueKeysWithValues: result.map { ($0.id, $0) })
-        for p in floating {
-            let covered = blocks.filter { overlaps(p, $0) }.compactMap { byID[$0.id] }
-            let left = min(0.9, (covered.map(\.left).max() ?? 0) + floatInset)
-            result.append(Placement(id: p.id, column: 0, columns: 1, left: left, width: 1 - left, z: 100))
+        var result = cascade(blocks)
+        var placed: [(a: Int, b: Int)] = []
+        let pills = spans.filter(\.isPill).sorted { $0.startMinute != $1.startMinute ? $0.startMinute < $1.startMinute : $0.id < $1.id }
+        for p in pills {
+            let s0 = p.startMinute
+            // Blocks that started well before the capsule may be floated over; nearer ones are avoided.
+            let obstacles = blocks.filter { $0.startMinute > s0 - slotSearchMinutes }
+            func free(_ s: Int) -> Bool {
+                guard s >= 0, s + capsuleMinutes <= 1440 else { return false }
+                if placed.contains(where: { s < $0.b && $0.a < s + capsuleMinutes }) { return false }
+                return !obstacles.contains { s < end($0) && $0.startMinute < s + capsuleMinutes }
+            }
+            var chosen: Int?
+            if free(s0) { chosen = s0 } else {
+                var d = 5
+                while d <= slotSearchMinutes && chosen == nil {
+                    if free(s0 + d) { chosen = s0 + d } else if free(s0 - d) { chosen = s0 - d }
+                    d += 5
+                }
+            }
+            if let c = chosen {
+                placed.append((c, c + capsuleMinutes))
+                result.append(Placement(id: p.id, column: 0, columns: 1, left: 0, width: 1, z: 100, shiftMinutes: c - s0))
+            } else {
+                result.append(Placement(id: p.id, column: 0, columns: 1, left: 1, width: 0, z: 101, chip: true))
+            }
         }
         return result
     }
@@ -182,6 +207,8 @@ public struct PlacedEvent: Identifiable, Equatable, Sendable {
     public var continuesFromPrevious: Bool
     public var continuesToNext: Bool
     public var isPill: Bool { endMinute - startMinute < 30 }
+    /// Start minute as drawn (task capsules can be shifted to a free slot).
+    public var displayStart: Int { startMinute + placement.shiftMinutes }
 }
 
 public struct RangeLayout: Sendable {

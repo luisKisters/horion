@@ -1,22 +1,18 @@
 {
-  "_comment": "Named UI states rendered by `Calendr --snapshot <state> --out <png> --size WxH`. 'mockup' names the shot in design/mockup/shots (rendered from index.html#hash), 'reference' the screenshot in design/reference. An entry may override 'state' (the app state to render) and 'size'.",
+  "_comment": "Named UI states rendered by `Calendr --snapshot <state> --out <png> --size WxH`. 'mockup' names the shot in design/mockup-v2/shots. An entry may override 'state' (the app state to render) and 'size'.",
   "size": "1440x900",
   "states": {
     "week": {
-      "mockup": "week",
-      "reference": "1-week-view.png"
+      "mockup": "week"
     },
     "week-selected-event": {
-      "mockup": "inspector",
-      "reference": "2-event-inspector.png"
+      "mockup": "inspector"
     },
     "command-menu": {
-      "mockup": "command",
-      "reference": "4-command-menu.png"
+      "mockup": "command"
     },
     "teammate-picker": {
-      "mockup": "teammate",
-      "reference": "3-teammate-picker.png"
+      "mockup": "teammate"
     },
     "teammate-overlay": {
       "mockup": "teammate-overlay"
@@ -34,8 +30,7 @@
       "mockup": "day"
     },
     "menubar-popover": {
-      "mockup": "menubar",
-      "reference": "5-menu-bar.png"
+      "mockup": "menubar"
     },
     "sidebar-hidden": {
       "mockup": "sidebar-hidden"
@@ -57,12 +52,21 @@
     "meet-with": {},
     "week-reference-size": {
       "state": "week",
-      "size": "1798x1126",
-      "mockup": "week-1798",
-      "reference": "1-week-view.png"
+      "size": "1798x1126"
     },
     "readonly-event": {},
-    "access-prompt": {},
-    "month-light": {}
+    "month-light": {},
+    "empty-access": {
+      "mockup": "empty-access"
+    },
+    "toast": {
+      "mockup": "toast"
+    },
+    "search-empty": {
+      "mockup": "search-empty"
+    },
+    "menubar-empty": {
+      "mockup": "menubar-empty"
+    }
   }
 }

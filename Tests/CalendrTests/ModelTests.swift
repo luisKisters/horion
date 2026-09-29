@@ -40,9 +40,9 @@ struct DemoWeekTests {
     }
     @Test func menuBarLabelMatchesReference() {
         let m = makeModel()
-        #expect(Upcoming.menuBarLabel(m.upcoming) == "Meal Prep \u{00B7} in 4h 58m")
+        #expect(Upcoming.menuBarLabel(m.upcoming) == "Mathe \u{00B7} in 12m")
         #expect(m.upcoming.sections.map(\.title).prefix(3) == ["Today", "Tomorrow", "Thu Oct 1"])
-        #expect(m.upcoming.sections[0].events.first?.title == "Sportzeug")
+        #expect(m.upcoming.sections[0].events.first?.title == "Ben / Alex")
     }
     @Test func sidebarAccountsMatchSpec() {
         let m = makeModel()
@@ -137,7 +137,7 @@ struct ModelBehaviourTests {
         let m = makeModel()
         m.handle(.createEvent)
         let e = m.selectedEvent!
-        #expect(m.fmt.time(e.start) == "03:00")     // now is 02:32
+        #expect(m.fmt.time(e.start) == "15:00")     // now is 11:48; 12:00-13:40 Mathe and 14:00 Ben are busy
         #expect(e.durationMinutes == 60)
     }
     @Test func hiddenCalendarsAndTeammatesAffectLayout() {

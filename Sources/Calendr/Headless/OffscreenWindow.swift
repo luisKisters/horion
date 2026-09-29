@@ -20,7 +20,7 @@ final class FirstMouseHostingView<Content: View>: NSHostingView<Content> {
 final class OffscreenWindow {
     let window: OffscreenNSWindow
     let host: FirstMouseHostingView<AnyView>
-    let size: CGSize
+    private(set) var size: CGSize
     var drawTrafficLights = true
 
     init<V: View>(_ root: V, size: CGSize, dark: Bool = true, chrome: Bool = true, settle waits: Bool = true) {
@@ -48,6 +48,12 @@ final class OffscreenWindow {
             RunLoop.main.run(until: Date().addingTimeInterval(0.03))
             host.layoutSubtreeIfNeeded()
         }
+    }
+
+    func resize(_ s: CGSize) {
+        window.setContentSize(s)
+        host.frame = NSRect(origin: .zero, size: s)
+        settle()
     }
 
     func setDark(_ dark: Bool) { window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua) }

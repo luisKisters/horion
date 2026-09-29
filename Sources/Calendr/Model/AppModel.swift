@@ -19,6 +19,12 @@ final class AppModel {
     private let persist: Bool
     private(set) var math: CalendarMath
     var settings: AppSettings { didSet { settingsChanged(old: oldValue) } }
+    /// Completed task ids (local marker).
+    private(set) var completedTasks: Set<String>
+    /// Last task whose checkbox was toggled on, for the checkbox pop.
+    private(set) var taskPop: (id: String, tick: Int)?
+    /// -1 / 0 / +1: direction of the last period change (drives the slide).
+    private(set) var navDirection = 0
     var fmt: Fmt { Fmt(math: math, use24h: settings.use24h) }
 
     // MARK: Time
@@ -52,7 +58,8 @@ final class AppModel {
     var allDayCollapsed = false
     var overlay: Overlay?
     var searchText = "" { didSet { if searchText != oldValue { runSearch() } } }
-    var toast: String?
+    struct ToastState: Equatable { var id = UUID(); var text: String; var undo = false }
+    var toast: ToastState?
     var notionPopoverVisible = false
     var focusSearchTick = 0
     var scrollToHourTick = 0
@@ -89,6 +96,8 @@ final class AppModel {
 
     // MARK: Interaction
     var dragPreview: DragPreview?
+    /// Set on drop: the ghost's last rect, so the grid can settle it into the final event in 120 ms.
+    var dropSettle: (dayIndex: Int, startMinute: Int, endMinute: Int, tick: Int)?
     var undoStack = UndoStack()
     var gridGeometry = GridGeometry(dayWidth: 180, hourHeight: 48, dayCount: 7)
     /// Frame of the scrolling grid in window coordinates (top-left origin) and its scroll offset. Published by the view; used by the walkthrough to aim real mouse events.
@@ -112,6 +121,8 @@ final class AppModel {
         self.persist = persist
         let s = persist ? AppSettings.load() : AppSettings()
         settings = s
+        completedTasks = persist ? TaskStore.load() : []
+        Motion.override = s.reduceMotion
         let tz = options.demo ? DemoData.math.timeZone : TimeZone.current
         let m = CalendarMath(timeZone: tz, weekStartsOnMonday: s.weekStartsOnMonday)
         math = m
@@ -187,7 +198,7 @@ final class AppModel {
         calendarInfo(event.calendarID)?.colorHex ?? teammateColor(event.ownerEmail)
     }
 
-    static let teammatePalette = ["#E8708A", "#4FC3C9", "#B48CF0", "#F0A040", "#7BC96F", "#5FA8F0"]
+    static let teammatePalette = ["#C58AF9", "#5EC0C9", "#F28B82", "#8AB4F8", "#F6AE4C", "#7BD88F", "#E78FD0", "#A3B1C2", "#D9B26F", "#87C7A2", "#C9A0DC"]
     func teammateColor(_ email: String?) -> String {
         guard let email, let i = shownTeammates.firstIndex(where: { $0.email == email }) else { return "#8A8A8A" }
         return Self.teammatePalette[i % Self.teammatePalette.count]
@@ -210,7 +221,7 @@ final class AppModel {
             styleCache[key] = base
         }
         return EventStyle(palette: base.0, secondaryBarRGB: base.1, past: e.end <= now && !(e.end == e.start && e.start > now),
-                          selected: selected, faded: faded, overlapping: overlapping)
+                          selected: selected, faded: faded, overlapping: overlapping, done: completedTasks.contains(e.id))
     }
 
     func isWritable(_ e: CalendarEvent) -> Bool {
@@ -293,6 +304,7 @@ final class AppModel {
     }
 
     private func settingsChanged(old: AppSettings) {
+        if old.reduceMotion != settings.reduceMotion { Motion.override = settings.reduceMotion }
         if persist { settings.save() }
         if old.weekStartsOnMonday != settings.weekStartsOnMonday {
             math = CalendarMath(timeZone: math.timeZone, weekStartsOnMonday: settings.weekStartsOnMonday)
@@ -310,18 +322,21 @@ final class AppModel {
 
     // MARK: Navigation
 
-    func goToToday() { anchor = math.startOfDay(now); leftAligned = false; reload(); scrollToHourTick += 1 }
+    func goToToday() { setDirection(to: math.startOfDay(now)); anchor = math.startOfDay(now); leftAligned = false; reload(); scrollToHourTick += 1 }
+    private func setDirection(to d: Date) { navDirection = d > anchor ? 1 : (d < anchor ? -1 : 0) }
     func leftAlignToday() {
         anchor = math.startOfDay(now); leftAligned = true
         if viewMode == .month { viewMode = .week }
         reload()
     }
     func go(to date: Date) {
+        setDirection(to: math.startOfDay(date))
         anchor = math.startOfDay(date)
         leftAligned = false
         reload()
     }
     func step(_ direction: Int) {
+        navDirection = direction
         let mode = viewMode
         if mode == .week && leftAligned { anchor = math.addDays(anchor, 7 * direction) }
         else { anchor = math.step(mode: mode, anchor: mode == .month ? anchor : (mode == .week ? visibleStart : anchor), direction: direction) }
@@ -331,6 +346,7 @@ final class AppModel {
     func previous() { step(-1) }
     func setMode(_ m: ViewMode) {
         guard m != viewMode else { return }
+        navDirection = 0
         viewMode = m
         if m != .week { leftAligned = false }
         reload()
@@ -343,11 +359,15 @@ final class AppModel {
         refreshUpcoming()
     }
 
+    /// Identity of what the grid shows: a change slides the content in.
+    var periodID: String { "\(viewMode.title)|\(visibleStart.timeIntervalSince1970)" }
+
     var isCurrentPeriodToday: Bool { visibleDays.contains { math.isSameDay($0, now) } }
     var todayIndex: Int? { visibleDays.firstIndex { math.isSameDay($0, now) } }
 
     /// The reference shows "September 2026" for Mon Sep 28 - Sun Oct 4, so the title follows the first visible day.
     var headerTitle: String { fmt.monthTitle(visibleStart) }
+    var headerParts: (month: String, year: String) { (fmt.monthLong(visibleStart), String(math.year(visibleStart))) }
 
     // MARK: Teammates
 
@@ -395,7 +415,7 @@ final class AppModel {
         let cal = settings.defaultCalendarID.flatMap { store.calendar($0) }?.id ?? store.defaultCalendarID
             ?? store.allCalendars.first(where: { $0.isWritable })?.id ?? ""
         var e = CalendarEvent(calendarID: cal, title: "", start: start, end: end, isAllDay: allDay, reminderMinutes: 10, timeZoneID: math.timeZone.identifier)
-        do { e = try store.create(e) } catch { toast = "Could not create event"; return nil }
+        do { e = try store.create(e) } catch { showToast("Could not create event"); return nil }
         undoStack.push(.created(e))
         untitledNewEventID = nil
         select(eventID: e.id, focusTitle: true)
@@ -458,7 +478,7 @@ final class AppModel {
             if let old { undoStack.push(.updated(old: old, new: saved)) }
             if untitledNewEventID == saved.id, !saved.title.isEmpty { untitledNewEventID = nil }
             selectedEventID = saved.id
-        } catch { toast = "Could not save event" }
+        } catch { showToast("Could not save event") }
     }
 
     func duplicateSelected() {
@@ -496,7 +516,8 @@ final class AppModel {
             if untitledNewEventID == e.id { untitledNewEventID = nil }
             selectedEventID = nil
             overlay = nil
-        } catch { toast = "Could not delete event" }
+            showToast("Deleted \u{201C}\(e.title.isEmpty ? "(No title)" : e.title)\u{201D}", undo: true)
+        } catch { showToast("Could not delete event") }
     }
 
     func undo() {
@@ -509,7 +530,7 @@ final class AppModel {
             // Undo the move/resize only: text typed into the inspector since then stays.
             var cur = event(id: new.id) ?? new
             cur.start = old.start; cur.end = old.end; cur.isAllDay = old.isAllDay; cur.calendarID = old.calendarID
-            if let saved = try? store.update(cur, span: .this) { eventsByID[saved.id] = saved; selectedEventID = saved.id } else { toast = "Could not undo" }
+            if let saved = try? store.update(cur, span: .this) { eventsByID[saved.id] = saved; selectedEventID = saved.id } else { showToast("Could not undo") }
         }
     }
 
@@ -559,12 +580,28 @@ final class AppModel {
 
     // MARK: Toast
 
-    func showToast(_ text: String) {
-        toast = text
+    func showToast(_ text: String, undo: Bool = false) {
+        let t = ToastState(text: text, undo: undo)
+        toast = t
         if options.freezeClock { return }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in
-            if self?.toast == text { self?.toast = nil }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+            if self?.toast?.id == t.id { self?.toast = nil }
         }
+    }
+    func dismissToast() { toast = nil }
+
+    // MARK: Tasks
+
+    func isDone(_ id: String) -> Bool { completedTasks.contains(id) }
+    func toggleTask(_ id: String) {
+        if completedTasks.contains(id) { completedTasks.remove(id) } else { completedTasks.insert(id); taskPop = (id, (taskPop?.tick ?? 0) + 1) }
+        if persist { TaskStore.save(completedTasks) }
+    }
+
+    /// ISO week number of the first visible day ("W40").
+    var weekLabel: String {
+        var c = Calendar(identifier: .iso8601); c.timeZone = math.timeZone
+        return "W\(c.component(.weekOfYear, from: visibleStart))"
     }
 
     // MARK: Commands

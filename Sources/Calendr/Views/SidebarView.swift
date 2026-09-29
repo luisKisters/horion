@@ -1,95 +1,71 @@
 import SwiftUI
 import CalendrKit
 
-struct SFIcon: View {
-    let name: String
-    var size: CGFloat = 16
-    var color: Color = Theme.t2
-    var weight: Font.Weight = .regular
-    var body: some View {
-        Image(systemName: name).font(.system(size: size, weight: weight)).foregroundStyle(color)
-    }
-}
-
 struct SidebarView: View {
     @Environment(AppModel.self) private var model
     @FocusState private var meetFocused: Bool
-    /// Distance from the window bottom to the Notion row's bottom edge, and the height of the pinned block above the list end.
-    static let pinnedBottomInset: CGFloat = 120
-    static let pinnedHeight: CGFloat = pinnedBottomInset + 104
 
     var body: some View {
         @Bindable var m = model
-        ZStack(alignment: .topLeading) {
-            Theme.side
-            // Titlebar icons (traffic lights are the real window buttons).
-            IconButton(name: "sidebar.left", size: 15) { model.toggleSidebar() }.position(x: 93, y: 20)
-            IconButton(name: "magnifyingglass", size: 14) { model.handle(.focusSearch) }.position(x: 185, y: 20)
-            IconButton(name: "square.and.pencil", size: 14) { model.handle(.createEvent) }.position(x: 215, y: 20)
+        VStack(spacing: 0) {
+            // Titlebar: the real traffic lights sit at the leading edge; the sidebar toggle follows them.
+            ZStack(alignment: .topLeading) {
+                IconButton(name: "sidebar.left", size: 16) { model.toggleSidebar() }.position(x: 98, y: 26)
+            }
+            .frame(height: 52)
 
-            // Mini calendar
-            IconButton(name: "chevron.up", size: 12, box: 16) { model.stepMiniMonth(-1) }.position(x: 188, y: 63)
-            IconButton(name: "chevron.down", size: 12, box: 16) { model.stepMiniMonth(1) }.position(x: 214, y: 63)
-            MiniCalendar().frame(width: 226).offset(x: 6, y: 76)
-
-            // Scheduling
-            SidebarRow(icon: "link", title: "Scheduling", trailingIcon: "eye") { model.perform(.oneOffLink) }.offset(y: 283)
-
-            // Meet with field
             HStack(spacing: 0) {
-                SFIcon(name: "person", size: 14, color: Color(hex: "#7a7a7a")).frame(width: 18).padding(.leading, 14).padding(.trailing, 8)
-                TextField("", text: $m.meetQuery, prompt: Text("Meet with\u{2026}").foregroundStyle(Theme.placeholder))
-                    .textFieldStyle(.plain).font(.ui(13)).foregroundStyle(Theme.t1)
+                Wordmark()
+                Spacer(minLength: 0)
+                IconButton(name: "magnifyingglass", size: 14, box: 26) { model.handle(.focusSearch) }
+                IconButton(name: "square.and.pencil", size: 14, box: 26) { model.handle(.createEvent) }
+            }
+            .padding(.leading, 16).padding(.trailing, 12).frame(height: 36)
+
+            MiniCalendar().padding(.horizontal, 10).padding(.top, 8).padding(.bottom, 6)
+
+            SidebarRow(icon: "link", title: "Scheduling", trailingIcon: "eye") { model.perform(.oneOffLink) }
+
+            // Meet with field: focus is act, never a system ring.
+            HStack(spacing: 8) {
+                SFIcon(name: "person", size: 13, color: Theme.haze).frame(width: 16)
+                TextField("", text: $m.meetQuery, prompt: Text("Meet with\u{2026}").foregroundStyle(Theme.hazeDim))
+                    .textFieldStyle(.plain).font(.system(size: 13)).foregroundStyle(Theme.paper)
                     .focused($meetFocused)
                     .onSubmit { pickMeet() }
+                Keycap(text: "F")
             }
-            .frame(width: 224, height: 30, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 8).fill(Theme.field))
-            .offset(x: 6, y: 323)
+            .padding(.leading, 10).padding(.trailing, 8).frame(height: 30)
+            .background(RoundedRectangle(cornerRadius: Radius.control).fill(Theme.ink700))
+            .overlay(RoundedRectangle(cornerRadius: Radius.control).strokeBorder(meetFocused ? Theme.act : Theme.hair, lineWidth: meetFocused ? 1.5 : 1))
+            .animation(Motion.base, value: meetFocused)
+            .padding(.horizontal, 10).padding(.top, 8).padding(.bottom, 6)
             .onChange(of: model.focusMeetTick) { _, _ in meetFocused = true }
             .onChange(of: model.blurTick) { _, _ in meetFocused = false }
-
-            // Calendars
-            // Only the calendar list scrolls; the Notion rows and the help button stay pinned to the bottom like the reference.
-            ScrollView(.vertical, showsIndicators: false) {
-                CalendarList().padding(.bottom, 12)
+            .overlay(alignment: .topLeading) {
+                if !model.meetQuery.trimmingCharacters(in: .whitespaces).isEmpty { MeetResults().offset(x: 10, y: 40) }
             }
-            .frame(width: Theme.sidebarWidth, alignment: .topLeading)
-            .padding(.top, 353).padding(.bottom, Self.pinnedHeight)
+            .zIndex(2)
 
-            VStack(spacing: 0) {
+            if model.authState != .authorized {
+                SidebarSkeleton()
                 Spacer(minLength: 0)
-                VStack(alignment: .leading, spacing: 0) {
-                    Rectangle().fill(Theme.sep).frame(height: 1)
-                    SidebarLinkRow(icon: "tablecells.badge.ellipsis", title: "Add Notion database") { model.perform(.addNotionDatabase) }.padding(.top, 16)
-                    Rectangle().fill(Theme.sep).frame(height: 1).padding(.top, 15)
-                    SidebarRow(icon: "n.square", title: "Notion") { model.notionPopoverVisible.toggle() }.padding(.top, 13)
+            } else {
+                ScrollView(.vertical, showsIndicators: false) {
+                    CalendarList().padding(.bottom, 56)
                 }
-                .frame(width: Theme.sidebarWidth - 1, alignment: .leading)
-                .background(Theme.side)
-                .padding(.bottom, Self.pinnedBottomInset)
             }
-
-            if !model.meetQuery.trimmingCharacters(in: .whitespaces).isEmpty { MeetResults().offset(x: 6, y: 357) }
-            if model.notionPopoverVisible {
-                VStack { Spacer(); HStack { NotionPopover().padding(.leading, 30); Spacer() } }.padding(.bottom, Self.pinnedBottomInset + 46)
-            }
-
-            // Help button
-            VStack { Spacer(); HStack {
-                ZStack(alignment: .topTrailing) {
-                    SFIcon(name: "questionmark.circle", size: 16).frame(width: 30, height: 30)
-                    Circle().fill(Theme.red).frame(width: 6, height: 6).offset(x: -3, y: 3)
-                }
-                .frame(width: 30, height: 30)
-                .background(Circle().fill(Theme.side))
-                .contentShape(Rectangle())
-                .onTapGesture { model.handle(.showShortcuts) }
-                .padding(.leading, 8).padding(.bottom, 9)
-                Spacer() } }
         }
         .frame(width: Theme.sidebarWidth)
-        .overlay(alignment: .trailing) { Rectangle().fill(Theme.border).frame(width: 1) }
+        .background(Theme.ink800)
+        .overlay(alignment: .bottom) {
+            LinearGradient(colors: [Theme.ink800.opacity(0), Theme.ink800], startPoint: .top, endPoint: .init(x: 0.5, y: 0.55)).frame(height: 56).allowsHitTesting(false)
+        }
+        .overlay(alignment: .bottomLeading) { ShortcutsButton().padding(.leading, 12).padding(.bottom, 12) }
+        .overlay(alignment: .trailing) { Rectangle().fill(Theme.hair).frame(width: 1) }
+        .overlay(alignment: .bottomLeading) {
+            if model.notionPopoverVisible { NotionPopover().padding(.leading, 30).padding(.bottom, 56) }
+        }
     }
 
     private func pickMeet() {
@@ -100,19 +76,41 @@ struct SidebarView: View {
     }
 }
 
-struct IconButton: View {
-    let name: String
-    var size: CGFloat = 16
-    var box: CGFloat = 22
-    var color: Color = Theme.t2
-    let action: () -> Void
+struct ShortcutsButton: View {
+    @Environment(AppModel.self) private var model
     @State private var hover = false
     var body: some View {
-        Button(action: action) {
-            SFIcon(name: name, size: size, color: hover ? Theme.t1 : color).frame(width: box, height: box)
+        Button { model.handle(.showShortcuts) } label: {
+            HStack(spacing: 7) {
+                SFIcon(name: "questionmark.circle", size: 14, color: hover ? Theme.paper : Theme.haze)
+                Text("Shortcuts").font(.system(size: 12.5, weight: .medium)).foregroundStyle(hover ? Theme.paper : Theme.haze)
+                Keycap(text: "?")
+            }
+            .padding(.leading, 8).padding(.trailing, 6).frame(height: 28)
+            .background(Capsule().fill(hover ? Theme.ink600 : Theme.ink700))
+            .overlay(Capsule().strokeBorder(Theme.hair, lineWidth: 1))
+            .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressStyle(scale: 0.97))
         .onHover { hover = $0 }
+        .animation(Motion.fast, value: hover)
+    }
+}
+
+/// Shown while there is no calendar access.
+struct SidebarSkeleton: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach([132, 96, 118], id: \.self) { w in
+                RoundedRectangle(cornerRadius: 5).fill(Theme.hair).frame(width: CGFloat(w), height: 10).padding(.bottom, 9)
+            }
+            Text("Your calendars appear here once Calendr can read them.").font(.system(size: 12)).foregroundStyle(Theme.haze).lineSpacing(3).padding(.top, 4)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: Radius.card).fill(Theme.ink700))
+        .overlay(RoundedRectangle(cornerRadius: Radius.card).strokeBorder(Theme.hair, lineWidth: 1))
+        .padding(.horizontal, 14).padding(.top, 8)
     }
 }
 
@@ -124,30 +122,32 @@ struct SidebarRow: View {
     @State private var hover = false
     var body: some View {
         Button(action: action) {
-            ZStack(alignment: .leading) {
-                (hover ? Theme.hover : Color.clear)
-                SFIcon(name: icon, size: 15).frame(width: 18).padding(.leading, 14)
-                Text(title).font(.ui(13.3)).foregroundStyle(Theme.t1).padding(.leading, 40)
-                if let t = trailingIcon {
-                    HStack { Spacer(); SFIcon(name: t, size: 13).padding(.trailing, 15) }
-                }
+            HStack(spacing: 10) {
+                SFIcon(name: icon, size: 14, color: Theme.haze).frame(width: 16)
+                Text(title).font(.system(size: 13)).foregroundStyle(Theme.haze)
+                Spacer(minLength: 0)
+                if let t = trailingIcon { SFIcon(name: t, size: 12, color: Theme.hazeDim) }
             }
-            .frame(width: Theme.sidebarWidth - 1, height: 29)
+            .padding(.leading, 16).padding(.trailing, 14)
+            .frame(height: 28)
+            .background(RoundedRectangle(cornerRadius: 8).fill(hover ? Theme.hover : Color.clear))
+            .padding(.horizontal, 8)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .onHover { hover = $0 }
+        .animation(Motion.fast, value: hover)
     }
 }
 
-/// Weekday row + six week rows in one Canvas with cached CoreText lines (42 changing Text views cost ~10 ms per month change);
-/// a single tap gesture picks the cell.
+/// Weekday row + six week rows in one Canvas with cached CoreText lines; a single tap gesture picks the cell.
+/// The visible week is a full-row `act` wash, today a filled act square with a soft halo.
 struct MiniCalendar: View {
     @Environment(AppModel.self) private var model
     @Environment(\.colorScheme) private var scheme
-    static let width: CGFloat = 226
-    static let rowHeight: CGFloat = 28
-    static let headerHeight: CGFloat = 24
+    static let width: CGFloat = Theme.sidebarWidth - 20
+    static let rowHeight: CGFloat = 27
+    static let headerHeight: CGFloat = 22
 
     var body: some View {
         let grid = model.math.monthGrid(for: model.miniMonth)
@@ -157,47 +157,57 @@ struct MiniCalendar: View {
         let now = model.now
         let math = model.math
         let dark = scheme == .dark
-        // CoreGraphics cannot resolve dynamic SwiftUI colors, so pick the appearance's values explicitly.
-        Canvas { ctx, size in
-            func c(_ d: String, _ l: String) -> CGColor { RGB(hex: dark ? d : l).cg }
-            ctx.withCGContext { cg in
-                let colW = size.width / 7
-                let dowColor = c("#838383", "#8a8a8a")
-                for i in 0..<7 {
-                    let s = String(Fmt.weekdayShort[(first - 1 + i) % 7].prefix(2))
-                    let w = TextCache.line(s, .dow).width
-                    _ = EventPainter.text(cg, s, .dow, x: (CGFloat(i) + 0.5) * colW - w / 2, top: 0, box: Self.headerHeight, color: dowColor)
-                }
-                let normal = c("#d5d5d5", "#333333"), dim = c("#5c5c5c", "#c0c0c0"), dimBand = c("#656565", "#b0b0b0")
-                for r in 0..<6 {
-                    let y = Self.headerHeight + CGFloat(r) * Self.rowHeight
-                    let isBand = bandStart.map { math.isSameDay($0, grid[r][0]) } ?? false
-                    if isBand {
-                        cg.addPath(EventPainter.roundedPath(CGRect(x: 0, y: y, width: size.width, height: Self.rowHeight), 8))
-                        cg.setFillColor(c("#2c2c2c", "#ebebe9")); cg.fillPath()
+        VStack(spacing: 0) {
+            HStack(spacing: 0) {
+                (Text(model.fmt.monthLong(miniMonth)).font(.system(size: 13, weight: .semibold)).foregroundColor(Theme.paper)
+                 + Text(" ").font(.system(size: 13))
+                 + Text(String(math.year(miniMonth))).font(.calMono(13, .medium)).foregroundColor(Theme.haze))
+                Spacer(minLength: 0)
+                IconButton(name: "chevron.up", size: 12, box: 24) { model.stepMiniMonth(-1) }
+                IconButton(name: "chevron.down", size: 12, box: 24) { model.stepMiniMonth(1) }
+            }
+            .padding(.horizontal, 6).frame(height: 26)
+
+            Canvas { ctx, size in
+                let ink = EventPainter.Ink.of(dark)
+                ctx.withCGContext { cg in
+                    let colW = size.width / 7
+                    for i in 0..<7 {
+                        let s = Fmt.weekdayShort[(first - 1 + i) % 7].prefix(2).uppercased()
+                        let w = TextCache.line(s, .micro).width + 0.6 * 2
+                        _ = EventPainter.text(cg, s, .micro, x: (CGFloat(i) + 0.5) * colW - w / 2, top: 0, box: Self.headerHeight, color: ink.hazeDim)
                     }
-                    for col in 0..<7 {
-                        let d = grid[r][col]
-                        let today = math.isSameDay(d, now)
-                        let cx = (CGFloat(col) + 0.5) * colW
-                        if today {
-                            cg.addPath(EventPainter.roundedPath(CGRect(x: cx - 13.5, y: y + 2.5, width: 27, height: 23), 6))
-                            cg.setFillColor(c("#df6057", "#e5534b")); cg.fillPath()
+                    for r in 0..<6 {
+                        let y = Self.headerHeight + CGFloat(r) * Self.rowHeight
+                        let isBand = bandStart.map { math.isSameDay($0, grid[r][0]) } ?? false
+                        if isBand {
+                            cg.addPath(EventPainter.roundedPath(CGRect(x: 0, y: y, width: size.width, height: Self.rowHeight), Radius.control))
+                            cg.setFillColor(ink.actWash); cg.fillPath()
                         }
-                        let other = !math.isSameMonth(d, miniMonth)
-                        let color = today ? CGColor(gray: 1, alpha: 1) : other ? (isBand ? dimBand : dim) : normal
-                        let s = "\(math.day(d))"
-                        let w = TextCache.line(s, .mini).width
-                        _ = EventPainter.text(cg, s, .mini, x: cx - w / 2, top: y, box: Self.rowHeight, color: color)
+                        for col in 0..<7 {
+                            let d = grid[r][col]
+                            let today = math.isSameDay(d, now)
+                            let cx = (CGFloat(col) + 0.5) * colW
+                            if today {
+                                let halo = CGRect(x: cx - 12, y: y + 2.5, width: 24, height: 22)
+                                cg.addPath(EventPainter.roundedPath(halo.insetBy(dx: -3, dy: -3), 10)); cg.setFillColor(ink.act.copy(alpha: 0.18) ?? ink.act); cg.fillPath()
+                                cg.addPath(EventPainter.roundedPath(halo, 7)); cg.setFillColor(ink.act); cg.fillPath()
+                            }
+                            let other = !math.isSameMonth(d, miniMonth)
+                            let color = today ? CGColor(gray: 1, alpha: 1) : other ? ink.hazeDim : ink.paper
+                            let s = "\(math.day(d))"
+                            let w = TextCache.line(s, .dayNum).width
+                            _ = EventPainter.text(cg, s, .dayNum, x: cx - w / 2, top: y, box: Self.rowHeight, color: color)
+                        }
                     }
                 }
             }
-        }
-        .frame(width: Self.width, height: Self.headerHeight + 6 * Self.rowHeight)
-        .contentShape(Rectangle())
-        .onTapGesture(coordinateSpace: .local) { p in
-            let r = Int((p.y - Self.headerHeight) / Self.rowHeight), c = Int(p.x / (Self.width / 7))
-            if (0..<6).contains(r), (0..<7).contains(c) { model.go(to: grid[r][c]) }
+            .frame(width: Self.width, height: Self.headerHeight + 6 * Self.rowHeight)
+            .contentShape(Rectangle())
+            .onTapGesture(coordinateSpace: .local) { p in
+                let r = Int((p.y - Self.headerHeight) / Self.rowHeight), c = Int(p.x / (Self.width / 7))
+                if (0..<6).contains(r), (0..<7).contains(c) { model.go(to: grid[r][c]) }
+            }
         }
     }
 }
@@ -208,7 +218,7 @@ struct CalendarList: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             if !model.shownTeammates.isEmpty {
-                AccountLabel(text: "Teammates").padding(.top, 12)
+                AccountLabel(text: "Teammates")
                 ForEach(model.shownTeammates) { t in
                     TeammateRow(t: t)
                 }
@@ -217,7 +227,7 @@ struct CalendarList: View {
                 AccountLabel(text: acc.name)
                 ForEach(acc.calendars) { c in CalendarRow(cal: c) }
             }
-            SidebarLinkRow(icon: "plus", title: "Add calendar account") { model.addCalendarAccount() }.padding(.top, 11)
+            SidebarLinkRow(icon: "plus", title: "Add calendar account") { model.addCalendarAccount() }.padding(.top, 10)
         }
         .frame(width: Theme.sidebarWidth - 1, alignment: .leading)
     }
@@ -226,10 +236,8 @@ struct CalendarList: View {
 struct AccountLabel: View {
     let text: String
     var body: some View {
-        Text(text).font(.ui(12.5)).foregroundStyle(Theme.miniDow).lineLimit(1).truncationMode(.tail)
-            .frame(height: 18, alignment: .leading)
-            .padding(.leading, 14).padding(.trailing, 12)
-            .padding(.top, 16.5).padding(.bottom, 4.5)
+        Text(text).font(.system(size: 11.5)).foregroundStyle(Theme.hazeDim).lineLimit(1).truncationMode(.tail)
+            .padding(.leading, 22).padding(.trailing, 14).padding(.top, 14).padding(.bottom, 4)
     }
 }
 
@@ -240,13 +248,32 @@ struct SidebarLinkRow: View {
     @State private var hover = false
     var body: some View {
         Button(action: action) {
-            ZStack(alignment: .leading) {
-                (hover ? Theme.hover : Color.clear)
-                SFIcon(name: icon, size: 15).frame(width: 18).padding(.leading, 14)
-                Text(title).font(.ui(13.3)).foregroundStyle(Color(hex: "#7a7a7a")).padding(.leading, 40)
+            HStack(spacing: 10) {
+                SFIcon(name: icon, size: 13, color: Theme.hazeDim).frame(width: 16)
+                Text(title).font(.system(size: 13)).foregroundStyle(hover ? Theme.paper : Theme.haze)
+                Spacer(minLength: 0)
             }
-            .frame(width: Theme.sidebarWidth - 1, height: 29).contentShape(Rectangle())
+            .padding(.leading, 16).frame(height: 28)
+            .background(RoundedRectangle(cornerRadius: 8).fill(hover ? Theme.hover : Color.clear))
+            .padding(.horizontal, 8)
+            .contentShape(Rectangle())
         }.buttonStyle(.plain).onHover { hover = $0 }
+        .animation(Motion.fast, value: hover)
+    }
+}
+
+/// Calendar checkbox: 14 pt rounded square, full calendar color when on, hollow when hidden.
+struct CalendarCheckbox: View {
+    let color: Color
+    let on: Bool
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 5).fill(on ? color : Color.clear)
+            RoundedRectangle(cornerRadius: 5).strokeBorder(on ? color : Theme.hazeDim, lineWidth: 1.5)
+            Image(systemName: "checkmark").font(.system(size: 8, weight: .heavy)).foregroundStyle(Color(hex: "#0F0E14")).opacity(on ? 1 : 0)
+        }
+        .frame(width: 14, height: 14)
+        .animation(Motion.fast, value: on)
     }
 }
 
@@ -256,32 +283,23 @@ struct CalendarRow: View {
     @State private var hover = false
     var body: some View {
         let off = model.hiddenCalendars.contains(cal.id)
-        let color = Color(hex: cal.colorHex)
         Button { model.toggleCalendar(cal.id) } label: {
-            ZStack(alignment: .leading) {
-                (hover ? Theme.hover : Color.clear)
-                Group {
-                    if cal.isDefault {
-                        RoundedRectangle(cornerRadius: 5.5).strokeBorder(color, lineWidth: 1.5).frame(width: 18, height: 18)
-                            .overlay(RoundedRectangle(cornerRadius: 3).fill(color).padding(3.5))
-                            .padding(.leading, 14)
-                    } else {
-                        RoundedRectangle(cornerRadius: 4).fill(color).frame(width: 13, height: 13)
-                            .overlay { if cal.icon == .feed { Image(systemName: "dot.radiowaves.up.forward").font(.system(size: 7, weight: .bold)).foregroundStyle(Color(hex: "#202020")) } }
-                            .padding(.leading, 16.5)
-                    }
-                }.opacity(off ? 0.35 : 1)
-                HStack(spacing: 0) {
-                    Text(cal.title).font(.ui(13.3)).foregroundStyle(off ? Color(hex: "#4d4d4d") : Theme.t1).lineLimit(1)
-                    if cal.isDefault { Text("Default").font(.ui(13.3)).foregroundStyle(Theme.t2).padding(.leading, 6) }
-                }.padding(.leading, 40).padding(.trailing, off ? 36 : 12)
-                if off { HStack { Spacer(); SFIcon(name: "eye.slash", size: 13).padding(.trailing, 14) } }
+            HStack(spacing: 10) {
+                CalendarCheckbox(color: Color(hex: cal.colorHex), on: !off)
+                Text(cal.title).font(.system(size: 13)).foregroundStyle(off ? Theme.hazeDim : Theme.paper).lineLimit(1)
+                Spacer(minLength: 4)
+                if off { SFIcon(name: "eye.slash", size: 12, color: Theme.hazeDim) }
+                else if cal.isDefault { Text("Default").font(.system(size: 11.5)).foregroundStyle(Theme.hazeDim) }
             }
-            .frame(width: Theme.sidebarWidth - 1, height: 29, alignment: .leading)
+            .padding(.leading, 16).padding(.trailing, 14)
+            .frame(height: 28)
+            .background(RoundedRectangle(cornerRadius: 8).fill(hover ? Theme.hover : Color.clear))
+            .padding(.horizontal, 8)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .onHover { hover = $0 }
+        .animation(Motion.fast, value: hover)
     }
 }
 
@@ -289,12 +307,13 @@ struct TeammateRow: View {
     @Environment(AppModel.self) private var model
     let t: Teammate
     var body: some View {
-        ZStack(alignment: .leading) {
-            RoundedRectangle(cornerRadius: 4).fill(Color(hex: model.teammateColor(t.email))).frame(width: 13, height: 13).padding(.leading, 16.5)
-            Text(t.name).font(.ui(13.3)).foregroundStyle(Theme.t1).lineLimit(1).padding(.leading, 40).padding(.trailing, 36)
-            HStack { Spacer(); IconButton(name: "xmark", size: 10, box: 16) { model.removeTeammate(t) }.padding(.trailing, 14) }
+        HStack(spacing: 10) {
+            CalendarCheckbox(color: Color(hex: model.teammateColor(t.email)), on: true)
+            Text(t.name).font(.system(size: 13)).foregroundStyle(Theme.paper).lineLimit(1)
+            Spacer(minLength: 4)
+            IconButton(name: "xmark", size: 9, box: 20) { model.removeTeammate(t) }
         }
-        .frame(width: Theme.sidebarWidth - 1, height: 29, alignment: .leading)
+        .padding(.leading, 24).padding(.trailing, 20).frame(height: 28)
     }
 }
 
@@ -303,24 +322,25 @@ struct MeetResults: View {
     var body: some View {
         let list = Array(model.filteredTeammates(model.meetQuery).prefix(6))
         VStack(alignment: .leading, spacing: 0) {
-            if list.isEmpty { Text("No teammates found").font(.ui(13)).foregroundStyle(Theme.t2).padding(10) }
+            if list.isEmpty { Text("No teammates found").font(.system(size: 13)).foregroundStyle(Theme.haze).padding(10) }
             ForEach(Array(list.enumerated()), id: \.element.id) { i, t in
                 Button { model.showTeammate(t); model.meetQuery = "" } label: {
                     HStack(spacing: 6) {
-                        Text(t.name).font(.ui(13)).foregroundStyle(Theme.t1).lineLimit(1)
+                        Text(t.name).font(.system(size: 13)).foregroundStyle(Theme.paper).lineLimit(1)
                         Spacer(minLength: 0)
                     }
-                    .padding(.horizontal, 10).frame(height: 28)
-                    .background(RoundedRectangle(cornerRadius: 6).fill(i == model.meetIndex ? Theme.palSel : Color.clear))
+                    .padding(.horizontal, 10).frame(height: 30)
+                    .background(RoundedRectangle(cornerRadius: 8).fill(i == model.meetIndex ? Theme.actWash : Color.clear))
                     .contentShape(Rectangle())
                 }.buttonStyle(.plain)
             }
         }
         .padding(4)
-        .frame(width: 224)
-        .background(RoundedRectangle(cornerRadius: 8).fill(Theme.pal))
-        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Theme.palBorder))
-        .shadow(color: .black.opacity(0.45), radius: 14, y: 8)
+        .frame(width: Theme.sidebarWidth - 20)
+        .background(RoundedRectangle(cornerRadius: 11).fill(Theme.ink700))
+        .overlay(RoundedRectangle(cornerRadius: 11).strokeBorder(Theme.hairStrong, lineWidth: 1))
+        .popShadow()
+        .transition(.opacity.combined(with: .offset(y: -4)))
     }
 }
 
@@ -328,13 +348,13 @@ struct NotionPopover: View {
     @Environment(AppModel.self) private var model
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("Notion is not connected").font(.ui(13, .medium)).foregroundStyle(Theme.t1)
-            Text("Notion databases are not available in Calendr yet.").font(.ui(12)).foregroundStyle(Theme.t2).fixedSize(horizontal: false, vertical: true)
-            Button("Not connected") { model.notionPopoverVisible = false }.buttonStyle(.plain).font(.ui(12)).foregroundStyle(Theme.ring).padding(.top, 4)
+            Text("Notion is not connected").font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.paper)
+            Text("Notion databases are not available in Calendr yet.").font(.system(size: 12)).foregroundStyle(Theme.haze).fixedSize(horizontal: false, vertical: true)
+            Button("Not connected") { model.notionPopoverVisible = false }.buttonStyle(.plain).font(.system(size: 12)).foregroundStyle(Theme.actLift).padding(.top, 4)
         }
         .padding(12).frame(width: 190, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 8).fill(Theme.pal))
-        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Theme.palBorder))
-        .shadow(color: .black.opacity(0.45), radius: 14, y: 8)
+        .background(RoundedRectangle(cornerRadius: 11).fill(Theme.ink700))
+        .overlay(RoundedRectangle(cornerRadius: 11).strokeBorder(Theme.hairStrong, lineWidth: 1))
+        .popShadow()
     }
 }

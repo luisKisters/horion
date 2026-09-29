@@ -36,6 +36,8 @@ public struct CalendarMath: Sendable {
         calendar.date(from: calendar.dateComponents([.year, .month], from: d)) ?? startOfDay(d)
     }
 
+    public func isWeekend(_ d: Date) -> Bool { let w = calendar.component(.weekday, from: d); return w == 1 || w == 7 }
+
     public func isSameDay(_ a: Date, _ b: Date) -> Bool { calendar.isDate(a, inSameDayAs: b) }
 
     public func isSameMonth(_ a: Date, _ b: Date) -> Bool {

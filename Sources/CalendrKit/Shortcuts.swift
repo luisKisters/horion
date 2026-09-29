@@ -64,7 +64,7 @@ public enum ShortcutResolver {
         case "f": return .meetWith
         case ".": return .goToDate
         case "?": return .showShortcuts
-        case "/": return k.shift ? .showShortcuts : nil
+        case "/": return k.shift ? .showShortcuts : .focusSearch
         case "`": return .toggleSidebar
         case "s": return .schedulingLink
         case "o": return .addNotionDatabase

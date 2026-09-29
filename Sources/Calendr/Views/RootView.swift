@@ -7,60 +7,53 @@ struct RootView: View {
 
     var body: some View {
         ZStack {
-            Theme.bg
+            Theme.ink900
             HStack(spacing: 0) {
-                if model.sidebarVisible { SidebarView() }
+                if model.sidebarVisible {
+                    SidebarView().transition(.move(edge: .leading).combined(with: .opacity))
+                }
                 CenterView()
-                if model.rightPanelVisible { RightPanelView() }
+                if model.rightPanelVisible {
+                    RightPanelView().transition(.move(edge: .trailing).combined(with: .opacity))
+                }
             }
+            .animation(Motion.slow, value: model.sidebarVisible)
+            .animation(Motion.slow, value: model.rightPanelVisible)
             if !model.sidebarVisible {
                 HStack(spacing: 0) {
-                    IconButton(name: "sidebar.left", size: 15) { model.toggleSidebar() }.padding(.leading, 82)
+                    IconButton(name: "sidebar.left", size: 16) { model.toggleSidebar() }.padding(.leading, 84)
                     Spacer()
-                }.frame(maxHeight: .infinity, alignment: .top).padding(.top, 9)
+                }.frame(maxHeight: .infinity, alignment: .top).padding(.top, 12)
             }
-            GetCalendrPill()
-            if model.authState != .authorized { AccessPrompt() }
             OverlayHost()
         }
         .ignoresSafeArea()
         .preferredColorScheme(model.settings.appearance == .dark ? .dark : model.settings.appearance == .light ? .light : nil)
-        .transaction { $0.animation = nil }
-        .font(.ui(13))
-    }
-}
-
-struct GetCalendrPill: View {
-    @Environment(AppModel.self) private var model
-    var body: some View {
-        VStack { Spacer(); HStack { Spacer()
-            Button { model.showToast("Calendr is already on your Mac") } label: {
-                Text("Get Calendr to go").font(.ui(13)).foregroundStyle(Theme.t1).padding(.horizontal, 14).frame(height: 29)
-                    .background(Capsule().fill(Theme.getCal))
-            }.buttonStyle(.plain).padding(.trailing, 16).padding(.bottom, 15)
-        } }
+        .font(.system(size: 13))
+        .onChange(of: model.settings.reduceMotion) { _, v in Motion.override = v }
     }
 }
 
 /// Shown in place of the calendar when EventKit access has not been granted.
-struct AccessPrompt: View {
+struct AccessEmptyState: View {
     @Environment(AppModel.self) private var model
     var body: some View {
-        VStack(spacing: 12) {
-            SFIcon(name: "calendar.badge.exclamationmark", size: 34, color: Theme.t2)
-            Text("Grant calendar access").font(.ui(18, .semibold)).foregroundStyle(Theme.t1)
-            Text(model.authState == .denied
-                 ? "Calendr has no access to your calendars. Enable it in System Settings > Privacy & Security > Calendars."
-                 : "Calendr shows your Google, iCloud and local calendars through macOS. Allow access to continue.")
-                .font(.ui(13)).foregroundStyle(Theme.t2).multilineTextAlignment(.center).frame(width: 360)
+        VStack(spacing: 0) {
+            EmptyArt(kind: .lock, size: 96).padding(.bottom, 14)
+            Text("Calendr needs access to your calendars").font(.system(size: 22, weight: .semibold)).tracking(-0.4).foregroundStyle(Theme.paper)
+            Text("Events stay on this Mac. Calendr reads them through\nmacOS and never sends them anywhere.")
+                .font(.system(size: 13)).foregroundStyle(Theme.haze).multilineTextAlignment(.center).lineSpacing(3).padding(.top, 8)
             HStack(spacing: 8) {
-                if model.authState == .notDetermined { DialogButton(title: "Allow access", primary: true) { model.requestAccess() } }
-                else { DialogButton(title: "Open System Settings", primary: true) { model.openPrivacySettings() } }
-                DialogButton(title: "Use demo data") { model.showToast("Relaunch with --demo to use demo data") }
-            }
+                if model.authState == .notDetermined { PrimaryButton(title: "Allow access") { model.requestAccess() } }
+                else { PrimaryButton(title: "Open Privacy Settings") { model.openPrivacySettings() } }
+                SecondaryButton(title: "How it works") { model.showToast("Calendr reads Google and iCloud calendars through macOS EventKit") }
+            }.padding(.top, 16)
+            HStack(spacing: 6) {
+                SFIcon(name: "lock", size: 11, color: Theme.hazeDim)
+                Text("System Settings, Privacy and Security, Calendars").font(.system(size: 11.5)).foregroundStyle(Theme.hazeDim)
+            }.padding(.top, 18)
         }
-        .padding(32)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Theme.bg.opacity(0.96))
+        .background(RadialGradient(colors: [Theme.actSoft, .clear], center: UnitPoint(x: 0.5, y: 0.42), startRadius: 0, endRadius: 360))
     }
 }

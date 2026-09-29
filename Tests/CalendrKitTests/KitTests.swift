@@ -66,23 +66,35 @@ struct OverlapTests {
         let ps = OverlapLayout.layout([TimeSpan(id: "a", startMinute: 1200, endMinute: 1215), TimeSpan(id: "b", startMinute: 1210, endMinute: 1225)])
         #expect(ps.allSatisfy { $0.columns == 2 })
     }
-    @Test func earlierStartingPillDoesNotTakeFirstColumnFromLongerBlock() {
-        // Sunday Oct 4 in the reference: run 09:45-11:30 is the left block, "[P1] Dana" 09:40 cascades on top at the right.
+    @Test func capsuleNeverSqueezesABlockAndSitsAboveIt() {
+        // Sunday Oct 4: run 09:45-11:30 keeps the full column, "[P1] Dana" 09:40 moves up to a free slot above it.
         let ps = OverlapLayout.layout([TimeSpan(id: "dana", startMinute: 580, endMinute: 595, isPill: true), TimeSpan(id: "run", startMinute: 585, endMinute: 690)])
-        #expect(p(ps, "run").left == 0 && p(ps, "run").column == 0)
-        #expect(p(ps, "dana").left > 0.4 && p(ps, "dana").z > p(ps, "run").z)
+        #expect(p(ps, "run").left == 0 && p(ps, "run").width == 1)
+        #expect(p(ps, "dana").shiftMinutes < 0 && p(ps, "dana").z > p(ps, "run").z)
+        #expect(580 + p(ps, "dana").shiftMinutes + OverlapLayout.capsuleMinutes <= 585)      // clear of the block
     }
-    @Test func lateStartingPillFloatsOverBlockWithoutNarrowingIt() {
-        // Englisch 08:00-09:45 and a task pill at 09:10: the block keeps the full column, the pill sits 8pt in.
-        let ps = OverlapLayout.layout([TimeSpan(id: "b", startMinute: 480, endMinute: 585), TimeSpan(id: "p", startMinute: 550, endMinute: 565, isPill: true)])
-        #expect(p(ps, "b").width == 1 && p(ps, "b").left == 0)
-        #expect(p(ps, "p").left > 0 && p(ps, "p").left < 0.1 && abs(p(ps, "p").left + p(ps, "p").width - 1) < 1e-9)
-        #expect(p(ps, "p").z > p(ps, "b").z)
+    @Test func capsuleFloatsOverALongRunningBlock() {
+        // Englisch 08:00-09:45 and a task capsule at 09:00: it started long before, so the capsule stays put on top of it.
+        let ps = OverlapLayout.layout([TimeSpan(id: "b", startMinute: 480, endMinute: 585), TimeSpan(id: "p", startMinute: 540, endMinute: 555, isPill: true)])
+        #expect(p(ps, "b").width == 1 && p(ps, "p").shiftMinutes == 0 && p(ps, "p").z > p(ps, "b").z)
     }
-    @Test func pillStartingWithBlockSharesColumns() {
-        let ps = OverlapLayout.layout([TimeSpan(id: "b", startMinute: 1080, endMinute: 1140), TimeSpan(id: "p", startMinute: 1080, endMinute: 1095, isPill: true)])
-        #expect(ps.allSatisfy { $0.columns == 2 })
-        #expect(p(ps, "b").width < 1)
+    @Test func simultaneousCapsulesStackVertically() {
+        // Tuesday 07:30: Sportzeug and Meal Prep do not share columns, the second one moves down a row.
+        let ps = OverlapLayout.layout([TimeSpan(id: "a", startMinute: 450, endMinute: 465, isPill: true), TimeSpan(id: "b", startMinute: 450, endMinute: 465, isPill: true)])
+        #expect(p(ps, "a").shiftMinutes == 0)
+        #expect(p(ps, "b").shiftMinutes >= OverlapLayout.capsuleMinutes && !p(ps, "b").chip)
+        #expect(ps.allSatisfy { $0.width == 1 })
+    }
+    @Test func capsulesAroundABlockGoAboveAndBelow() {
+        // Wednesday: MIA 07:30-08:00 with two capsules at 07:30: one above the block, one below.
+        let ps = OverlapLayout.layout([TimeSpan(id: "j", startMinute: 450, endMinute: 480), TimeSpan(id: "m", startMinute: 450, endMinute: 465, isPill: true), TimeSpan(id: "s", startMinute: 450, endMinute: 465, isPill: true)])
+        #expect(p(ps, "m").shiftMinutes < 0 && p(ps, "s").shiftMinutes > 0)
+    }
+    @Test func capsuleWithNoFreeSlotBecomesAChip() {
+        var spans = [TimeSpan(id: "blk", startMinute: 400, endMinute: 560)]
+        for i in 0..<6 { spans.append(TimeSpan(id: "p\(i)", startMinute: 470, endMinute: 485, isPill: true)) }
+        let ps = OverlapLayout.layout(spans)
+        #expect(ps.contains { $0.chip })
     }
     @Test func chainReusesColumns() {
         // a overlaps b, b overlaps c, a does not overlap c: c goes back into column 0.

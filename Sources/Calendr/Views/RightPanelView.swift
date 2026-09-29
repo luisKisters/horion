@@ -1,38 +1,33 @@
 import SwiftUI
 import CalendrKit
 
-struct KbdChip: View {
-    let text: String
-    var palette = false
-    var body: some View {
-        Text(text).font(.ui(12)).foregroundStyle(palette ? Color.dyn("#909090", "#777777") : Theme.chipText)
-            .padding(.horizontal, 4).frame(minWidth: 17, minHeight: palette ? 15 : 16)
-            .background(RoundedRectangle(cornerRadius: 3).fill(palette ? Theme.palChip : Theme.chip))
-    }
-}
-
 struct RightPanelView: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            Theme.bg
+            Theme.ink800
             if model.selectedEvent != nil {
                 InspectorView()
-                PanelToggle().frame(maxWidth: .infinity, maxHeight: 40, alignment: .topTrailing)
+                    .id(model.selectedEventID)
+                    .transition(.modifier(active: SlideFade(x: 28, opacity: 0), identity: SlideFade(x: 0, opacity: 1)))
             } else {
                 DefaultPanel()
+                    .transition(.opacity)
             }
         }
+        .animation(Motion.slow, value: model.selectedEvent == nil)
+        .animation(Motion.base, value: model.selectedEventID)
         .frame(width: Theme.rightPanelWidth)
-        .overlay(alignment: .leading) { Rectangle().fill(Theme.border).frame(width: 1) }
+        .clipped()
+        .overlay(alignment: .leading) { Rectangle().fill(Theme.hair).frame(width: 1) }
     }
 }
 
 struct PanelToggle: View {
     @Environment(AppModel.self) private var model
     var body: some View {
-        IconButton(name: "sidebar.right", size: 15, box: 22) { model.toggleRightPanel() }.padding(.trailing, 15).padding(.top, 9)
+        IconButton(name: "sidebar.right", size: 15) { model.toggleRightPanel() }
     }
 }
 
@@ -42,26 +37,30 @@ struct DefaultPanel: View {
 
     var body: some View {
         @Bindable var m = model
-        ZStack(alignment: .topLeading) {
-            HStack(spacing: 0) {
-                SFIcon(name: "magnifyingglass", size: 14, color: Theme.t3).frame(width: 18).padding(.leading, 15).padding(.trailing, 8)
-                TextField("", text: $m.searchText, prompt: Text("Search events").foregroundStyle(Theme.t3))
-                    .textFieldStyle(.plain).font(.ui(14)).foregroundStyle(Theme.t1)
-                    .focused($searchFocused)
-                    .onSubmit { if let e = model.searchGroups.first?.events.first { model.openSearchResult(e) } }
-                if !model.searchText.isEmpty {
-                    IconButton(name: "xmark.circle.fill", size: 12, box: 20) { model.searchText = "" }
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 8) {
+                HStack(spacing: 8) {
+                    SFIcon(name: "magnifyingglass", size: 13, color: Theme.haze).frame(width: 16)
+                    TextField("", text: $m.searchText, prompt: Text("Search events").foregroundStyle(Theme.hazeDim))
+                        .textFieldStyle(.plain).font(.system(size: 13)).foregroundStyle(Theme.paper)
+                        .focused($searchFocused)
+                        .onSubmit { if let e = model.searchGroups.first?.events.first { model.openSearchResult(e) } }
+                    Keycap(text: "/")
                 }
-                Spacer(minLength: 0)
+                .padding(.leading, 10).padding(.trailing, 6).frame(height: 30)
+                .background(RoundedRectangle(cornerRadius: Radius.control).fill(Theme.ink700))
+                .overlay(RoundedRectangle(cornerRadius: Radius.control).strokeBorder(searchFocused ? Theme.act : Theme.hair, lineWidth: searchFocused ? 1.5 : 1))
+                .animation(Motion.base, value: searchFocused)
+                PanelToggle()
             }
-            .frame(width: Theme.rightPanelWidth - 44, height: 40)
+            .padding(.leading, 16).padding(.trailing, 12).frame(height: Theme.toolbarHeight)
             .onChange(of: model.focusSearchTick) { _, _ in searchFocused = true }
             .onChange(of: model.blurTick) { _, _ in searchFocused = false }
-            PanelToggle().frame(width: Theme.rightPanelWidth, height: 40, alignment: .topTrailing)
 
             if model.searchText.trimmingCharacters(in: .whitespaces).isEmpty {
                 VStack(alignment: .leading, spacing: 0) {
-                    Text("Useful shortcuts").font(.ui(14, .medium)).foregroundStyle(Theme.t1).frame(height: 20, alignment: .leading).padding(.bottom, 3)
+                    if model.authState == .authorized, let next = model.upcoming.next { UpNextCard(event: next).padding(.bottom, 14) }
+                    MicroLabel(text: "Useful shortcuts").padding(.top, 10).padding(.bottom, 6)
                     ShortcutRow("Command menu", ["\u{2318}", "K"])
                     ShortcutRow("Menu bar calendar", ["control", "\u{2318}", "K"])
                     ShortcutRow("Toggle sidebar", ["`"])
@@ -69,12 +68,42 @@ struct DefaultPanel: View {
                     ShortcutRow("Go to date", ["."])
                     ShortcutRow("All keyboard shortcuts", ["?"])
                 }
-                .padding(.horizontal, 16).padding(.top, 78)
+                .padding(.horizontal, 16).padding(.top, 6)
             } else {
-                SearchResults().padding(.top, 52)
+                SearchResults()
             }
+            Spacer(minLength: 0)
         }
         .frame(width: Theme.rightPanelWidth, alignment: .topLeading)
+    }
+}
+
+/// The next event, lifted into a card: 3 pt calendar-colored bar, imminence in the label.
+struct UpNextCard: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.colorScheme) private var scheme
+    let event: CalendarEvent
+    @State private var hover = false
+    var body: some View {
+        let pal = Palettes.palette(barHex: model.calendarColorHex(of: event), fillHex: nil, dark: scheme == .dark)
+        let until = model.upcoming.untilNext
+        Button { model.openSearchResult(event) } label: {
+            VStack(alignment: .leading, spacing: 0) {
+                MicroLabel(text: until == "now" ? "Up next \u{00B7} now" : "Up next \u{00B7} in \(until.replacingOccurrences(of: "min", with: " min"))")
+                Text(event.title).font(.system(size: 14, weight: .semibold)).tracking(-0.1).foregroundStyle(Theme.paper).lineLimit(1).padding(.top, 5).padding(.bottom, 3)
+                Text(model.fmt.timeRange(event.start, event.end)).font(.calMono(12)).foregroundStyle(Theme.haze)
+            }
+            .padding(.leading, 16).padding(.trailing, 14).padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: Radius.card).fill(hover ? Theme.ink600 : Theme.ink700))
+            .overlay(alignment: .leading) { Rectangle().fill(pal.bar).frame(width: 3) }
+            .clipShape(RoundedRectangle(cornerRadius: Radius.card))
+            .overlay(RoundedRectangle(cornerRadius: Radius.card).strokeBorder(Theme.hair, lineWidth: 1))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hover = $0 }
+        .animation(Motion.fast, value: hover)
     }
 }
 
@@ -85,31 +114,41 @@ struct ShortcutRow: View {
     init(_ t: String, _ k: [String]) { title = t; keys = k }
     var body: some View {
         HStack {
-            Text(title).font(.ui(13)).foregroundStyle(hover ? Theme.t1 : Theme.t2)
+            Text(title).font(.system(size: 13)).foregroundStyle(hover ? Theme.paper : Theme.haze)
             Spacer()
-            HStack(spacing: 3) { ForEach(keys, id: \.self) { KbdChip(text: $0) } }
+            Keycaps(keys: keys)
         }
-        .frame(height: 24)
+        .padding(.horizontal, 8).frame(height: 30)
+        .background(RoundedRectangle(cornerRadius: 8).fill(hover ? Theme.hover : Color.clear))
+        .padding(.horizontal, -8)
         .onHover { hover = $0 }
+        .animation(Motion.fast, value: hover)
     }
 }
 
 struct SearchResults: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.colorScheme) private var scheme
     var body: some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            LazyVStack(alignment: .leading, spacing: 0) {
-                if model.searchGroups.isEmpty {
-                    Text("No events match \u{201C}\(model.searchText)\u{201D}").font(.ui(13)).foregroundStyle(Theme.t2).padding(.horizontal, 16).padding(.vertical, 24)
-                }
-                ForEach(model.searchGroups) { g in
-                    let today = model.math.isSameDay(g.day, model.now)
-                    Text("\(model.fmt.weekdayShort(g.day)), \(model.fmt.monthDay(g.day))" + (today ? " \u{00B7} Today" : ""))
-                        .font(.ui(12, .medium)).foregroundStyle(Theme.t2).padding(.horizontal, 16).padding(.top, 12).padding(.bottom, 4)
-                    ForEach(g.events) { e in SearchRow(e: e) }
-                }
-            }.padding(.horizontal, 8)
+        if model.searchGroups.isEmpty {
+            VStack(spacing: 6) {
+                EmptyArt(kind: .search, size: 64).padding(.bottom, 10)
+                Text("No events match \u{201C}\(model.searchText)\u{201D}").font(.system(size: 15, weight: .semibold)).tracking(-0.2).foregroundStyle(Theme.paper).multilineTextAlignment(.center)
+                Text("Try a title, a place or a calendar name.\nSearch covers every visible calendar.").font(.system(size: 12.5)).foregroundStyle(Theme.haze).multilineTextAlignment(.center).lineSpacing(3)
+                PrimaryButton(title: "Clear search") { model.searchText = "" }.padding(.top, 12)
+            }
+            .padding(.horizontal, 24).padding(.top, 40).frame(maxWidth: .infinity)
+            .transition(.opacity)
+        } else {
+            ScrollView(.vertical, showsIndicators: false) {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(model.searchGroups) { g in
+                        let today = model.math.isSameDay(g.day, model.now)
+                        MicroLabel(text: "\(model.fmt.weekdayShort(g.day)), \(model.fmt.monthDay(g.day))" + (today ? " \u{00B7} Today" : ""))
+                            .padding(.horizontal, 8).padding(.top, 14).padding(.bottom, 6)
+                        ForEach(g.events) { e in SearchRow(e: e) }
+                    }
+                }.padding(.horizontal, 8).padding(.bottom, 16)
+            }
         }
     }
 }
@@ -122,43 +161,46 @@ struct SearchRow: View {
     var body: some View {
         let pal = e.kind == .task ? Palettes.gray(scheme == .dark) : Palettes.palette(barHex: model.calendarColorHex(of: e), fillHex: nil, dark: scheme == .dark)
         Button { model.openSearchResult(e) } label: {
-            HStack(spacing: 9) {
+            HStack(spacing: 10) {
                 RoundedRectangle(cornerRadius: 2).fill(pal.bar).frame(width: 3, height: 16)
-                Text(e.title).font(.ui(13)).foregroundStyle(Theme.t1).lineLimit(1)
+                Text(e.kind == .task ? TaskTitle.split(e.title).text : e.title).font(.system(size: 13)).foregroundStyle(Theme.paper).lineLimit(1)
                 Spacer(minLength: 0)
-                Text(e.isAllDay ? "All day" : model.fmt.time(e.start)).font(.mono(12)).foregroundStyle(Theme.t2)
+                Text(e.isAllDay ? "All day" : model.fmt.time(e.start)).font(.calMono(11)).foregroundStyle(Theme.haze)
             }
-            .padding(.horizontal, 8).frame(height: 34)
-            .background(RoundedRectangle(cornerRadius: 6).fill(hover ? Theme.hover : Color.clear))
+            .padding(.horizontal, 10).frame(height: 34)
+            .background(RoundedRectangle(cornerRadius: Radius.control).fill(model.selectedEventID == e.id ? Theme.actWash : (hover ? Theme.hover : Color.clear)))
             .contentShape(Rectangle())
         }.buttonStyle(.plain).onHover { hover = $0 }
+        .animation(Motion.fast, value: hover)
     }
 }
 
 // MARK: - Inspector
-
-struct MiniToggleStyle: ToggleStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        Button { configuration.isOn.toggle() } label: {
-            ZStack(alignment: configuration.isOn ? .trailing : .leading) {
-                Capsule().fill(configuration.isOn ? Theme.ring : Theme.t3).frame(width: 17, height: 10)
-                Circle().fill(Color.white).frame(width: 8, height: 8).padding(1)
-            }
-        }.buttonStyle(.plain)
-    }
-}
 
 struct InspectorRow<Content: View>: View {
     var icon: String?
     var muted = false
     @ViewBuilder var content: Content
     var body: some View {
-        ZStack(alignment: .leading) {
-            if let icon { SFIcon(name: icon, size: 14, color: muted ? Theme.t3 : Theme.t2).frame(width: 18).padding(.leading, 15) }
-            content.padding(.leading, 41).padding(.trailing, 12)
+        HStack(spacing: 12) {
+            if let icon { SFIcon(name: icon, size: 14, color: muted ? Theme.hazeDim : Theme.haze).frame(width: 16) } else { Color.clear.frame(width: 16, height: 1) }
+            content
+            Spacer(minLength: 0)
         }
-        .frame(height: 32)
+        .padding(.horizontal, 16)
+        .frame(minHeight: 34)
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// Mono field chip (times, date): ink-700, 26 pt, radius 7.
+struct MonoField<Content: View>: View {
+    @ViewBuilder var content: Content
+    var body: some View {
+        content.font(.calMono(12.5, .medium)).foregroundStyle(Theme.paper)
+            .padding(.horizontal, 8).frame(height: 26)
+            .background(RoundedRectangle(cornerRadius: 7).fill(Theme.ink700))
+            .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(Theme.hair, lineWidth: 1))
     }
 }
 
@@ -169,44 +211,46 @@ struct InspectorView: View {
     var body: some View {
         if let e = model.selectedEvent {
             let writable = model.isWritable(e)
-            ZStack(alignment: .topLeading) {
-                HStack(spacing: 6) {
-                    Text("Event").font(.ui(14)).foregroundStyle(Theme.t1)
-                    SFIcon(name: "chevron.down", size: 11, weight: .semibold)
-                }.offset(x: 15, y: 72).frame(height: 32)
-                EventMenu(e: e, writable: writable).frame(width: Theme.rightPanelWidth, alignment: .trailing).offset(y: 72)
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 2) {
+                    HStack(spacing: 4) {
+                        Text(e.kind == .task ? "Task" : "Event").font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.haze)
+                        SFIcon(name: "chevron.down", size: 10, color: Theme.haze, weight: .semibold)
+                    }.padding(.horizontal, 8).frame(height: 28)
+                    Spacer(minLength: 0)
+                    EventMenu(e: e, writable: writable)
+                    PanelToggle()
+                }
+                .padding(.leading, 14).padding(.trailing, 12).frame(height: Theme.toolbarHeight)
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 0) {
-                        TextField("", text: Binding(get: { model.selectedEvent?.title ?? "" }, set: { v in model.updateSelected { $0.title = v } }), prompt: Text("New event").foregroundStyle(Theme.t3))
-                            .textFieldStyle(.plain).font(.ui(14)).foregroundStyle(Theme.t1)
+                        TextField("", text: Binding(get: { model.selectedEvent?.title ?? "" }, set: { v in model.updateSelected { $0.title = v } }), prompt: Text("New event").foregroundStyle(Theme.hazeDim))
+                            .textFieldStyle(.plain).font(.system(size: 16, weight: .semibold)).tracking(-0.25).foregroundStyle(Theme.paper)
                             .focused($titleFocused)
-                            .padding(.horizontal, 15).frame(height: 38)
+                            .padding(.horizontal, 16).frame(height: 44)
                             .disabled(!writable)
                             .onChange(of: model.focusTitleTick) { _, _ in if model.titleFocusPending { model.titleFocusPending = false; titleFocused = true } }
                             .onChange(of: model.blurTick) { _, _ in titleFocused = false }
                             .onSubmit { titleFocused = false }
+                        HStack(spacing: 8) {
+                            RoundedRectangle(cornerRadius: 3).fill(Color(hex: model.calendarColorHex(of: e))).frame(width: 8, height: 8)
+                            Text(model.calendarInfo(e.calendarID)?.title ?? "Calendar").font(.system(size: 12)).foregroundStyle(Theme.haze).lineLimit(1)
+                        }.padding(.horizontal, 16).padding(.bottom, 12)
                         Section1(e: e, writable: writable)
                         Section2(e: e, writable: writable)
-                        Divider0()
-                        InspectorRow(icon: "link", muted: true) { Text("Add links and attachments").font(.ui(14)).foregroundStyle(Theme.t3) }.padding(.vertical, 8)
-                        Divider0()
                         Description(e: e, writable: writable)
-                        Divider0()
                         Section3(e: e, writable: writable)
                     }
-                    .font(.ui(14))
                 }
-                .padding(.top, 110)
-                .frame(width: Theme.rightPanelWidth, alignment: .topLeading)
             }
-            .frame(width: Theme.rightPanelWidth, height: nil, alignment: .topLeading)
+            .frame(width: Theme.rightPanelWidth, alignment: .topLeading)
             .onAppear { if model.titleFocusPending { model.titleFocusPending = false; titleFocused = true } }
         }
     }
 }
 
 struct Divider0: View {
-    var body: some View { Rectangle().fill(Theme.border).frame(height: 1) }
+    var body: some View { Hairline() }
 }
 
 struct EventMenu: View {
@@ -220,10 +264,9 @@ struct EventMenu: View {
             Divider()
             Button("Delete", role: .destructive) { model.requestDeleteSelected() }.disabled(!writable)
         } label: {
-            SFIcon(name: "ellipsis", size: 14).frame(width: 32, height: 32).contentShape(Rectangle())
+            SFIcon(name: "ellipsis", size: 14).frame(width: 28, height: 28).contentShape(Rectangle())
         }
         .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
-        .padding(.trailing, 15)
     }
 }
 
@@ -232,37 +275,34 @@ struct Section1: View {
     let e: CalendarEvent
     let writable: Bool
     @State private var showDate = false
-    @State private var startText = ""
-    @State private var endText = ""
 
     var body: some View {
         let fmt = model.fmt
         VStack(alignment: .leading, spacing: 0) {
             InspectorRow(icon: "clock") {
-                if e.isAllDay { Text("All day").font(.ui(14)).foregroundStyle(Theme.t2) }
-                else {
-                    HStack(spacing: 0) {
-                        TimeField(minutes: model.math.minutesSinceMidnight(e.start), fmt: fmt, writable: writable) { m in
-                            model.updateSelected { ev in
-                                let dur = ev.end.timeIntervalSince(ev.start)
-                                ev.start = model.math.date(on: ev.start, minutes: m); ev.end = ev.start.addingTimeInterval(dur)
-                            }
-                        }.frame(width: 75, alignment: .leading)
-                        TimeField(minutes: model.math.minutesSinceMidnight(e.end), fmt: fmt, writable: writable) { m in
-                            model.updateSelected { ev in
-                                var end = model.math.date(on: ev.end, minutes: m)
-                                if end <= ev.start { end = ev.start.addingTimeInterval(15 * 60) }
-                                ev.end = end
-                            }
-                        }.frame(width: 42, alignment: .leading).padding(.leading, 26)
-                        Text(DurationText.minutes(e.durationMinutes)).font(.mono(14)).foregroundStyle(Theme.t2).padding(.leading, 5)
-                    }
-                    .overlay(alignment: .leading) { SFIcon(name: "arrow.right", size: 13).offset(x: 75) }
+                HStack(spacing: 8) {
+                    TimeField(minutes: model.math.minutesSinceMidnight(e.start), fmt: fmt, writable: writable && !e.isAllDay) { m in
+                        model.updateSelected { ev in
+                            let dur = ev.end.timeIntervalSince(ev.start)
+                            ev.start = model.math.date(on: ev.start, minutes: m); ev.end = ev.start.addingTimeInterval(dur)
+                        }
+                    }.frame(width: 62)
+                    SFIcon(name: "arrow.right", size: 11, color: Theme.hazeDim)
+                    TimeField(minutes: model.math.minutesSinceMidnight(e.end), fmt: fmt, writable: writable && !e.isAllDay) { m in
+                        model.updateSelected { ev in
+                            var end = model.math.date(on: ev.end, minutes: m)
+                            if end <= ev.start { end = ev.start.addingTimeInterval(15 * 60) }
+                            ev.end = end
+                        }
+                    }.frame(width: 62)
+                    Text(e.isAllDay ? "" : DurationText.minutes(e.durationMinutes)).font(.calMono(12)).foregroundStyle(Theme.haze)
                 }
-            }.padding(.leading, 0)
-            InspectorRow {
+                .opacity(e.isAllDay ? 0.35 : 1)
+                .animation(Motion.base, value: e.isAllDay)
+            }
+            InspectorRow(icon: "calendar") {
                 Button { if writable { showDate = true } } label: {
-                    Text(fmt.inspectorDate(e.start)).font(.mono(14)).foregroundStyle(Theme.t1)
+                    MonoField { Text(fmt.inspectorDate(e.start)) }
                 }.buttonStyle(.plain)
                 .popover(isPresented: $showDate) {
                     DatePicker("", selection: Binding(get: { e.start }, set: { d in
@@ -274,48 +314,44 @@ struct Section1: View {
                 }
             }
             InspectorRow {
-                Text("All-day").font(.ui(14)).foregroundStyle(Theme.t1)
-            }
-            .overlay(alignment: .leading) {
                 Toggle("", isOn: Binding(get: { model.selectedEvent?.isAllDay ?? false }, set: { on in
                     model.updateSelected { ev in
                         ev.isAllDay = on
                         if on { ev.start = model.math.startOfDay(ev.start); ev.end = model.math.addDays(ev.start, 1) }
                         else { ev.start = model.math.date(on: ev.start, minutes: 9 * 60); ev.end = ev.start.addingTimeInterval(Double(model.settings.defaultDurationMinutes) * 60) }
                     }
-                })).toggleStyle(MiniToggleStyle()).labelsHidden().padding(.leading, 15).disabled(!writable)
+                })).toggleStyle(ActToggleStyle()).labelsHidden().disabled(!writable)
+                Text("All-day").font(.system(size: 13)).foregroundStyle(Theme.paper)
             }
             InspectorRow(icon: "globe") {
-                HStack(spacing: 0) {
-                    Text(fmt.gmtLabel(e.start) + " ").font(.ui(14)).foregroundStyle(Theme.t2)
-                    Text(fmt.timeZoneCity()).font(.ui(14)).foregroundStyle(Theme.t1)
+                HStack(spacing: 8) {
+                    Text(fmt.gmtLabel(e.start)).font(.calMono(12.5)).foregroundStyle(Theme.paper)
+                    Text(fmt.timeZoneCity()).font(.system(size: 13)).foregroundStyle(Theme.haze)
                 }
             }
             InspectorRow(icon: "arrow.triangle.2.circlepath") {
                 if let r = e.recurrence {
                     let t = RecurrenceDescriber.describe(r, start: e.start, fmt: fmt)
-                    HStack(spacing: 0) {
-                        (Text(t.lead).foregroundColor(Theme.t1) + Text(t.rest.isEmpty ? "" : " " + t.rest).foregroundColor(Theme.t2))
-                            .font(.ui(14)).lineLimit(1).truncationMode(.tail).padding(.trailing, 64)
-                        Spacer(minLength: 0)
+                    HStack(spacing: 6) {
+                        Text(t.lead).font(.system(size: 13)).foregroundStyle(Theme.paper)
+                        Text(t.rest).font(.system(size: 13)).foregroundStyle(Theme.haze).lineLimit(1).truncationMode(.tail)
                     }
                 } else if e.seriesID != nil {
-                    Text("Repeats").font(.ui(14)).foregroundStyle(Theme.t1)
+                    Text("Repeats").font(.system(size: 13)).foregroundStyle(Theme.paper)
                 } else {
-                    Text("Does not repeat").font(.ui(14)).foregroundStyle(Theme.t2)
+                    Text("Does not repeat").font(.system(size: 13)).foregroundStyle(Theme.haze)
                 }
-            }
-            .overlay(alignment: .trailing) {
+                Spacer(minLength: 0)
                 if e.isRecurring {
                     HStack(spacing: 0) {
-                        IconButton(name: "chevron.left", size: 12, box: 32) { model.selectOccurrence(-1) }
-                        IconButton(name: "chevron.right", size: 12, box: 32) { model.selectOccurrence(1) }
-                    }
+                        IconButton(name: "chevron.left", size: 11, box: 26) { model.selectOccurrence(-1) }
+                        IconButton(name: "chevron.right", size: 11, box: 26) { model.selectOccurrence(1) }
+                    }.padding(.trailing, -8)
                 }
             }
         }
-        .padding(.vertical, 7)
-        .overlay(alignment: .top) { Divider0() }
+        .padding(.vertical, 8)
+        .overlay(alignment: .top) { Hairline() }
     }
 }
 
@@ -328,9 +364,13 @@ struct TimeField: View {
     @FocusState private var focused: Bool
     var body: some View {
         TextField("", text: $text)
-            .textFieldStyle(.plain).font(.mono(14)).foregroundStyle(Theme.t1)
+            .textFieldStyle(.plain).font(.calMono(12.5, .medium)).foregroundStyle(Theme.paper)
             .focused($focused)
             .disabled(!writable)
+            .padding(.horizontal, 8).frame(height: 26)
+            .background(RoundedRectangle(cornerRadius: 7).fill(Theme.ink700))
+            .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(focused ? Theme.act : Theme.hair, lineWidth: focused ? 1.5 : 1))
+            .animation(Motion.base, value: focused)
             .onAppear { text = fmt.time(minutes: minutes) }
             .onChange(of: minutes) { _, m in if !focused { text = fmt.time(minutes: m) } }
             .onChange(of: focused) { _, f in if !f { apply() } }
@@ -346,13 +386,12 @@ struct Section2: View {
     let e: CalendarEvent
     let writable: Bool
     @State private var newParticipant = ""
-    @State private var conferencing = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             InspectorRow(icon: "person", muted: true) {
-                TextField("", text: $newParticipant, prompt: Text("Participants").foregroundStyle(Theme.t3))
-                    .textFieldStyle(.plain).font(.ui(14)).foregroundStyle(Theme.t1)
+                TextField("", text: $newParticipant, prompt: Text("Participants").foregroundStyle(Theme.hazeDim))
+                    .textFieldStyle(.plain).font(.system(size: 13)).foregroundStyle(Theme.paper)
                     .disabled(!writable || !model.store.canEditParticipants)
                     .onSubmit {
                         let v = newParticipant.trimmingCharacters(in: .whitespaces)
@@ -362,25 +401,26 @@ struct Section2: View {
             }
             ForEach(e.participants, id: \.self) { p in
                 HStack(spacing: 6) {
-                    Text(p).font(.ui(13)).foregroundStyle(Theme.t1).lineLimit(1)
+                    Text(p).font(.system(size: 13)).foregroundStyle(Theme.paper).lineLimit(1)
                     Spacer()
                     if model.store.canEditParticipants && writable {
-                        IconButton(name: "xmark", size: 9, box: 16) { model.updateSelected { $0.participants.removeAll { $0 == p } } }
+                        IconButton(name: "xmark", size: 9, box: 20) { model.updateSelected { $0.participants.removeAll { $0 == p } } }
                     }
-                }.padding(.leading, 41).padding(.trailing, 12).frame(height: 24)
+                }.padding(.leading, 44).padding(.trailing, 12).frame(height: 26)
             }
             if !model.store.canEditParticipants && !e.participants.isEmpty {
-                Text("Attendees are read-only (EventKit cannot edit them).").font(.ui(11)).foregroundStyle(Theme.t3).padding(.leading, 41).padding(.bottom, 4)
+                Text("Attendees are read-only (EventKit cannot edit them).").font(.system(size: 11)).foregroundStyle(Theme.hazeDim).padding(.leading, 44).padding(.bottom, 4)
             }
             InspectorRow(icon: "video", muted: true) {
-                TextField("", text: Binding(get: { model.selectedEvent?.conferencing ?? "" }, set: { v in model.updateSelected { $0.conferencing = v } }), prompt: Text("Conferencing").foregroundStyle(Theme.t3))
-                    .textFieldStyle(.plain).font(.ui(14)).foregroundStyle(Theme.t1).disabled(!writable)
+                TextField("", text: Binding(get: { model.selectedEvent?.conferencing ?? "" }, set: { v in model.updateSelected { $0.conferencing = v } }), prompt: Text("Conferencing").foregroundStyle(Theme.hazeDim))
+                    .textFieldStyle(.plain).font(.system(size: 13)).foregroundStyle(Theme.paper).disabled(!writable)
             }
-            InspectorRow(icon: "waveform.and.mic", muted: true) { Text("Add AI meeting notes").font(.ui(14)).foregroundStyle(Theme.t3) }
+            InspectorRow(icon: "waveform.and.mic", muted: true) { Text("Add AI meeting notes").font(.system(size: 13)).foregroundStyle(Theme.hazeDim) }
             LocationRow(e: e, writable: writable)
+            InspectorRow(icon: "link", muted: true) { Text("Add links and attachments").font(.system(size: 13)).foregroundStyle(Theme.hazeDim) }
         }
         .padding(.vertical, 8)
-        .overlay(alignment: .top) { Divider0() }
+        .overlay(alignment: .top) { Hairline() }
     }
 }
 
@@ -389,16 +429,16 @@ struct LocationRow: View {
     let e: CalendarEvent
     let writable: Bool
     var body: some View {
-        ZStack(alignment: .topLeading) {
+        HStack(alignment: .top, spacing: 12) {
             Button { model.openInMaps(e.location) } label: {
-                SFIcon(name: "mappin.and.ellipse", size: 14, color: e.location.isEmpty ? Theme.t3 : Theme.t2).frame(width: 18)
-            }.buttonStyle(.plain).padding(.leading, 15).padding(.top, e.location.isEmpty ? 7 : 13)
-            TextField("", text: Binding(get: { model.selectedEvent?.location ?? "" }, set: { v in model.updateSelected { $0.location = v } }), prompt: Text("Add location").foregroundStyle(Theme.t3), axis: .vertical)
-                .textFieldStyle(.plain).font(.ui(14)).foregroundStyle(Theme.t1).lineSpacing(0)
+                SFIcon(name: "mappin.and.ellipse", size: 14, color: e.location.isEmpty ? Theme.hazeDim : Theme.haze).frame(width: 16)
+            }.buttonStyle(.plain).padding(.top, 2)
+            TextField("", text: Binding(get: { model.selectedEvent?.location ?? "" }, set: { v in model.updateSelected { $0.location = v } }), prompt: Text("Add location").foregroundStyle(Theme.hazeDim), axis: .vertical)
+                .textFieldStyle(.plain).font(.system(size: 13)).foregroundStyle(Theme.paper).lineSpacing(3)
                 .lineLimit(1...4).disabled(!writable)
-                .padding(.leading, 41).padding(.trailing, 12).padding(.top, e.location.isEmpty ? 7 : 6).padding(.bottom, e.location.isEmpty ? 7 : 6)
         }
-        .frame(minHeight: e.location.isEmpty ? 32 : 48, alignment: .topLeading)
+        .padding(.horizontal, 16).padding(.vertical, 8)
+        .frame(minHeight: 34, alignment: .topLeading)
     }
 }
 
@@ -407,10 +447,11 @@ struct Description: View {
     let e: CalendarEvent
     let writable: Bool
     var body: some View {
-        TextField("", text: Binding(get: { model.selectedEvent?.notes ?? "" }, set: { v in model.updateSelected { $0.notes = v } }), prompt: Text("Add description").foregroundStyle(Theme.t3), axis: .vertical)
-            .textFieldStyle(.plain).font(.ui(14)).foregroundStyle(Theme.t1).lineLimit(2...10).lineSpacing(2)
+        TextField("", text: Binding(get: { model.selectedEvent?.notes ?? "" }, set: { v in model.updateSelected { $0.notes = v } }), prompt: Text("Add description").foregroundStyle(Theme.hazeDim), axis: .vertical)
+            .textFieldStyle(.plain).font(.system(size: 13)).foregroundStyle(Theme.paper).lineLimit(2...10).lineSpacing(3)
             .disabled(!writable)
-            .padding(.horizontal, 15).padding(.top, 13).frame(minHeight: 82, alignment: .topLeading)
+            .padding(.horizontal, 16).padding(.top, 12).padding(.bottom, 8).frame(minHeight: 82, alignment: .topLeading)
+            .overlay(alignment: .top) { Hairline() }
     }
 }
 
@@ -430,44 +471,44 @@ struct Section3: View {
                     }
                 }
             } label: {
-                HStack(spacing: 0) {
-                    RoundedRectangle(cornerRadius: 4).fill(Color(hex: cal?.colorHex ?? "#5c88e4")).frame(width: 18, height: 13).padding(.leading, 15).padding(.trailing, 8)
-                    Text(cal?.title ?? "Calendar").font(.ui(14)).foregroundStyle(Theme.t1).lineLimit(1)
+                HStack(spacing: 12) {
+                    RoundedRectangle(cornerRadius: 4).fill(Color(hex: cal?.colorHex ?? "#6F97F0")).frame(width: 16, height: 12)
+                    Text(cal?.title ?? "Calendar").font(.system(size: 13)).foregroundStyle(Theme.paper).lineLimit(1)
                     Spacer(minLength: 0)
-                }.frame(height: 32).contentShape(Rectangle())
+                }.padding(.horizontal, 16).frame(height: 34).contentShape(Rectangle())
             }.menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).disabled(!writable)
-            ZStack(alignment: .leading) {
+            HStack(spacing: 8) {
                 Menu {
                     Button("Busy") { model.updateSelected { $0.availability = .busy } }
                     Button("Free") { model.updateSelected { $0.availability = .free } }
-                } label: { Text(e.availability == .busy ? "Busy" : "Free").font(.ui(14)).foregroundStyle(Theme.t1).contentShape(Rectangle()) }
-                    .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize().padding(.leading, 41).disabled(!writable)
+                } label: { Text(e.availability == .busy ? "Busy" : "Free").font(.system(size: 13)).foregroundStyle(Theme.paper).contentShape(Rectangle()) }
+                    .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize().disabled(!writable)
                 Menu {
                     Button("Default visibility") { model.updateSelected { $0.visibility = .standard } }
                     Button("Public") { model.updateSelected { $0.visibility = .public } }
                     Button("Private") { model.updateSelected { $0.visibility = .private } }
-                } label: { Text(e.visibility == .standard ? "Default visibility" : e.visibility == .public ? "Public" : "Private").font(.ui(14)).foregroundStyle(Theme.t1).contentShape(Rectangle()) }
-                    .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize().padding(.leading, 139).disabled(!writable)
-            }.frame(height: 32)
-            InspectorRow(icon: "bell", muted: true) { Text("Reminders").font(.ui(14)).foregroundStyle(Theme.t3) }
-            ZStack(alignment: .leading) {
-                Menu {
-                    ForEach([(nil, "None"), (0, "At time of event"), (1, "1min before"), (5, "5min before"), (10, "10min before"), (15, "15min before"), (30, "30min before"), (60, "1h before"), (1440, "1 day before")] as [(Int?, String)], id: \.1) { m, t in
-                        Button(t) { model.updateSelected { $0.reminderMinutes = m } }
-                    }
-                } label: {
-                    HStack(spacing: 0) {
-                        if let m = e.reminderMinutes {
-                            Text(m == 0 ? "At time" : DurationText.minutes(m)).font(.ui(14)).foregroundStyle(Theme.t1)
-                            Text(m == 0 ? "" : " before").font(.ui(14)).foregroundStyle(Theme.t2)
-                        } else { Text("None").font(.ui(14)).foregroundStyle(Theme.t3) }
-                    }.contentShape(Rectangle())
-                }.menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize().padding(.leading, 41).disabled(!writable)
-            }.frame(height: 32)
+                } label: { Text(e.visibility == .standard ? "Default visibility" : e.visibility == .public ? "Public" : "Private").font(.system(size: 13)).foregroundStyle(Theme.haze).contentShape(Rectangle()) }
+                    .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize().disabled(!writable)
+            }.padding(.leading, 44).frame(height: 34)
+            InspectorRow(icon: "bell", muted: true) { Text("Reminders").font(.system(size: 13)).foregroundStyle(Theme.hazeDim) }
+            Menu {
+                ForEach([(nil, "None"), (0, "At time of event"), (1, "1 min before"), (5, "5 min before"), (10, "10 min before"), (15, "15 min before"), (30, "30 min before"), (60, "1 h before"), (1440, "1 day before")] as [(Int?, String)], id: \.1) { m, t in
+                    Button(t) { model.updateSelected { $0.reminderMinutes = m } }
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    if let m = e.reminderMinutes {
+                        Text(m == 0 ? "At time" : Self.reminder(m)).font(.calMono(12.5)).foregroundStyle(Theme.paper)
+                        Text(m == 0 ? "" : "before").font(.system(size: 13)).foregroundStyle(Theme.haze)
+                    } else { Text("None").font(.system(size: 13)).foregroundStyle(Theme.hazeDim) }
+                }.contentShape(Rectangle())
+            }.menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize().padding(.leading, 44).frame(height: 34).disabled(!writable)
             if !writable {
-                Text("This calendar is read-only.").font(.ui(11)).foregroundStyle(Theme.t3).padding(.leading, 15).padding(.vertical, 6)
+                Text("This calendar is read-only.").font(.system(size: 11)).foregroundStyle(Theme.hazeDim).padding(.leading, 16).padding(.vertical, 6)
             }
         }
         .padding(.vertical, 8).padding(.bottom, 40)
+        .overlay(alignment: .top) { Hairline() }
     }
+    static func reminder(_ m: Int) -> String { m >= 1440 && m % 1440 == 0 ? "\(m / 1440) day" : (m >= 60 && m % 60 == 0 ? "\(m / 60) h" : "\(m) min") }
 }

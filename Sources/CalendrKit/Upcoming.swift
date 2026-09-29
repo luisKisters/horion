@@ -30,7 +30,7 @@ public enum Upcoming {
 
         let next = relevant.first { $0.start >= now } ?? relevant.first
         var sections: [UpcomingSection] = []
-        for ev in relevant where ev.id != next?.id {
+        for ev in relevant where ev.id != next?.id && ev.start >= now {   // events already running are not upcoming
             let day = max(today, math.startOfDay(ev.start))
             if let last = sections.last, last.day == day { sections[sections.count - 1].events.append(ev) } else {
                 sections.append(UpcomingSection(title: sectionTitle(day, today: today, fmt: fmt), day: day, events: [ev]))

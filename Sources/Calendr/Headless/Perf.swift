@@ -20,6 +20,7 @@ enum Perf {
     }
 
     static func run(_ o: LaunchOptions) -> Int32 {
+        Motion.forcedInstant = true      // layout + render cost is measured with animations off; animated cost is reported separately
         let t0 = processStart()
         print(String(format: "  (perf started %.0f ms after process start)", Date().timeIntervalSince(t0) * 1000))
         // Cold launch: normal demo data, model + window + first frame, measured from process start.
@@ -55,7 +56,7 @@ enum Perf {
             w.host.layoutSubtreeIfNeeded()
             let b3 = CFAbsoluteTimeGetCurrent()
             w.host.displayIfNeeded()
-            w.host.display()
+            if ProcessInfo.processInfo.environment["CALENDR_PERF_DIRTY"] == nil { w.host.display() }
             let c = CFAbsoluteTimeGetCurrent()
             updateTimes.append((b2 - b) * 1000); layoutTimes.append((b3 - b2) * 1000); drawTimes.append((c - b3) * 1000)
             modelTimes.append((b - a) * 1000)

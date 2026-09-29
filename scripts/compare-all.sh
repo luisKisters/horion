@@ -8,7 +8,7 @@ d = json.load(open("design/states.json"))
 for name, s in d["states"].items():
     m = s.get("mockup")
     if not m: continue
-    ref = f"design/mockup/shots/{m}.png"
+    ref = f"design/mockup-v2/shots/{m}.png"
     snap = f"artifacts/snapshots/{name}.png"
     if os.path.exists(ref) and os.path.exists(snap):
         subprocess.run(["python3", "scripts/compare.py", ref, snap, f"artifacts/compare/{name}.png"], check=True)
