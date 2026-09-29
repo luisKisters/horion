@@ -212,31 +212,49 @@ final class AppModel {
         if !(windowRange.start <= q.start && windowRange.end >= q.end) {
             windowRange = DateInterval(start: math.addDays(q.start, -7), end: math.addDays(q.end, 7))
             windowEvents = store.events(in: windowRange)
+            eventsByID.removeAll(keepingCapacity: true)
+            for e in windowEvents { eventsByID[e.id] = e }
         }
-        let visible = windowEvents.filter { e in
-            e.end > q.start && e.start < q.end || (e.end == e.start && e.start >= q.start && e.start < q.end)
-        }.filter { !hiddenCalendars.contains($0.calendarID) && (settings.showDeclined || $0.status != .declined) }
+        // Filter and sort by index: CalendarEvent is a large reference-heavy struct, so copying it around is the real cost.
+        let showDeclined = settings.showDeclined
+        let hidden = hiddenCalendars
+        var visibleIdx: [Int] = []
+        visibleIdx.reserveCapacity(windowEvents.count / 2)
+        windowEvents.withUnsafeBufferPointer { buf in
+            for i in buf.indices {
+                let e = buf[i]
+                guard e.end > q.start && e.start < q.end || (e.end == e.start && e.start >= q.start && e.start < q.end) else { continue }
+                if hidden.contains(e.calendarID) || (!showDeclined && e.status == .declined) { continue }
+                visibleIdx.append(i)
+            }
+        }
 
         visibleDays = viewMode == .month ? math.days(from: q.start, count: 42) : math.days(from: start, count: viewMode.dayCount)
-        eventsByID.removeAll(keepingCapacity: true)
-        for e in windowEvents { eventsByID[e.id] = e }
-
         if viewMode == .month {
             monthGrid = math.monthGrid(for: start)
+            let starts = visibleDays          // 42 day starts
             var cells = [[CalendarEvent]](repeating: [], count: 42)
-            for e in visible {
-                let first = max(0, math.daysBetween(q.start, e.start))
-                let lastInstant = e.end > e.start ? e.end.addingTimeInterval(-1) : e.end
-                let last = min(41, math.daysBetween(q.start, lastInstant))
-                if last >= first { for i in first...last { cells[i].append(e) } }
+            // Sort once (all-day, then timed, then tasks; by start) and bucket stably instead of sorting 42 lists.
+            let ordered: [Int] = windowEvents.withUnsafeBufferPointer { buf in
+                var keyed: [(key: Double, idx: Int)] = visibleIdx.map { i in
+                    let e = buf[i]
+                    let cls: Double = e.isAllDay ? 0 : (e.kind == .task ? 2 : 1)
+                    return (cls * 1e11 + e.start.timeIntervalSince1970, i)
+                }
+                keyed.sort { $0.key != $1.key ? $0.key < $1.key : $0.idx < $1.idx }
+                return keyed.map(\.idx)
             }
-            monthEvents = cells.map { $0.sorted { a, b in
-                if a.isAllDay != b.isAllDay { return a.isAllDay }
-                if (a.kind == .task) != (b.kind == .task) { return b.kind == .task }
-                return a.start < b.start } }
+            for i in ordered {
+                let e = windowEvents[i]
+                let first = max(0, RangeLayoutBuilder.dayIndex(e.start, starts: starts))
+                let lastInstant = e.end > e.start ? e.end.addingTimeInterval(-1) : e.end
+                let last = min(41, RangeLayoutBuilder.dayIndex(lastInstant, starts: starts))
+                if last >= first { for d in first...last { cells[d].append(e) } }
+            }
+            monthEvents = cells
             layout = .empty
         } else {
-            layout = RangeLayoutBuilder.build(events: visible, days: visibleDays, math: math)
+            layout = RangeLayoutBuilder.build(events: visibleIdx.map { windowEvents[$0] }, days: visibleDays, math: math)
         }
 
         var teamEvents: [CalendarEvent] = []

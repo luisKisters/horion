@@ -188,7 +188,7 @@ public struct RangeLayout: Sendable {
 
 public enum RangeLayoutBuilder {
     /// Day index (relative to `days`) containing `t`, by binary search over the day starts: DST safe and much cheaper than Calendar.
-    static func dayIndex(_ t: Date, starts: [Date]) -> Int {
+    public static func dayIndex(_ t: Date, starts: [Date]) -> Int {
         var lo = 0, hi = starts.count
         while lo < hi { let m = (lo + hi) / 2; if starts[m] <= t { lo = m + 1 } else { hi = m } }
         return lo - 1      // -1 before the range, starts.count - 1 at/after the last start

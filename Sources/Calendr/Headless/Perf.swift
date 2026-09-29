@@ -76,16 +76,21 @@ enum Perf {
         // Month view too.
         model.setMode(.month)
         w.settle(4)
-        var mt: [Double] = []
-        for _ in 0..<20 {
+        var mt: [Double] = [], mModel: [Double] = [], mUpdate: [Double] = [], mDraw: [Double] = []
+        for _ in 0..<3 { model.next(); RunLoop.main.run(until: Date()); w.host.layoutSubtreeIfNeeded(); w.host.display() }   // warm-up like the week loop
+        for i in 0..<40 {
             let a = CFAbsoluteTimeGetCurrent()
-            model.next()
+            if i < 20 { model.next() } else { model.previous() }
+            let b = CFAbsoluteTimeGetCurrent()
             RunLoop.main.run(until: Date())
+            let c = CFAbsoluteTimeGetCurrent()
             w.host.layoutSubtreeIfNeeded(); w.host.display()
-            mt.append((CFAbsoluteTimeGetCurrent() - a) * 1000)
+            let d = CFAbsoluteTimeGetCurrent()
+            mt.append((d - a) * 1000); mModel.append((b - a) * 1000); mUpdate.append((c - b) * 1000); mDraw.append((d - c) * 1000)
         }
-        print(String(format: "month navigation x20: p50 %.1f ms, p95 %.1f ms", percentile(mt, 0.5), percentile(mt, 0.95)))
-        let ok = percentile(times, 0.95) < 16.7 && cold < 500
+        print(String(format: "month navigation x40: p50 %.1f ms, p95 %.1f ms", percentile(mt, 0.5), percentile(mt, 0.95)))
+        print(String(format: "  month breakdown p50: model %.1f ms, runloop/update %.1f ms, layout+draw %.1f ms", percentile(mModel, 0.5), percentile(mUpdate, 0.5), percentile(mDraw, 0.5)))
+        let ok = percentile(times, 0.95) < 16.7 && percentile(mt, 0.95) < 16.7 && cold < 500
         print(ok ? "PERF OK (budget: p95 < 16.7 ms per navigation, cold < 500 ms)" : "PERF OVER BUDGET (p95 < 16.7 ms per navigation, cold < 500 ms)")
         if ProcessInfo.processInfo.environment["CALENDR_PERF_STRICT"] != nil && !ok { return 1 }
         return 0
