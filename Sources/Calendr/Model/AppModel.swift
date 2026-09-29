@@ -215,6 +215,7 @@ final class AppModel {
             }
             monthEvents = cells.map { $0.sorted { a, b in
                 if a.isAllDay != b.isAllDay { return a.isAllDay }
+                if (a.kind == .task) != (b.kind == .task) { return b.kind == .task }
                 return a.start < b.start } }
             layout = .empty
         } else {

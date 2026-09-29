@@ -44,8 +44,8 @@ struct DefaultPanel: View {
         @Bindable var m = model
         ZStack(alignment: .topLeading) {
             HStack(spacing: 0) {
-                SFIcon(name: "calendar.badge.magnifyingglass", size: 14, color: Theme.t3).frame(width: 18).padding(.leading, 15).padding(.trailing, 8)
-                TextField("Search events", text: $m.searchText)
+                SFIcon(name: "magnifyingglass", size: 14, color: Theme.t3).frame(width: 18).padding(.leading, 15).padding(.trailing, 8)
+                TextField("", text: $m.searchText, prompt: Text("Search events").foregroundStyle(Theme.t3))
                     .textFieldStyle(.plain).font(.ui(14)).foregroundStyle(Theme.t1)
                     .focused($searchFocused)
                     .onSubmit { if let e = model.searchGroups.first?.events.first { model.openSearchResult(e) } }
@@ -176,7 +176,7 @@ struct InspectorView: View {
                 EventMenu(e: e, writable: writable).frame(width: Theme.rightPanelWidth, alignment: .trailing).offset(y: 72)
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 0) {
-                        TextField("New event", text: Binding(get: { model.selectedEvent?.title ?? "" }, set: { v in model.updateSelected { $0.title = v } }))
+                        TextField("", text: Binding(get: { model.selectedEvent?.title ?? "" }, set: { v in model.updateSelected { $0.title = v } }), prompt: Text("New event").foregroundStyle(Theme.t3))
                             .textFieldStyle(.plain).font(.ui(14)).foregroundStyle(Theme.t1)
                             .focused($titleFocused)
                             .padding(.horizontal, 15).frame(height: 38)
@@ -253,7 +253,7 @@ struct Section1: View {
                                 if end <= ev.start { end = ev.start.addingTimeInterval(15 * 60) }
                                 ev.end = end
                             }
-                        }.frame(width: 50, alignment: .leading)
+                        }.frame(width: 42, alignment: .leading)
                         Text(DurationText.minutes(e.durationMinutes)).font(.mono(14)).foregroundStyle(Theme.t2).padding(.leading, 5)
                     }
                 }
@@ -294,7 +294,7 @@ struct Section1: View {
                     let t = RecurrenceDescriber.describe(r, start: e.start, fmt: fmt)
                     HStack(spacing: 0) {
                         (Text(t.lead).foregroundColor(Theme.t1) + Text(t.rest.isEmpty ? "" : " " + t.rest).foregroundColor(Theme.t2))
-                            .font(.ui(14)).lineLimit(1).truncationMode(.tail)
+                            .font(.ui(14)).lineLimit(1).truncationMode(.tail).padding(.trailing, 64)
                         Spacer(minLength: 0)
                     }
                 } else if e.seriesID != nil {

@@ -28,7 +28,7 @@ struct GridBackground: View {
             for h in 1..<24 {
                 let label = use24h ? String(format: "%02d:00", h) : "\((h % 12) == 0 ? 12 : h % 12) \(h < 12 ? "AM" : "PM")"
                 let t = ctx.resolve(Text(label).font(.mono(11)).foregroundColor(Theme.t2))
-                ctx.draw(t, at: CGPoint(x: x0 - 6, y: CGFloat(h) * hourH + 0.5), anchor: .trailing)
+                ctx.draw(t, at: CGPoint(x: x0 - 6, y: CGFloat(h) * hourH - 0.5), anchor: .trailing)
             }
         }
         .frame(height: Theme.hourHeight * 24)
@@ -56,8 +56,8 @@ struct TimeGridView: View {
                             .offset(x: Theme.gutterWidth, y: nowY)
                     }
                     SlotHighlight(g: g).offset(x: Theme.gutterWidth)
-                    TeammateLayer(g: g).offset(x: Theme.gutterWidth)
                     EventsLayer(g: g, dark: scheme == .dark).offset(x: Theme.gutterWidth)
+                    TeammateLayer(g: g).offset(x: Theme.gutterWidth)
                     NowMarker(g: g, y: nowY).offset(x: Theme.gutterWidth)
                     GridGestureLayer(g: g).offset(x: Theme.gutterWidth)
                 }

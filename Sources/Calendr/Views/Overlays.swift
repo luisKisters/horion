@@ -42,7 +42,7 @@ struct PaletteFrame<Content: View>: View {
         VStack(spacing: 0) {
             HStack(spacing: 0) {
                 SFIcon(name: "magnifyingglass", size: 16).frame(width: 19).padding(.leading, 18).padding(.trailing, 11)
-                TextField(placeholder, text: $text)
+                TextField("", text: $text, prompt: Text(placeholder).foregroundStyle(Color.dyn("#5f5f5f", "#a5a5a5")))
                     .textFieldStyle(.plain).font(.ui(16)).foregroundStyle(Theme.t1)
                     .focused($focused).onSubmit(onSubmit)
             }.frame(height: 51)

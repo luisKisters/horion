@@ -1,0 +1,24 @@
+{
+  "_comment": "Named UI states rendered by `Calendr --snapshot <state> --out <png> --size 1798x1126`. 'mockup' is the hash in design/mockup/index.html; 'reference' the screenshot in design/reference (when one exists).",
+  "size": "1798x1126",
+  "states": {
+    "week":               { "mockup": "week",             "reference": "1-week-view.png" },
+    "week-selected-event":{ "mockup": "inspector",        "reference": "2-event-inspector.png" },
+    "command-menu":       { "mockup": "command",          "reference": "4-command-menu.png" },
+    "teammate-picker":    { "mockup": "teammate",         "reference": "3-teammate-picker.png" },
+    "teammate-overlay":   { "mockup": "teammate-overlay" },
+    "go-to-date":         { "mockup": "goto" },
+    "search-results":     { "mockup": "search" },
+    "month":              { "mockup": "month" },
+    "day":                { "mockup": "day" },
+    "menubar-popover":    { "mockup": "menubar",          "reference": "5-menu-bar.png" },
+    "sidebar-hidden":     { "mockup": "sidebar-hidden" },
+    "all-day-collapsed":  { "mockup": "allday-collapsed" },
+    "create-drag":        {},
+    "shortcuts-sheet":    { "mockup": "shortcuts" },
+    "settings":           { "mockup": "settings" },
+    "light-week":         { "mockup": "light" },
+    "delete-recurring":   {},
+    "meet-with":          {}
+  }
+}

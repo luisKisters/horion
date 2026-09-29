@@ -10,7 +10,7 @@ struct CenterView: View {
             Text(model.headerTitle)
                 .font(.ui(22, .semibold)).foregroundStyle(Theme.t1)
                 .frame(maxWidth: .infinity, minHeight: 36, maxHeight: 36, alignment: .leading)
-                .padding(.leading, 20).padding(.top, 4).padding(.bottom, -4)
+                .padding(.leading, 20).padding(.top, 2).padding(.bottom, -2)
                 .frame(height: 36, alignment: .topLeading)
             if model.viewMode == .month {
                 MonthView()

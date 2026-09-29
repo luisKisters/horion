@@ -35,7 +35,7 @@ struct SidebarView: View {
             // Meet with field
             HStack(spacing: 0) {
                 SFIcon(name: "person", size: 14, color: Color(hex: "#7a7a7a")).frame(width: 18).padding(.leading, 14).padding(.trailing, 8)
-                TextField("Meet with\u{2026}", text: $m.meetQuery)
+                TextField("", text: $m.meetQuery, prompt: Text("Meet with\u{2026}").foregroundStyle(Theme.placeholder))
                     .textFieldStyle(.plain).font(.ui(13)).foregroundStyle(Theme.t1)
                     .focused($meetFocused)
                     .onSubmit { pickMeet() }

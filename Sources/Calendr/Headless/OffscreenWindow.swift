@@ -14,9 +14,11 @@ final class OffscreenWindow {
     let window: OffscreenNSWindow
     let host: NSHostingView<AnyView>
     let size: CGSize
+    var drawTrafficLights = true
 
     init<V: View>(_ root: V, size: CGSize, dark: Bool = true, chrome: Bool = true) {
         self.size = size
+        drawTrafficLights = chrome
         let mask: NSWindow.StyleMask = chrome ? [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView] : [.borderless]
         window = OffscreenNSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: mask, backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
@@ -53,6 +55,16 @@ final class OffscreenWindow {
                                          colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0) else { return nil }
         rep.size = bounds.size
         target.cacheDisplay(in: bounds, to: rep)
+        if drawTrafficLights, let ctx = NSGraphicsContext(bitmapImageRep: rep) {
+            // The window is never active offscreen, so AppKit draws the inactive gray dots. Paint the active ones.
+            NSGraphicsContext.saveGraphicsState()
+            NSGraphicsContext.current = ctx
+            for (x, hex) in [(17.0, 0xec6765), (40.0, 0xf2ca44), (63.0, 0x65c466)] {
+                NSColor(srgbRed: CGFloat((hex >> 16) & 255) / 255, green: CGFloat((hex >> 8) & 255) / 255, blue: CGFloat(hex & 255) / 255, alpha: 1).setFill()
+                NSBezierPath(ovalIn: NSRect(x: x - 7, y: bounds.height - 18 - 7, width: 14, height: 14)).fill()
+            }
+            NSGraphicsContext.restoreGraphicsState()
+        }
         return rep.cgImage
     }
 

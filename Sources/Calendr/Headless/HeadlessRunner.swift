@@ -7,6 +7,7 @@ enum HeadlessRunner {
     static var keep: [AnyObject] = []
 
     static func start(_ o: LaunchOptions) {
+        UserDefaults.standard.set(0, forKey: "AppleFontSmoothing")
         let app = NSApplication.shared
         app.setActivationPolicy(.accessory)
         DispatchQueue.main.async {
