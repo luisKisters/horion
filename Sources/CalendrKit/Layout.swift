@@ -187,35 +187,51 @@ public struct RangeLayout: Sendable {
 }
 
 public enum RangeLayoutBuilder {
+    /// Day index (relative to `days`) containing `t`, by binary search over the day starts: DST safe and much cheaper than Calendar.
+    static func dayIndex(_ t: Date, starts: [Date]) -> Int {
+        var lo = 0, hi = starts.count
+        while lo < hi { let m = (lo + hi) / 2; if starts[m] <= t { lo = m + 1 } else { hi = m } }
+        return lo - 1      // -1 before the range, starts.count - 1 at/after the last start
+    }
+
     public static func build(events: [CalendarEvent], days: [Date], math: CalendarMath) -> RangeLayout {
         let dayCount = days.count
         guard dayCount > 0 else { return .empty }
-        let rangeStart = days[0]
+        let rangeEnd = math.addDays(days[dayCount - 1], 1)
+        // Days that are not 24h long (DST changes) need wall-clock minutes; everything else can use elapsed time.
+        let regular: [Bool] = (0..<dayCount).map { i in
+            let next = i + 1 < dayCount ? days[i + 1] : rangeEnd
+            return next.timeIntervalSince(days[i]) == 86_400
+        }
+        func minute(_ t: Date, dayIdx: Int) -> Int {
+            if regular[dayIdx] { return Int(t.timeIntervalSince(days[dayIdx]) / 60) }
+            return math.minutesSinceMidnight(t)
+        }
         var perDaySpans = [[(event: CalendarEvent, s: Int, e: Int, from: Bool, to: Bool)]](repeating: [], count: dayCount)
         var allDayItems: [AllDayItem] = []
         var allDayMap: [String: CalendarEvent] = [:]
-        var allDayOrdered: [CalendarEvent] = []
 
         for ev in events {
             if ev.isAllDay {
-                let a = math.daysBetween(rangeStart, ev.start)
-                var b = math.daysBetween(rangeStart, ev.end) - 1
+                let a = math.daysBetween(days[0], ev.start)
+                var b = math.daysBetween(days[0], ev.end) - 1
                 if b < a { b = a }
                 guard b >= 0, a < dayCount else { continue }
                 allDayItems.append(AllDayItem(id: ev.id, firstDay: a, lastDay: b))
                 allDayMap[ev.id] = ev
-                allDayOrdered.append(ev)
                 continue
             }
-            let first = math.daysBetween(rangeStart, ev.start)
             let endInstant = ev.end > ev.start ? ev.end.addingTimeInterval(-1) : ev.end
-            let last = math.daysBetween(rangeStart, endInstant)
+            let first = ev.start < days[0] ? -1 : dayIndex(ev.start, starts: days)
+            let last = endInstant < days[0] ? -1 : (endInstant >= rangeEnd ? dayCount : dayIndex(endInstant, starts: days))
             guard last >= 0, first < dayCount else { continue }
-            for d in max(0, first)...min(dayCount - 1, last) {
-                let s = d == first ? math.minutesSinceMidnight(ev.start) : 0
-                let e = d == last ? (ev.end > ev.start ? math.minutesSinceMidnight(ev.end) : s) : 1440
-                let end = (d == last && e == 0 && ev.end > ev.start) ? 1440 : e
-                perDaySpans[d].append((ev, s, end, d != first, d != last))
+            let lo = max(0, first), hi = min(dayCount - 1, last)
+            for d in lo...hi {
+                let s = (d == first) ? minute(ev.start, dayIdx: d) : 0
+                var e = (d == last) ? minute(ev.end, dayIdx: d) : 1440
+                if d == last && ev.end > ev.start && e == 0 { e = 1440 }
+                if d == last && ev.end == ev.start { e = s }
+                perDaySpans[d].append((ev, s, e, d != first, d != last))
             }
         }
 
@@ -223,7 +239,10 @@ public enum RangeLayoutBuilder {
         timed.reserveCapacity(dayCount)
         for d in 0..<dayCount {
             let spans = perDaySpans[d]
-            let placements = OverlapLayout.layout(spans.enumerated().map { TimeSpan(id: String($0.offset), startMinute: $0.element.s, endMinute: $0.element.e, isPill: $0.element.event.kind == .task && $0.element.e - $0.element.s < 30) })
+            let placements = OverlapLayout.layout(spans.enumerated().map {
+                TimeSpan(id: String($0.offset), startMinute: $0.element.s, endMinute: $0.element.e,
+                         isPill: $0.element.event.kind == .task && $0.element.e - $0.element.s < 30)
+            })
             var byIdx = [Placement?](repeating: nil, count: spans.count)
             for p in placements { if let i = Int(p.id) { byIdx[i] = p } }
             var placed: [PlacedEvent] = []

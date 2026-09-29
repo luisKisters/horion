@@ -7,9 +7,10 @@ enum HeadlessRunner {
     static var keep: [AnyObject] = []
 
     static func start(_ o: LaunchOptions) {
+        setvbuf(stdout, nil, _IOLBF, 0)
         UserDefaults.standard.set(0, forKey: "AppleFontSmoothing")
         let app = NSApplication.shared
-        app.setActivationPolicy(.accessory)
+        app.setActivationPolicy(o.walkthrough ? .regular : .accessory)
         DispatchQueue.main.async {
             MainActor.assumeIsolated {
                 var code: Int32 = 0
@@ -51,12 +52,3 @@ enum HeadlessRunner {
     }
 }
 
-@MainActor
-enum Perf {
-    static func run(_ o: LaunchOptions) -> Int32 { 0 }
-}
-
-@MainActor
-enum Walkthrough {
-    static func run(_ o: LaunchOptions) -> Int32 { 0 }
-}

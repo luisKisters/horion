@@ -56,6 +56,7 @@ final class KeyRouter {
         if action == .escape, typing, let w = event.window ?? NSApp.keyWindow {
             // Esc while typing: leave the field first, then unwind one layer.
             if model.overlay == nil && (model.selectedEventID != nil || !model.searchText.isEmpty || !model.meetQuery.isEmpty) {
+                model.blurTick += 1
                 w.makeFirstResponder(nil)
                 if !model.meetQuery.isEmpty { model.meetQuery = "" }
                 return true

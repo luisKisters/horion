@@ -44,6 +44,7 @@ struct SidebarView: View {
             .background(RoundedRectangle(cornerRadius: 8).fill(Theme.field))
             .offset(x: 6, y: 323)
             .onChange(of: model.focusMeetTick) { _, _ in meetFocused = true }
+            .onChange(of: model.blurTick) { _, _ in meetFocused = false }
 
             // Calendars
             ScrollView(.vertical, showsIndicators: false) {
@@ -121,38 +122,60 @@ struct SidebarRow: View {
     }
 }
 
+/// Weekday row + six week rows in one Canvas with cached CoreText lines (42 changing Text views cost ~10 ms per month change);
+/// a single tap gesture picks the cell.
 struct MiniCalendar: View {
     @Environment(AppModel.self) private var model
+    static let width: CGFloat = 226
+    static let rowHeight: CGFloat = 28
+    static let headerHeight: CGFloat = 24
+
     var body: some View {
         let grid = model.math.monthGrid(for: model.miniMonth)
-        let dows = (0..<7).map { Fmt.weekdayShort[(model.math.calendar.firstWeekday - 1 + $0) % 7].prefix(2) }
+        let first = model.math.calendar.firstWeekday
         let bandStart = model.viewMode == .month ? nil : model.math.startOfWeek(model.visibleStart)
-        VStack(spacing: 0) {
-            HStack(spacing: 0) {
-                ForEach(0..<7, id: \.self) { i in
-                    Text(String(dows[i])).font(.ui(12)).foregroundStyle(Theme.miniDow).frame(maxWidth: .infinity)
+        let miniMonth = model.miniMonth
+        let now = model.now
+        let math = model.math
+        Canvas { ctx, size in
+            ctx.withCGContext { cg in
+                let colW = size.width / 7
+                let dowColor = NSColor(Theme.miniDow).cgColor
+                for i in 0..<7 {
+                    let s = String(Fmt.weekdayShort[(first - 1 + i) % 7].prefix(2))
+                    let w = TextCache.line(s, .dow).width
+                    _ = EventPainter.text(cg, s, .dow, x: (CGFloat(i) + 0.5) * colW - w / 2, top: 0, box: Self.headerHeight, color: dowColor)
                 }
-            }.frame(height: 24)
-            ForEach(0..<6, id: \.self) { r in
-                let isBand = bandStart.map { model.math.isSameDay($0, grid[r][0]) } ?? false
-                HStack(spacing: 0) {
-                    ForEach(0..<7, id: \.self) { c in
+                let normal = NSColor(Theme.miniDay).cgColor, dim = NSColor(Theme.miniOther).cgColor, dimBand = CGColor(srgbRed: 0.396, green: 0.396, blue: 0.396, alpha: 1)
+                for r in 0..<6 {
+                    let y = Self.headerHeight + CGFloat(r) * Self.rowHeight
+                    let isBand = bandStart.map { math.isSameDay($0, grid[r][0]) } ?? false
+                    if isBand {
+                        cg.addPath(EventPainter.roundedPath(CGRect(x: 0, y: y, width: size.width, height: Self.rowHeight), 8))
+                        cg.setFillColor(NSColor(Theme.band).cgColor); cg.fillPath()
+                    }
+                    for c in 0..<7 {
                         let d = grid[r][c]
-                        let other = !model.math.isSameMonth(d, model.miniMonth)
-                        let today = model.math.isSameDay(d, model.now)
-                        Button { model.go(to: d) } label: {
-                            Text("\(model.math.day(d))").font(.ui(13))
-                                .foregroundStyle(today ? Color.white : other ? (isBand ? Color(hex: "#656565") : Theme.miniOther) : Theme.miniDay)
-                                .frame(minWidth: 27, minHeight: 23)
-                                .background(RoundedRectangle(cornerRadius: 6).fill(today ? Theme.red : Color.clear))
-                                .frame(maxWidth: .infinity, minHeight: 28)
-                                .contentShape(Rectangle())
-                        }.buttonStyle(.plain)
+                        let today = math.isSameDay(d, now)
+                        let cx = (CGFloat(c) + 0.5) * colW
+                        if today {
+                            cg.addPath(EventPainter.roundedPath(CGRect(x: cx - 13.5, y: y + 2.5, width: 27, height: 23), 6))
+                            cg.setFillColor(NSColor(Theme.red).cgColor); cg.fillPath()
+                        }
+                        let other = !math.isSameMonth(d, miniMonth)
+                        let color = today ? CGColor(gray: 1, alpha: 1) : other ? (isBand ? dimBand : dim) : normal
+                        let s = "\(math.day(d))"
+                        let w = TextCache.line(s, .mini).width
+                        _ = EventPainter.text(cg, s, .mini, x: cx - w / 2, top: y, box: Self.rowHeight, color: color)
                     }
                 }
-                .frame(height: 28)
-                .background(RoundedRectangle(cornerRadius: 8).fill(isBand ? Theme.band : Color.clear))
             }
+        }
+        .frame(width: Self.width, height: Self.headerHeight + 6 * Self.rowHeight)
+        .contentShape(Rectangle())
+        .onTapGesture(coordinateSpace: .local) { p in
+            let r = Int((p.y - Self.headerHeight) / Self.rowHeight), c = Int(p.x / (Self.width / 7))
+            if (0..<6).contains(r), (0..<7).contains(c) { model.go(to: grid[r][c]) }
         }
     }
 }

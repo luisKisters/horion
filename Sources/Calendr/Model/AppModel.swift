@@ -40,6 +40,7 @@ final class AppModel {
     var selectedSlot: Date?
     private var untitledNewEventID: String?
     var focusTitleTick = 0
+    var titleFocusPending = false
 
     // MARK: Chrome
     var sidebarVisible = true
@@ -86,6 +87,9 @@ final class AppModel {
     var dragPreview: DragPreview?
     var undoStack = UndoStack()
     var gridGeometry = GridGeometry(dayWidth: 180, hourHeight: 48, dayCount: 7)
+    /// Frame of the scrolling grid in window coordinates (top-left origin) and its scroll offset. Published by the view; used by the walkthrough to aim real mouse events.
+    var gridViewport = CGRect.zero
+    var gridScrollY: CGFloat = 0
     var press: GridPress?
     var lastClick: (time: TimeInterval, day: Int, minute: Int, id: String?)?
 
@@ -117,6 +121,7 @@ final class AppModel {
         authState = store.authorization
         store.onChange = { [weak self] in self?.storeChanged() }
         reload()
+        refreshUpcoming()
         if !options.freezeClock { startClock() }
     }
 
@@ -147,9 +152,11 @@ final class AppModel {
 
     func storeChanged() {
         authState = store.authorization
+        styleCache.removeAll()
         windowRange = DateInterval(start: .distantPast, end: .distantPast)
         corpus = nil
         reload()
+        refreshUpcoming()
         if !searchText.isEmpty { runSearch() }
     }
 
@@ -174,9 +181,19 @@ final class AppModel {
         (settings.defaultCalendarID.flatMap { store.calendar($0) } ?? store.defaultCalendarID.flatMap { store.calendar($0) } ?? store.allCalendars.first)?.colorHex ?? "#5c88e4"
     }
 
+    private struct StyleKey: Hashable { var cal: String; var fill: String?; var bar2: String?; var task: Bool; var dark: Bool; var owner: String? }
+    private var styleCache: [StyleKey: (EventPalette, RGB?)] = [:]
+
+    /// Palette lookups are cached per (calendar, override colors, appearance): the grid asks for hundreds per frame.
     func style(for e: CalendarEvent, dark: Bool, now: Date, selected: Bool, faded: Bool, overlapping: Bool) -> EventStyle {
-        let pal = e.kind == .task ? Palettes.gray(dark) : Palettes.palette(barHex: calendarColorHex(of: e), fillHex: e.colorHex, dark: dark)
-        return EventStyle(palette: pal, secondaryBar: e.secondaryBarHex.map { Color(hex: $0) }, past: e.end <= now && !(e.end == e.start && e.start > now),
+        let key = StyleKey(cal: e.calendarID, fill: e.colorHex, bar2: e.secondaryBarHex, task: e.kind == .task, dark: dark, owner: e.ownerEmail)
+        let base: (EventPalette, RGB?)
+        if let hit = styleCache[key] { base = hit } else {
+            let pal = e.kind == .task ? Palettes.gray(dark) : Palettes.palette(barHex: calendarColorHex(of: e), fillHex: e.colorHex, dark: dark)
+            base = (pal, e.secondaryBarHex.map { RGB(hex: $0) })
+            styleCache[key] = base
+        }
+        return EventStyle(palette: base.0, secondaryBarRGB: base.1, past: e.end <= now && !(e.end == e.start && e.start > now),
                           selected: selected, faded: faded, overlapping: overlapping)
     }
 
@@ -230,7 +247,6 @@ final class AppModel {
         flatTimed = layout.timed.flatMap { $0 }
         flatOverlay = overlayLayout.timed.flatMap { $0 }
         layoutGeneration += 1
-        refreshUpcoming()
     }
 
     func refreshUpcoming() {
@@ -289,6 +305,7 @@ final class AppModel {
     func toggleCalendar(_ id: String) {
         if hiddenCalendars.contains(id) { hiddenCalendars.remove(id) } else { hiddenCalendars.insert(id) }
         reload()
+        refreshUpcoming()
     }
 
     var isCurrentPeriodToday: Bool { visibleDays.contains { math.isSameDay($0, now) } }
@@ -317,7 +334,7 @@ final class AppModel {
         discardUntitledIfNeeded(except: eventID)
         selectedEventID = eventID
         if eventID != nil { selectedSlot = nil; rightPanelVisible = true }
-        if focusTitle && eventID != nil { focusTitleTick += 1 }
+        if focusTitle && eventID != nil { titleFocusPending = true; focusTitleTick += 1 }
     }
 
     func deselect() {
@@ -508,6 +525,8 @@ final class AppModel {
     }
 
     var focusMeetTick = 0
+    /// Bumped to make every focus-owning field resign (Esc while typing).
+    var blurTick = 0
     func focusMeetField() { focusMeetTick += 1 }
 
     func copyLink(_ kind: String) {

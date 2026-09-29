@@ -7,12 +7,19 @@ final class OffscreenNSWindow: NSWindow {
     override func constrainFrameRect(_ frameRect: NSRect, to screen: NSScreen?) -> NSRect { frameRect }
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
+    // The process cannot be activated without a login session; behave as the key window anyway so clicks and focus reach SwiftUI.
+    override var isKeyWindow: Bool { true }
+    override var isMainWindow: Bool { true }
+}
+
+final class FirstMouseHostingView<Content: View>: NSHostingView<Content> {
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }
 
 @MainActor
 final class OffscreenWindow {
     let window: OffscreenNSWindow
-    let host: NSHostingView<AnyView>
+    let host: FirstMouseHostingView<AnyView>
     let size: CGSize
     var drawTrafficLights = true
 
@@ -24,14 +31,14 @@ final class OffscreenWindow {
         window.isReleasedWhenClosed = false
         window.animationBehavior = .none
         window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
-        host = NSHostingView(rootView: AnyView(root))
+        host = FirstMouseHostingView(rootView: AnyView(root))
         host.frame = NSRect(origin: .zero, size: size)
         window.contentView = host
         if chrome { WindowChrome.apply(to: window); window.minSize = NSSize(width: 100, height: 100) }
         window.setContentSize(size)
-        window.setFrameOrigin(NSPoint(x: -12000, y: -12000))
-        window.orderFront(nil)
-        window.makeKey()
+        window.setFrameOrigin(ProcessInfo.processInfo.environment["CALENDR_ONSCREEN"] != nil ? NSPoint(x: 40, y: 40) : NSPoint(x: -12000, y: -12000))
+        if chrome { NSApp.activate(ignoringOtherApps: true) }
+        window.makeKeyAndOrderFront(nil)
         settle()
     }
 

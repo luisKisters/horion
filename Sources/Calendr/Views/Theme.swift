@@ -67,9 +67,28 @@ enum Theme {
     static let toolbarHeight: CGFloat = 40
 }
 
+struct RGB: Equatable {
+    var r: Double, g: Double, b: Double
+    init(_ r: Double, _ g: Double, _ b: Double) { self.r = r; self.g = g; self.b = b }
+    init(hex: String) {
+        let v = UInt64(hex.trimmingCharacters(in: CharacterSet(charactersIn: "#")), radix: 16) ?? 0
+        self.init(Double((v >> 16) & 255) / 255, Double((v >> 8) & 255) / 255, Double(v & 255) / 255)
+    }
+    var color: Color { Color(.sRGB, red: r, green: g, blue: b, opacity: 1) }
+    var cg: CGColor { CGColor(srgbRed: r, green: g, blue: b, alpha: 1) }
+    func mixed(with o: RGB, _ t: Double) -> RGB { RGB(r + (o.r - r) * t, g + (o.g - g) * t, b + (o.b - b) * t) }
+}
+
 /// Colors for an event: fill and text come from the (possibly overridden) color, the bar from the calendar.
+/// Both SwiftUI and CoreGraphics forms are kept because the grid paints events with CoreGraphics.
 struct EventPalette: Equatable {
-    var bar: Color, fill: Color, title: Color, time: Color, pastTitle: Color, pastBar: Color
+    var barRGB: RGB, fillRGB: RGB, titleRGB: RGB, timeRGB: RGB, pastTitleRGB: RGB, pastBarRGB: RGB
+    var bar: Color { barRGB.color }
+    var fill: Color { fillRGB.color }
+    var title: Color { titleRGB.color }
+    var time: Color { timeRGB.color }
+    var pastTitle: Color { pastTitleRGB.color }
+    var pastBar: Color { pastBarRGB.color }
 }
 
 enum Palettes {
@@ -83,36 +102,28 @@ enum Palettes {
         Named(bar: "#69a9dd", dark: ["#2f4658", "#e6f3ff", "#86aacb", "#7c8f9e", "#3f6079"], light: ["#dcebf7", "#173d5c", "#5d86a8", "#93aabb", "#b6d3ec"]),
         Named(bar: "#bdbcbc", dark: ["#424242", "#ffffff", "#8a8a8a", "#848585", "#515050"], light: ["#e7e7e5", "#2c2c2c", "#8a8a8a", "#a6a6a6", "#c9c9c9"]),
     ]
-    nonisolated(unsafe) private static var cache: [String: (Color, [Color])] = [:]
-
-    private static func rgb(_ hex: String) -> (Double, Double, Double) {
-        let v = UInt64(hex.trimmingCharacters(in: CharacterSet(charactersIn: "#")), radix: 16) ?? 0
-        return (Double((v >> 16) & 255) / 255, Double((v >> 8) & 255) / 255, Double(v & 255) / 255)
-    }
-    private static func mix(_ a: (Double, Double, Double), _ b: (Double, Double, Double), _ t: Double) -> Color {
-        Color(.sRGB, red: a.0 + (b.0 - a.0) * t, green: a.1 + (b.1 - a.1) * t, blue: a.2 + (b.2 - a.2) * t, opacity: 1)
-    }
+    nonisolated(unsafe) private static var cache: [String: (RGB, [RGB])] = [:]
 
     /// (bar, [fill, title, time, pastTitle, pastBar]) for a calendar hex.
-    private static func resolve(_ hex: String, dark: Bool) -> (Color, [Color]) {
+    private static func resolve(_ hex: String, dark: Bool) -> (RGB, [RGB]) {
         let k = hex.lowercased() + (dark ? "|d" : "|l")
         if let c = cache[k] { return c }
-        let t = rgb(hex)
+        let t = RGB(hex: hex)
         var best: (Named, Double)?
         for n in named {
-            let r = rgb(n.bar)
-            let d = pow(r.0 - t.0, 2) + pow(r.1 - t.1, 2) + pow(r.2 - t.2, 2)
+            let r = RGB(hex: n.bar)
+            let d = pow(r.r - t.r, 2) + pow(r.g - t.g, 2) + pow(r.b - t.b, 2)
             if best == nil || d < best!.1 { best = (n, d) }
         }
-        let out: (Color, [Color])
+        let out: (RGB, [RGB])
         if let (n, d) = best, d < 0.02 {
-            out = (Color(hex: hex), (dark ? n.dark : n.light).map { Color(hex: $0) })
+            out = (t, (dark ? n.dark : n.light).map { RGB(hex: $0) })
         } else {
-            let bg = dark ? (0.098, 0.098, 0.098) : (1.0, 1.0, 1.0)
-            let white = (1.0, 1.0, 1.0), black = (0.0, 0.0, 0.0)
-            out = (Color(hex: hex), dark
-                ? [mix(bg, t, 0.28), mix(t, white, 0.85), mix(t, white, 0.3), mix((0.5, 0.5, 0.5), t, 0.2), mix(bg, t, 0.38)]
-                : [mix(bg, t, 0.2), mix(t, black, 0.55), mix(t, black, 0.2), mix((0.7, 0.7, 0.7), t, 0.2), mix(bg, t, 0.4)])
+            let bg = dark ? RGB(0.098, 0.098, 0.098) : RGB(1, 1, 1)
+            let white = RGB(1, 1, 1), black = RGB(0, 0, 0), gray = RGB(0.5, 0.5, 0.5), lgray = RGB(0.7, 0.7, 0.7)
+            out = (t, dark
+                ? [bg.mixed(with: t, 0.28), t.mixed(with: white, 0.85), t.mixed(with: white, 0.3), gray.mixed(with: t, 0.2), bg.mixed(with: t, 0.38)]
+                : [bg.mixed(with: t, 0.2), t.mixed(with: black, 0.55), t.mixed(with: black, 0.2), lgray.mixed(with: t, 0.2), bg.mixed(with: t, 0.4)])
         }
         cache[k] = out
         return out
@@ -121,7 +132,7 @@ enum Palettes {
     static func palette(barHex: String, fillHex: String?, dark: Bool) -> EventPalette {
         let cal = resolve(barHex, dark: dark)
         let f = fillHex.map { resolve($0, dark: dark) } ?? cal
-        return EventPalette(bar: cal.0, fill: f.1[0], title: f.1[1], time: f.1[2], pastTitle: f.1[3], pastBar: cal.1[4])
+        return EventPalette(barRGB: cal.0, fillRGB: f.1[0], titleRGB: f.1[1], timeRGB: f.1[2], pastTitleRGB: f.1[3], pastBarRGB: cal.1[4])
     }
     static let gray = { (dark: Bool) in palette(barHex: "#bdbcbc", fillHex: nil, dark: dark) }
 }

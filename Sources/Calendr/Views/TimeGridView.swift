@@ -64,13 +64,16 @@ struct TimeGridView: View {
                 .frame(width: geo.size.width, height: Theme.hourHeight * 24, alignment: .topLeading)
             }
             .scrollPosition($scroll)
+            .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) { model.gridViewport = $0 }
             .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { _ in model.gridGeometry = g }
             .onAppear {
                 model.gridGeometry = g
-                scroll = ScrollPosition(y: CGFloat(model.settings.firstVisibleHour) * Theme.hourHeight - 3)
+                model.gridScrollY = CGFloat(model.settings.firstVisibleHour) * Theme.hourHeight - 3
+                scroll = ScrollPosition(y: model.gridScrollY)
             }
             .onChange(of: model.scrollToHourTick) { _, _ in
-                scroll = ScrollPosition(y: CGFloat(model.settings.firstVisibleHour) * Theme.hourHeight - 3)
+                model.gridScrollY = CGFloat(model.settings.firstVisibleHour) * Theme.hourHeight - 3
+                scroll = ScrollPosition(y: model.gridScrollY)
             }
             .onChange(of: n) { _, _ in model.gridGeometry = g }
         }
@@ -112,7 +115,7 @@ private struct TeammateLayer: View {
     @Environment(AppModel.self) private var model
     let g: GridGeometry
     var body: some View {
-        ZStack(alignment: .topLeading) {
+        AbsoluteLayout(size: CGSize(width: CGFloat(g.dayWidth) * CGFloat(g.dayCount), height: CGFloat(g.totalHeight))) {
             ForEach(model.flatOverlay) { p in
                 let bandX = CGFloat(g.dayWidth) * 0.52
                 let bandW = CGFloat(g.dayWidth) * 0.48 - 12
@@ -133,47 +136,21 @@ private struct EventsLayer: View {
     let dark: Bool
 
     var body: some View {
-        let now = model.now
-        let fmt = model.fmt
-        ZStack(alignment: .topLeading) {
-            ForEach(model.flatTimed) { p in
-                let e = p.event
-                let moving = model.dragPreview?.kind != .create && model.dragPreview?.eventID == e.id
-                EventCell(p: p, rect: g.rect(for: p),
-                          style: model.style(for: e, dark: dark, now: now, selected: model.selectedEventID == e.id, faded: moving, overlapping: p.placement.columns > 1),
-                          timeText: fmt.time(minutes: p.startMinute), rangeText: fmt.timeRange(e.start, e.end),
-                          title: e.title.isEmpty ? "(No title)" : e.title)
-                    .equatable()
-            }
-            if let d = model.dragPreview { DragGhost(d: d, g: g, dark: dark) }
+        let moving = model.dragPreview.flatMap { $0.kind == .create ? nil : $0.eventID }
+        var ghost: (EventPalette, String, String)?
+        if let d = model.dragPreview {
+            let e = model.event(id: d.eventID)
+            let pal = Palettes.palette(barHex: e.map { model.calendarColorHex(of: $0) } ?? model.defaultCalendarHex, fillHex: e?.colorHex, dark: dark)
+            ghost = (pal, e.map { $0.title.isEmpty ? "(No title)" : $0.title } ?? "(No title)", "\(model.fmt.time(minutes: d.startMinute))\u{2013}\(model.fmt.time(minutes: d.endMinute))")
         }
-        .allowsHitTesting(false)
-    }
-}
-
-private struct DragGhost: View {
-    @Environment(AppModel.self) private var model
-    let d: AppModel.DragPreview
-    let g: GridGeometry
-    let dark: Bool
-    var body: some View {
-        let e = model.event(id: d.eventID)
-        let hex = e.map { model.hexColor(of: $0) } ?? model.defaultCalendarHex
-        let pal = Palettes.palette(barHex: e.map { model.calendarColorHex(of: $0) } ?? hex, fillHex: e?.colorHex, dark: dark)
-        let y = CGFloat(g.yPos(d.startMinute))
-        let h = CGFloat(g.yPos(d.endMinute)) - y - 3
-        let fmt = model.fmt
-        ZStack(alignment: .topLeading) {
-            pal.fill.opacity(0.95)
-            Rectangle().fill(pal.bar).frame(width: 3)
-            VStack(alignment: .leading, spacing: 0) {
-                Text(e?.title.isEmpty == false ? e!.title : "(No title)").font(.ui(11.3, .medium)).foregroundStyle(pal.title)
-                Text("\(fmt.time(minutes: d.startMinute))\u{2013}\(fmt.time(minutes: d.endMinute))").font(.mono(10.2)).foregroundStyle(pal.time)
-            }.padding(.leading, 8.5).padding(.top, 3)
-        }
-        .frame(width: CGFloat(g.dayWidth) - 13, height: max(11, h), alignment: .topLeading)
-        .clipShape(RoundedRectangle(cornerRadius: 6))
-        .offset(x: CGFloat(d.dayIndex) * CGFloat(g.dayWidth) + 1, y: y)
+        let m = model
+        return EventsCanvas(events: model.flatTimed, geometry: g, dark: dark, now: model.now, selectedID: model.selectedEventID, movingID: moving,
+                            preview: model.dragPreview, fmt: model.fmt,
+                            styles: { e, dark, sel, faded, overl in
+                                var s = m.style(for: e, dark: dark, now: m.now, selected: sel, faded: faded, overlapping: overl)
+                                s.isDark = dark
+                                return s
+                            }, ghost: ghost)
     }
 }
 

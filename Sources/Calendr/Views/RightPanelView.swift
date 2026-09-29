@@ -56,6 +56,7 @@ struct DefaultPanel: View {
             }
             .frame(width: Theme.rightPanelWidth - 44, height: 40)
             .onChange(of: model.focusSearchTick) { _, _ in searchFocused = true }
+            .onChange(of: model.blurTick) { _, _ in searchFocused = false }
             PanelToggle().frame(width: Theme.rightPanelWidth, height: 40, alignment: .topTrailing)
 
             if model.searchText.trimmingCharacters(in: .whitespaces).isEmpty {
@@ -181,7 +182,8 @@ struct InspectorView: View {
                             .focused($titleFocused)
                             .padding(.horizontal, 15).frame(height: 38)
                             .disabled(!writable)
-                            .onChange(of: model.focusTitleTick) { _, _ in titleFocused = true }
+                            .onChange(of: model.focusTitleTick) { _, _ in if model.titleFocusPending { model.titleFocusPending = false; titleFocused = true } }
+                            .onChange(of: model.blurTick) { _, _ in titleFocused = false }
                             .onSubmit { titleFocused = false }
                         Section1(e: e, writable: writable)
                         Section2(e: e, writable: writable)
@@ -198,7 +200,7 @@ struct InspectorView: View {
                 .frame(width: Theme.rightPanelWidth, alignment: .topLeading)
             }
             .frame(width: Theme.rightPanelWidth, height: nil, alignment: .topLeading)
-            .onAppear { if model.focusTitleTick > 0 { titleFocused = true } }
+            .onAppear { if model.titleFocusPending { model.titleFocusPending = false; titleFocused = true } }
         }
     }
 }
