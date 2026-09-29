@@ -101,8 +101,8 @@ enum FrameComposer {
                 NSBezierPath(roundedRect: CGRect(x: r.minX + 8, y: r.minY + 5, width: 4, height: 14), xRadius: 2, yRadius: 2).fill()
                 str.draw(at: CGPoint(x: r.minX + 18, y: r.minY + 4))
             }
-            let pw = CGFloat(pop.width) / (CGFloat(pop.width) > 1000 ? 2 : 1)
-            let ph = CGFloat(pop.height) / (CGFloat(pop.width) > 1000 ? 2 : 1)
+            let pw = CGFloat(pop.width) / 2          // popover is rendered at 2x
+            let ph = CGFloat(pop.height) / 2
             let drawH = min(ph, CGFloat(h) - 44)
             ctx.saveGState()
             let rect = CGRect(x: 14, y: CGFloat(h) - 38 - drawH, width: pw, height: drawH)

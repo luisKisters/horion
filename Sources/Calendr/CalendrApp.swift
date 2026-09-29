@@ -27,6 +27,8 @@ struct CalendrApp: App {
                     DispatchQueue.main.async { DispatchQueue.main.async {
                         let ms = Date().timeIntervalSince(Perf.processStart()) * 1000
                         print(String(format: "launch to interactive window: %.0f ms", ms))
+                        let fr = NSApp.windows.first { !($0 is NSPanel) }?.firstResponder
+                        print("first responder: \(fr.map { String(describing: type(of: $0)) } ?? "none")")
                         fflush(stdout)
                         exit(0)
                     } }
@@ -77,12 +79,15 @@ struct WindowConfigurator: NSViewRepresentable {
     let model: AppModel
     func makeNSView(context: Context) -> NSView {
         let v = NSView()
-        DispatchQueue.main.async { if let w = v.window { WindowChrome.apply(to: w) } }
+        DispatchQueue.main.async {
+            guard let w = v.window else { return }
+            WindowChrome.apply(to: w)
+            // No text field may start focused: single-key shortcuts (T, J, C ...) only work outside text fields.
+            if w.firstResponder is NSText { w.makeFirstResponder(nil) }
+        }
         return v
     }
-    func updateNSView(_ nsView: NSView, context: Context) {
-        if let w = nsView.window { WindowChrome.apply(to: w) }
-    }
+    func updateNSView(_ nsView: NSView, context: Context) {}
 }
 
 enum WindowChrome {
