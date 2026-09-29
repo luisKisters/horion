@@ -22,7 +22,7 @@ Calendr reads calendars through EventKit, so anything macOS knows about shows up
 - **iCloud / Exchange / CalDAV**: same place.
 - **On My Mac**: calendars created locally in Calendar.app.
 
-Then launch Calendr and press "Allow access". Cmd R asks macOS to re-sync remote sources; edits are written back through the account (recurring events save with "this event" or "this and following"). Read-only calendars (holidays, subscribed, shared read-only) show no edit affordances and cannot be dragged. Attendees are shown but cannot be edited: EventKit has no API to add them. Direct Google Calendar API access (OAuth) would allow attendee editing and Meet links; it is out of scope because it needs a provisioned client ID.
+Then launch Calendr and press "Allow access". Cmd R asks macOS to re-sync remote sources; edits are written back through the account (typing is debounced into one save; edits to a recurring event apply to that occurrence, deletes ask this / all). Read-only calendars (holidays, subscribed, shared read-only) show no edit affordances and cannot be dragged. Attendees are shown but cannot be edited: EventKit has no API to add them. Direct Google Calendar API access (OAuth) would allow attendee editing and Meet links; it is out of scope because it needs a provisioned client ID.
 
 ## Shortcuts
 
@@ -78,11 +78,15 @@ Launch flags: `--demo`, `--now <ISO time>`, `--snapshot <state> --out <png> [--s
 
 ## Known gaps
 
-- Screen capture of the running app needs Screen Recording permission (or an unlocked session), so evidence for the bundled app is `scripts/window-id.swift` plus the window list, not a screenshot; the offscreen renderer produces all pixel evidence.
+- The EventKit store could not be exercised here: the session has no calendar permission, so Google (CalDAV) and iCloud paths are reviewed and unit-tested at the mapping level only (grouping, read-only, status, alarms). Real-account behavior (saves, "this and following" spans, all-day dates) is unverified on a live account.
+- Recurring edits from the inspector or drag always apply to the single occurrence (span `.future` / `.all` exist in the store but only delete offers the choice); recurrence rules cannot be edited, only shown and stepped through.
+- The time zone is read at launch; changing it while running needs a relaunch. All-day events are treated as floating dates in that zone.
+- Search and the teammate list fetch a year each way; on EventKit this now runs on a background thread, but results appear a moment after the first keystroke on large calendars. Visible-range fetches (a month plus a week either side) still run on the main thread.
+- All-day events cannot be dragged in the grid (use the inspector).
+- Participants can be added only in the demo store; EventKit exposes attendees read-only. Teammates for a real account are derived from attendees of your events; there is no directory.
 - Notion database and Notion rows, "Start transcription", "Add AI meeting notes" and "Get Calendr to go" are static (a "not connected" popover or a toast), as in the spec.
-- All-day events cannot be dragged in the grid (use the inspector); recurrence rules cannot be edited, only shown and stepped through.
-- Editing a recurring event from the inspector affects that occurrence; deleting asks this / all.
-- Participants can be added only in the demo store; EventKit exposes attendees read-only.
-- Teammates for a real account are derived from attendees of your events; there is no directory.
+- At 1440x900 the sidebar calendar list shows about seven rows and scrolls; the Notion rows and help button are pinned like the reference.
+- Overlap layout is a heuristic fitted to the reference week (cascade steps, short pills on top); unusual dense clusters may differ from Notion Calendar.
 - Light appearance is implemented from the mockup tokens but only the week and month views were visually reviewed.
 - Undo history is per launch; after an EventKit delete + undo the restored event gets a new identifier.
+- Screen capture of the running app needs Screen Recording permission (or an unlocked session), so pixel evidence comes from the offscreen renderer; real mouse gestures were never driven through the live window.
