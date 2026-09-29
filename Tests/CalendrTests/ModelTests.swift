@@ -184,3 +184,40 @@ struct ModelBehaviourTests {
         #expect(m.selectedEvent?.title == "Tag der Deutschen Einheit")
     }
 }
+
+
+@MainActor
+@Suite("Write paths")
+struct WritePathTests {
+    @Test func typingIsCoalescedIntoOneStoreWriteWhenTheStoreSyncsOverTheNetwork() {
+        let store = DemoStore()
+        store.coalescesTextEdits = true
+        var o = LaunchOptions(); o.demo = true; o.freezeClock = true; o.now = DemoData.defaultNow
+        let m = AppModel(store: store, options: o, persist: false)
+        let e = m.layout.timed[1].first { $0.event.title == "Spanisch" }!.event
+        m.select(eventID: e.id)
+        let before = m.reloadCount
+        for t in ["S", "Sp", "Spa", "Span"] { m.updateSelected { $0.title = t } }
+        #expect(m.reloadCount == before)                      // nothing written yet
+        #expect(m.selectedEvent?.title == "Span")             // but the inspector already shows the text
+        m.flushPendingEdit()
+        #expect(m.reloadCount == before + 1)                  // one save
+        #expect(m.event(id: e.id)?.title == "Span")
+    }
+
+    @Test func draggingTheSecondDaySegmentOfAMultiDayEventKeepsItsStart() {
+        let m = makeModel()
+        let day0 = m.visibleDays[0]
+        let start = m.math.date(on: day0, minutes: 22 * 60), end = m.math.date(on: m.visibleDays[1], minutes: 2 * 60)
+        let ev = m.createEvent(start: start, end: end)!
+        m.updateSelected { $0.title = "Night shift" }
+        let g = m.gridGeometry
+        let x = 1.5 * g.dayWidth
+        m.gridMouseDown(CGPoint(x: x, y: g.yPos(30)))
+        m.gridMouseDragged(CGPoint(x: x, y: g.yPos(60)))
+        m.gridMouseUp(CGPoint(x: x, y: g.yPos(60)))
+        let moved = m.event(id: ev.id) ?? m.layout.timed.flatMap { $0 }.first { $0.event.title == "Night shift" }!.event
+        #expect(moved.start == start.addingTimeInterval(30 * 60))
+        #expect(moved.end == end.addingTimeInterval(30 * 60))
+    }
+}

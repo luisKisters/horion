@@ -25,6 +25,7 @@ final class AppModel {
     private(set) var now: Date
     private let bootClock = Date()
     private var clockTimer: Timer?
+    private var clockObservers: [NSObjectProtocol] = []
 
     // MARK: Navigation
     var anchor: Date
@@ -34,11 +35,14 @@ final class AppModel {
     // MARK: Visibility
     var hiddenCalendars: Set<String>
     var shownTeammates: [Teammate] = []
+    private(set) var teammatesTick = 0
 
     // MARK: Selection
     var selectedEventID: String?
     var selectedSlot: Date?
     private var untitledNewEventID: String?
+    private(set) var pendingEdit: (event: CalendarEvent, span: EditSpan)?
+    private var editTimer: Timer?
     var focusTitleTick = 0
     var titleFocusPending = false
 
@@ -128,9 +132,19 @@ final class AppModel {
     // MARK: Clock
 
     private func startClock() {
-        clockTimer = Timer.scheduledTimer(withTimeInterval: 20, repeats: true) { [weak self] _ in
+        let t = Timer(timeInterval: 20, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.tick() }
         }
+        RunLoop.main.add(t, forMode: .common)      // keeps firing while a menu or the menu bar popover tracks events
+        clockTimer = t
+        // After sleep the timer may be minutes late, and the clock or day can jump: re-read the time right away.
+        let refresh: @Sendable (Notification) -> Void = { [weak self] _ in MainActor.assumeIsolated { self?.tick() } }
+        clockObservers = [
+            NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main, using: refresh),
+            NotificationCenter.default.addObserver(forName: .NSSystemClockDidChange, object: nil, queue: .main, using: refresh),
+            NotificationCenter.default.addObserver(forName: .NSCalendarDayChanged, object: nil, queue: .main, using: refresh),
+            NotificationCenter.default.addObserver(forName: NSNotification.Name.NSSystemTimeZoneDidChange, object: nil, queue: .main, using: refresh),
+        ]
     }
 
     private func tick() {
@@ -151,10 +165,12 @@ final class AppModel {
     // MARK: Store reload
 
     func storeChanged() {
+        // Do not let a store refresh (our own saves fire it too) revert text the user is still typing.
         authState = store.authorization
         styleCache.removeAll()
         windowRange = DateInterval(start: .distantPast, end: .distantPast)
         corpus = nil
+        corpusGeneration += 1
         reload()
         refreshUpcoming()
         if !searchText.isEmpty { runSearch() }
@@ -264,6 +280,7 @@ final class AppModel {
         overlayLayout = viewMode == .month ? .empty : RangeLayoutBuilder.build(events: teamEvents, days: visibleDays, math: math)
         flatTimed = layout.timed.flatMap { $0 }
         flatOverlay = overlayLayout.timed.flatMap { $0 }
+        if let p = pendingEdit { eventsByID[p.event.id] = p.event }
         layoutGeneration += 1
     }
 
@@ -342,6 +359,7 @@ final class AppModel {
     func removeTeammate(_ t: Teammate) { shownTeammates.removeAll { $0 == t }; reload() }
 
     func filteredTeammates(_ q: String) -> [Teammate] {
+        _ = teammatesTick
         let query = q.trimmingCharacters(in: .whitespaces)
         return FuzzyMatcher.filter(store.teammates, query: query) { "\($0.name) \($0.email)" }
     }
@@ -349,6 +367,7 @@ final class AppModel {
     // MARK: Selection & mutation
 
     func select(eventID: String?, focusTitle: Bool = false) {
+        if eventID != selectedEventID { flushPendingEdit() }
         discardUntitledIfNeeded(except: eventID)
         selectedEventID = eventID
         if eventID != nil { selectedSlot = nil; rightPanelVisible = true }
@@ -356,6 +375,7 @@ final class AppModel {
     }
 
     func deselect() {
+        flushPendingEdit()
         discardUntitledIfNeeded(except: nil)
         selectedEventID = nil
         selectedSlot = nil
@@ -404,9 +424,31 @@ final class AppModel {
     /// Write-through edit from the inspector. Not undoable (text editing has its own undo).
     func updateSelected(span: EditSpan = .this, _ change: (inout CalendarEvent) -> Void) {
         guard var e = selectedEvent, isWritable(e) else { return }
+        let before = e
         change(&e)
         if e.end < e.start { e.end = e.start }
+        if e == before { return }
+        // Real stores (EventKit -> Google/iCloud) sync every save over the network: coalesce text typing into one write.
+        let textOnly = e.start == before.start && e.end == before.end && e.isAllDay == before.isAllDay && e.calendarID == before.calendarID
+        if store.coalescesTextEdits && textOnly {
+            eventsByID[e.id] = e
+            pendingEdit = (e, span)
+            editTimer?.invalidate()
+            let t = Timer(timeInterval: 0.6, repeats: false) { [weak self] _ in MainActor.assumeIsolated { self?.flushPendingEdit() } }
+            RunLoop.main.add(t, forMode: .common)
+            editTimer = t
+            return
+        }
+        flushPendingEdit()
         commit(e, span: span, old: nil)
+    }
+
+    /// Writes a coalesced text edit to the store now (called by the debounce timer, before selection changes, undo, delete and quit).
+    func flushPendingEdit() {
+        editTimer?.invalidate(); editTimer = nil
+        guard let p = pendingEdit else { return }
+        pendingEdit = nil
+        commit(p.event, span: p.span, old: nil)
     }
 
     func commit(_ e: CalendarEvent, span: EditSpan, old: CalendarEvent?) {
@@ -441,6 +483,7 @@ final class AppModel {
     }
 
     func delete(_ e: CalendarEvent, span: EditSpan) {
+        flushPendingEdit()
         let removed: [CalendarEvent]
         switch span {
         case .this: removed = [e]
@@ -457,11 +500,16 @@ final class AppModel {
     }
 
     func undo() {
+        flushPendingEdit()
         guard let change = undoStack.pop() else { showToast("Nothing to undo"); return }
         switch change {
         case .created(let e): try? store.delete(e, span: .this); if selectedEventID == e.id { selectedEventID = nil }
         case .deleted(let es): for e in es { _ = try? store.create(e) }; selectedEventID = es.first?.id
-        case .updated(let old, _): _ = try? store.update(old, span: .this); selectedEventID = old.id
+        case .updated(let old, let new):
+            // Undo the move/resize only: text typed into the inspector since then stays.
+            var cur = event(id: new.id) ?? new
+            cur.start = old.start; cur.end = old.end; cur.isAllDay = old.isAllDay; cur.calendarID = old.calendarID
+            if let saved = try? store.update(cur, span: .this) { eventsByID[saved.id] = saved; selectedEventID = saved.id } else { toast = "Could not undo" }
         }
     }
 
@@ -470,9 +518,29 @@ final class AppModel {
     private func runSearch() {
         let q = searchText.trimmingCharacters(in: .whitespaces)
         guard !q.isEmpty else { searchGroups = []; return }
-        if corpus == nil { corpus = store.searchCorpus(around: now) }
+        if corpus == nil {
+            if store.searchCorpusIsAsync {
+                // A year of real calendar data can take a while to fetch: never block the main thread on it.
+                guard !corpusLoading else { return }
+                corpusLoading = true
+                let generation = corpusGeneration
+                let around = now
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    let loaded = await self.store.loadSearchCorpus(around: around)
+                    self.corpusLoading = false
+                    guard generation == self.corpusGeneration else { if !self.searchText.isEmpty { self.runSearch() }; return }
+                    self.corpus = loaded
+                    self.runSearch()
+                }
+                return
+            }
+            corpus = store.searchCorpus(around: now)
+        }
         searchGroups = EventSearch.search((corpus ?? []).filter { !hiddenCalendars.contains($0.calendarID) }, query: q, math: math, near: now)
     }
+    private var corpusLoading = false
+    private var corpusGeneration = 0
 
     func openSearchResult(_ e: CalendarEvent) {
         go(to: e.start)
@@ -506,7 +574,13 @@ final class AppModel {
 
     func openCommandMenu() { commandQuery = ""; commandIndex = 0; overlay = .command }
     func openTeammatePicker() {
-        if store.teammates.isEmpty { _ = store.searchCorpus(around: now) }   // EventKit derives teammates from attendees
+        if store.teammates.isEmpty {   // EventKit derives teammates from attendees; load them off the main thread
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                _ = await self.store.loadSearchCorpus(around: self.now)
+                self.teammatesTick += 1
+            }
+        }
         teammateQuery = ""; teammateIndex = 0; overlay = .teammate }
     func openGoToDate() { goToText = ""; overlay = .goToDate }
     func closeOverlay() { overlay = nil }

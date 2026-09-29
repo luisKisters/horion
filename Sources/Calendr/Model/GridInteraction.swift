@@ -124,8 +124,13 @@ extension AppModel {
             var e = old
             let day = visibleDays[prev.dayIndex]
             if prev.kind == .move {
+                // Move by the drag delta, measured from the segment that was grabbed: a multi-day event dragged by its
+                // second-day segment must keep its own start instead of snapping the start to the new position.
+                var segStart = 0
+                if case .event(_, _, let s0, _, _) = pr.hit { segStart = s0 }
+                let dayShift = math.daysBetween(visibleDays[pr.hit.dayIndex], day)
                 let dur = old.end.timeIntervalSince(old.start)
-                e.start = math.date(on: day, minutes: prev.startMinute)
+                e.start = math.addDays(old.start, dayShift).addingTimeInterval(Double(prev.startMinute - segStart) * 60)
                 e.end = e.start.addingTimeInterval(dur)
             } else {
                 e.end = math.date(on: day, minutes: prev.endMinute)

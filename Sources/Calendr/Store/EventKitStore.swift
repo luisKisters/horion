@@ -14,6 +14,8 @@ final class EventKitStore: CalendarStore {
     private var attendeeIndex: [String: [CalendarEvent]] = [:]
     var onChange: (() -> Void)?
     let canEditParticipants = false
+    var coalescesTextEdits: Bool { true }
+    var searchCorpusIsAsync: Bool { true }
     private var cache: [String: EKEvent] = [:]
     private var observer: NSObjectProtocol?
 
@@ -68,7 +70,7 @@ final class EventKitStore: CalendarStore {
         accounts = EventKitMapping.accounts(sources: Array(rawSources.values), calendars: rawCals, defaultCalendarID: store.defaultCalendarForNewEvents?.calendarIdentifier)
     }
 
-    static func map(_ t: EKSourceType) -> RawSourceType {
+    nonisolated static func map(_ t: EKSourceType) -> RawSourceType {
         switch t {
         case .local: .local
         case .exchange: .exchange
@@ -79,7 +81,7 @@ final class EventKitStore: CalendarStore {
         @unknown default: .local
         }
     }
-    static func map(_ t: EKCalendarType) -> RawCalendarType {
+    nonisolated static func map(_ t: EKCalendarType) -> RawCalendarType {
         switch t {
         case .local: .local
         case .calDAV: .calDAV
@@ -89,7 +91,7 @@ final class EventKitStore: CalendarStore {
         @unknown default: .local
         }
     }
-    static func map(_ s: EKParticipantStatus) -> RawParticipantStatus {
+    nonisolated static func map(_ s: EKParticipantStatus) -> RawParticipantStatus {
         switch s {
         case .unknown: .unknown
         case .pending: .pending
@@ -122,6 +124,21 @@ final class EventKitStore: CalendarStore {
         return evs
     }
 
+    /// A year each way can be thousands of occurrences: fetch and convert them on a background thread with a private
+    /// EKEventStore (the identifiers match the main store's, so search results still resolve to editable events).
+    func loadSearchCorpus(around date: Date) async -> [CalendarEvent] {
+        guard authorization == .authorized else { return [] }
+        let math = self.math
+        let range = DateInterval(start: math.addDays(date, -365), end: math.addDays(date, 365))
+        let evs = await Task.detached(priority: .userInitiated) { () -> [CalendarEvent] in
+            let bg = EKEventStore()
+            let p = bg.predicateForEvents(withStart: range.start, end: range.end, calendars: nil)
+            return bg.events(matching: p).map { Self.makeEvent($0, math: math) }
+        }.value
+        rebuildTeammates(from: evs)
+        return evs
+    }
+
     private func rebuildTeammates(from evs: [CalendarEvent]) {
         var seen: [String: Teammate] = [:]
         for e in evs { for p in e.participants {
@@ -131,7 +148,7 @@ final class EventKitStore: CalendarStore {
         teammates = seen.values.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
-    static func split(_ label: String) -> (String, String) {
+    nonisolated static func split(_ label: String) -> (String, String) {
         if let lt = label.firstIndex(of: "<"), let gt = label.firstIndex(of: ">"), lt < gt {
             return (label[..<lt].trimmingCharacters(in: .whitespaces), String(label[label.index(after: lt)..<gt]))
         }
@@ -144,9 +161,14 @@ final class EventKitStore: CalendarStore {
     }
 
     private func convert(_ ev: EKEvent) -> CalendarEvent {
+        let out = Self.makeEvent(ev, math: math)
+        cache[out.id] = ev
+        return out
+    }
+
+    nonisolated static func makeEvent(_ ev: EKEvent, math: CalendarMath) -> CalendarEvent {
         let baseID = ev.eventIdentifier ?? ev.calendarItemIdentifier
         let id = "\(baseID)@\(Int(ev.startDate.timeIntervalSince1970))"
-        cache[id] = ev
         let others = (ev.attendees ?? []).filter { !$0.isCurrentUser }
         let participants = others.compactMap { a -> String? in
             let mail = a.url.absoluteString.replacingOccurrences(of: "mailto:", with: "")
@@ -173,7 +195,7 @@ final class EventKitStore: CalendarStore {
             timeZoneID: ev.timeZone?.identifier ?? math.timeZone.identifier)
     }
 
-    static func convert(_ r: EKRecurrenceRule) -> Recurrence {
+    nonisolated static func convert(_ r: EKRecurrenceRule) -> Recurrence {
         let f: Recurrence.Frequency
         switch r.frequency { case .daily: f = .daily; case .weekly: f = .weekly; case .monthly: f = .monthly; case .yearly: f = .yearly; @unknown default: f = .weekly }
         return Recurrence(frequency: f, interval: r.interval, weekdays: (r.daysOfTheWeek ?? []).map { $0.dayOfTheWeek.rawValue }, until: r.recurrenceEnd?.endDate)
@@ -226,7 +248,8 @@ final class EventKitStore: CalendarStore {
         ek.endDate = e.isAllDay ? e.end.addingTimeInterval(-1) : e.end
         ek.availability = e.availability == .free ? .free : .busy
         ek.url = e.conferencing.isEmpty ? nil : URL(string: e.conferencing)
-        if let tz = TimeZone(identifier: e.timeZoneID), !e.isAllDay { ek.timeZone = tz }
+        if e.isAllDay { ek.timeZone = nil }      // all-day events are floating dates
+        else if let tz = TimeZone(identifier: e.timeZoneID) { ek.timeZone = tz }
         if let cal = store.calendar(withIdentifier: e.calendarID), cal.allowsContentModifications, ek.calendar?.calendarIdentifier != cal.calendarIdentifier { ek.calendar = cal }
         for a in ek.alarms ?? [] { ek.removeAlarm(a) }
         if let off = EventKitMapping.alarmOffsetSeconds(minutes: e.reminderMinutes) { ek.addAlarm(EKAlarm(relativeOffset: off)) }

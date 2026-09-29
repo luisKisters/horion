@@ -9,6 +9,8 @@ final class DemoStore: CalendarStore {
     var authorization: StoreAuthorization = .authorized
     let defaultCalendarID: String? = DemoData.personal
     let canEditParticipants = true
+    /// Tests flip this to exercise the debounced write path that EventKit uses.
+    var coalescesTextEdits = false
     var onChange: (() -> Void)?
 
     private var events: [CalendarEvent]          // sorted by start
