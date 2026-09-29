@@ -11,7 +11,11 @@ APP=build/Calendr.app
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/Calendr"
-[ -f Resources/AppIcon.icns ] && cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
+scripts/make-icon.sh   # no-op when design/icon/AppIcon.icns exists
+cp design/icon/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
+# Optional menu bar template glyph
+[ -f design/icon/MenuBarTemplate.png ] && cp design/icon/MenuBarTemplate.png "$APP/Contents/Resources/MenuBarTemplate.png"
+[ -f design/icon/MenuBarTemplate@2x.png ] && cp design/icon/MenuBarTemplate@2x.png "$APP/Contents/Resources/MenuBarTemplate@2x.png"
 
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>

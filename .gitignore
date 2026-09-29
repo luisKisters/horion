@@ -7,3 +7,4 @@ artifacts/*.mp4
 
 artifacts/compare/
 artifacts/frames/
+dist/
