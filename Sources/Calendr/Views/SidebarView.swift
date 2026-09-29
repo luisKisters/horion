@@ -14,6 +14,9 @@ struct SFIcon: View {
 struct SidebarView: View {
     @Environment(AppModel.self) private var model
     @FocusState private var meetFocused: Bool
+    /// Distance from the window bottom to the Notion row's bottom edge, and the height of the pinned block above the list end.
+    static let pinnedBottomInset: CGFloat = 120
+    static let pinnedHeight: CGFloat = pinnedBottomInset + 104
 
     var body: some View {
         @Bindable var m = model
@@ -47,16 +50,30 @@ struct SidebarView: View {
             .onChange(of: model.blurTick) { _, _ in meetFocused = false }
 
             // Calendars
+            // Only the calendar list scrolls; the Notion rows and the help button stay pinned to the bottom like the reference.
             ScrollView(.vertical, showsIndicators: false) {
-                CalendarList()
-                    .padding(.top, model.shownTeammates.isEmpty ? 0 : 0)
-                    .padding(.bottom, 56)
+                CalendarList().padding(.bottom, 12)
             }
             .frame(width: Theme.sidebarWidth, alignment: .topLeading)
-            .padding(.top, 353)
+            .padding(.top, 353).padding(.bottom, Self.pinnedHeight)
+
+            VStack(spacing: 0) {
+                Spacer(minLength: 0)
+                VStack(alignment: .leading, spacing: 0) {
+                    Rectangle().fill(Theme.sep).frame(height: 1)
+                    SidebarLinkRow(icon: "tablecells.badge.ellipsis", title: "Add Notion database") { model.perform(.addNotionDatabase) }.padding(.top, 16)
+                    Rectangle().fill(Theme.sep).frame(height: 1).padding(.top, 15)
+                    SidebarRow(icon: "n.square", title: "Notion") { model.notionPopoverVisible.toggle() }.padding(.top, 13)
+                }
+                .frame(width: Theme.sidebarWidth - 1, alignment: .leading)
+                .background(Theme.side)
+                .padding(.bottom, Self.pinnedBottomInset)
+            }
 
             if !model.meetQuery.trimmingCharacters(in: .whitespaces).isEmpty { MeetResults().offset(x: 6, y: 357) }
-            if model.notionPopoverVisible { NotionPopover().offset(x: 30, y: 640) }
+            if model.notionPopoverVisible {
+                VStack { Spacer(); HStack { NotionPopover().padding(.leading, 30); Spacer() } }.padding(.bottom, Self.pinnedBottomInset + 46)
+            }
 
             // Help button
             VStack { Spacer(); HStack {
@@ -201,10 +218,6 @@ struct CalendarList: View {
                 ForEach(acc.calendars) { c in CalendarRow(cal: c) }
             }
             SidebarLinkRow(icon: "plus", title: "Add calendar account") { model.addCalendarAccount() }.padding(.top, 11)
-            Rectangle().fill(Theme.sep).frame(height: 1).padding(.top, 15)
-            SidebarLinkRow(icon: "tablecells.badge.ellipsis", title: "Add Notion database") { model.perform(.addNotionDatabase) }.padding(.top, 16)
-            Rectangle().fill(Theme.sep).frame(height: 1).padding(.top, 15)
-            SidebarRow(icon: "n.square", title: "Notion") { model.notionPopoverVisible.toggle() }.padding(.top, 13)
         }
         .frame(width: Theme.sidebarWidth - 1, alignment: .leading)
     }
