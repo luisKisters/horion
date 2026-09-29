@@ -288,8 +288,10 @@ public enum RangeLayoutBuilder {
                                           endMinute: sp.e, placement: p, continuesFromPrevious: sp.from, continuesToNext: sp.to))
             }
             // Paint order: lower z first so cascaded events sit on top.
-            placed.sort { $0.placement.z != $1.placement.z ? $0.placement.z < $1.placement.z : $0.startMinute < $1.startMinute }
-            timed.append(placed)
+            // Sort small integer keys, not the (large) PlacedEvent values.
+            let keys = placed.map { $0.placement.z * 100_000 + $0.startMinute }
+            let order = (0..<placed.count).sorted { keys[$0] != keys[$1] ? keys[$0] < keys[$1] : $0 < $1 }
+            timed.append(order.map { placed[$0] })
         }
         return RangeLayout(days: days, timed: timed, allDay: AllDayPacker.pack(allDayItems, dayCount: dayCount), allDayEvents: allDayMap)
     }
