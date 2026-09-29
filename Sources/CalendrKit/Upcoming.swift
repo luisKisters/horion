@@ -1,6 +1,7 @@
 import Foundation
 
 public struct UpcomingSection: Identifiable, Equatable, Sendable {
+    public init(title: String, day: Date, events: [CalendarEvent]) { self.title = title; self.day = day; self.events = events }
     public var id: Date { day }
     public var title: String
     public var day: Date
@@ -8,6 +9,7 @@ public struct UpcomingSection: Identifiable, Equatable, Sendable {
 }
 
 public struct UpcomingSummary: Equatable, Sendable {
+    public init(next: CalendarEvent?, untilNext: String, label: String, sections: [UpcomingSection]) { self.next = next; self.untilNext = untilNext; self.label = label; self.sections = sections }
     public var next: CalendarEvent?
     /// "4h 58min"
     public var untilNext: String

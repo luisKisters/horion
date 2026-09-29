@@ -12,6 +12,7 @@ public struct TimeSpan: Sendable {
 }
 
 public struct Placement: Equatable, Sendable {
+    public init(id: String, column: Int, columns: Int, left: Double, width: Double, z: Int) { self.id = id; self.column = column; self.columns = columns; self.left = left; self.width = width; self.z = z }
     public var id: String
     public var column: Int
     public var columns: Int
@@ -209,5 +210,19 @@ public enum RangeLayoutBuilder {
             timed.append(placed)
         }
         return RangeLayout(days: days, timed: timed, allDay: AllDayPacker.pack(allDayItems, dayCount: dayCount), allDayEvents: allDayMap)
+    }
+}
+
+public enum FreeSlot {
+    /// First start minute >= `from` on a `step` grid where [start, start+duration) collides with none of `busy`.
+    /// Returns nil when the day has no room left.
+    public static func next(from: Int, duration: Int, busy: [(start: Int, end: Int)], step: Int = 30) -> Int? {
+        var s = ((max(0, from) + step - 1) / step) * step
+        while s + duration <= 1440 {
+            if let hit = busy.first(where: { $0.start < s + duration && $0.end > s }) {
+                s = (((max(hit.end, s + 1)) + step - 1) / step) * step
+            } else { return s }
+        }
+        return nil
     }
 }

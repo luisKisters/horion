@@ -16,5 +16,6 @@ let package = Package(
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         .testTarget(name: "CalendrKitTests", dependencies: ["CalendrKit"]),
+        .testTarget(name: "CalendrTests", dependencies: ["Calendr", "CalendrKit"], swiftSettings: [.swiftLanguageMode(.v5)]),
     ]
 )

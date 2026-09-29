@@ -1,0 +1,539 @@
+import Foundation
+import AppKit
+import Observation
+import CalendrKit
+
+enum Overlay: Equatable {
+    case command, teammate, goToDate, shortcuts, settings
+    case deleteRecurring(String)   // event id
+}
+
+/// Everything the views bind to. Derived data (layouts, month cells, upcoming) is computed in `reload()`
+/// and never inside a view body.
+@MainActor @Observable
+final class AppModel {
+    // MARK: Environment
+    let store: CalendarStore
+    let options: LaunchOptions
+    private let persist: Bool
+    private(set) var math: CalendarMath
+    var settings: AppSettings { didSet { settingsChanged(old: oldValue) } }
+    var fmt: Fmt { Fmt(math: math, use24h: settings.use24h) }
+
+    // MARK: Time
+    private(set) var now: Date
+    private let bootClock = Date()
+    private var clockTimer: Timer?
+
+    // MARK: Navigation
+    var anchor: Date
+    var viewMode: ViewMode = .week
+    var leftAligned = false
+
+    // MARK: Visibility
+    var hiddenCalendars: Set<String>
+    var shownTeammates: [Teammate] = []
+
+    // MARK: Selection
+    var selectedEventID: String?
+    var selectedSlot: Date?
+    private var untitledNewEventID: String?
+    var focusTitleTick = 0
+
+    // MARK: Chrome
+    var sidebarVisible = true
+    var rightPanelVisible = true
+    var allDayCollapsed = false
+    var overlay: Overlay?
+    var searchText = "" { didSet { if searchText != oldValue { runSearch() } } }
+    var toast: String?
+    var notionPopoverVisible = false
+    var focusSearchTick = 0
+    var scrollToHourTick = 0
+    var secondTimeZoneVisible = false
+
+    // MARK: Overlay panel state
+    var commandQuery = "" { didSet { commandIndex = 0 } }
+    var commandIndex = 0
+    var teammateQuery = "" { didSet { teammateIndex = 0 } }
+    var teammateIndex = 0
+    var goToText = ""
+    var meetQuery = "" { didSet { meetIndex = 0 } }
+    var meetIndex = 0
+
+    // MARK: Derived (cached)
+    private(set) var visibleStart: Date
+    private(set) var visibleDays: [Date] = []
+    private(set) var layout: RangeLayout = .empty
+    private(set) var overlayLayout: RangeLayout = .empty
+    private(set) var monthGrid: [[Date]] = []
+    private(set) var monthEvents: [[CalendarEvent]] = []      // index = row*7+col
+    private(set) var upcoming: UpcomingSummary
+    private(set) var searchGroups: [SearchGroup] = []
+    private(set) var layoutGeneration = 0
+    private var eventsByID: [String: CalendarEvent] = [:]
+    private var windowRange = DateInterval(start: .distantPast, end: .distantPast)
+    private var windowEvents: [CalendarEvent] = []
+    private var corpus: [CalendarEvent]?
+    private(set) var reloadCount = 0
+
+    // MARK: Interaction
+    var dragPreview: DragPreview?
+    var undoStack = UndoStack()
+    var gridGeometry = GridGeometry(dayWidth: 180, hourHeight: 48, dayCount: 7)
+    var press: GridPress?
+    var lastClick: (time: TimeInterval, day: Int, minute: Int, id: String?)?
+
+    struct DragPreview: Equatable {
+        enum Kind { case create, move, resize }
+        var kind: Kind
+        var eventID: String?
+        var dayIndex: Int
+        var startMinute: Int
+        var endMinute: Int
+    }
+
+    init(store: CalendarStore, options: LaunchOptions, persist: Bool = true) {
+        self.store = store
+        self.options = options
+        self.persist = persist
+        let s = persist ? AppSettings.load() : AppSettings()
+        settings = s
+        let tz = options.demo ? DemoData.math.timeZone : TimeZone.current
+        let m = CalendarMath(timeZone: tz, weekStartsOnMonday: s.weekStartsOnMonday)
+        math = m
+        let n = options.now ?? Date()
+        now = n
+        anchor = m.startOfDay(n)
+        visibleStart = m.startOfWeek(n)
+        hiddenCalendars = Set(store.allCalendars.filter { !$0.isVisibleByDefault }.map(\.id))
+        upcoming = UpcomingSummary(next: nil, untilNext: "", label: "", sections: [])
+        store.onChange = { [weak self] in self?.storeChanged() }
+        reload()
+        if !options.freezeClock { startClock() }
+    }
+
+    // MARK: Clock
+
+    private func startClock() {
+        clockTimer = Timer.scheduledTimer(withTimeInterval: 20, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.tick() }
+        }
+    }
+
+    private func tick() {
+        let n = currentTime()
+        if math.minutesSinceMidnight(n) != math.minutesSinceMidnight(now) || !math.isSameDay(n, now) {
+            now = n
+            refreshUpcoming()
+        }
+    }
+
+    private func currentTime() -> Date {
+        if let pinned = options.now { return pinned.addingTimeInterval(Date().timeIntervalSince(bootClock)) }
+        return Date()
+    }
+
+    func setNow(_ d: Date) { now = d; refreshUpcoming() }
+
+    // MARK: Store reload
+
+    private func storeChanged() {
+        windowRange = DateInterval(start: .distantPast, end: .distantPast)
+        corpus = nil
+        reload()
+        if !searchText.isEmpty { runSearch() }
+    }
+
+    func hexColor(of event: CalendarEvent) -> String {
+        if let o = event.colorHex { return o }
+        return calendarInfo(event.calendarID)?.colorHex ?? teammateColor(event.ownerEmail)
+    }
+
+    func calendarInfo(_ id: String) -> CalendarInfo? { store.calendar(id) }
+
+    func calendarColorHex(of event: CalendarEvent) -> String {
+        calendarInfo(event.calendarID)?.colorHex ?? teammateColor(event.ownerEmail)
+    }
+
+    static let teammatePalette = ["#E8708A", "#4FC3C9", "#B48CF0", "#F0A040", "#7BC96F", "#5FA8F0"]
+    func teammateColor(_ email: String?) -> String {
+        guard let email, let i = shownTeammates.firstIndex(where: { $0.email == email }) else { return "#8A8A8A" }
+        return Self.teammatePalette[i % Self.teammatePalette.count]
+    }
+
+    func isWritable(_ e: CalendarEvent) -> Bool {
+        if e.ownerEmail != nil { return false }
+        return calendarInfo(e.calendarID)?.isWritable ?? true
+    }
+
+    /// Recompute everything derived from (range, mode, hidden calendars, teammates, settings, store).
+    func reload() {
+        reloadCount += 1
+        let start = math.visibleStart(mode: viewMode, anchor: anchor, leftAligned: leftAligned)
+        visibleStart = start
+        let q = math.queryRange(mode: viewMode, start: start)
+        if !(windowRange.start <= q.start && windowRange.end >= q.end) {
+            windowRange = DateInterval(start: math.addDays(q.start, -7), end: math.addDays(q.end, 7))
+            windowEvents = store.events(in: windowRange)
+        }
+        let visible = windowEvents.filter { e in
+            e.end > q.start && e.start < q.end || (e.end == e.start && e.start >= q.start && e.start < q.end)
+        }.filter { !hiddenCalendars.contains($0.calendarID) && (settings.showDeclined || $0.status != .declined) }
+
+        visibleDays = viewMode == .month ? math.days(from: q.start, count: 42) : math.days(from: start, count: viewMode.dayCount)
+        eventsByID.removeAll(keepingCapacity: true)
+        for e in windowEvents { eventsByID[e.id] = e }
+
+        if viewMode == .month {
+            monthGrid = math.monthGrid(for: start)
+            var cells = [[CalendarEvent]](repeating: [], count: 42)
+            for e in visible {
+                let first = max(0, math.daysBetween(q.start, e.start))
+                let lastInstant = e.end > e.start ? e.end.addingTimeInterval(-1) : e.end
+                let last = min(41, math.daysBetween(q.start, lastInstant))
+                if last >= first { for i in first...last { cells[i].append(e) } }
+            }
+            monthEvents = cells.map { $0.sorted { a, b in
+                if a.isAllDay != b.isAllDay { return a.isAllDay }
+                return a.start < b.start } }
+            layout = .empty
+        } else {
+            layout = RangeLayoutBuilder.build(events: visible, days: visibleDays, math: math)
+        }
+
+        var teamEvents: [CalendarEvent] = []
+        for t in shownTeammates {
+            for var e in store.teammateEvents(t.email, in: q) { e.ownerEmail = t.email; teamEvents.append(e); eventsByID[e.id] = e }
+        }
+        overlayLayout = viewMode == .month ? .empty : RangeLayoutBuilder.build(events: teamEvents, days: visibleDays, math: math)
+        layoutGeneration += 1
+        refreshUpcoming()
+    }
+
+    func refreshUpcoming() {
+        let today = math.startOfDay(now)
+        let evs = store.events(in: DateInterval(start: math.addDays(today, -1), end: math.addDays(today, 8)))
+            .filter { !hiddenCalendars.contains($0.calendarID) }
+        upcoming = Upcoming.summarize(events: evs, now: now, fmt: fmt)
+        for e in evs { eventsByID[e.id] = eventsByID[e.id] ?? e }
+    }
+
+    private func settingsChanged(old: AppSettings) {
+        if persist { settings.save() }
+        if old.weekStartsOnMonday != settings.weekStartsOnMonday {
+            math = CalendarMath(timeZone: math.timeZone, weekStartsOnMonday: settings.weekStartsOnMonday)
+        }
+        if old.showDeclined != settings.showDeclined || old.weekStartsOnMonday != settings.weekStartsOnMonday {
+            windowRange = DateInterval(start: .distantPast, end: .distantPast)
+            reload()
+        }
+    }
+
+    // MARK: Lookup
+
+    func event(id: String?) -> CalendarEvent? { id.flatMap { eventsByID[$0] } }
+    var selectedEvent: CalendarEvent? { event(id: selectedEventID) }
+
+    // MARK: Navigation
+
+    func goToToday() { anchor = math.startOfDay(now); leftAligned = false; reload(); scrollToHourTick += 1 }
+    func leftAlignToday() {
+        anchor = math.startOfDay(now); leftAligned = true
+        if viewMode == .month { viewMode = .week }
+        reload()
+    }
+    func go(to date: Date) {
+        anchor = math.startOfDay(date)
+        leftAligned = false
+        reload()
+    }
+    func step(_ direction: Int) {
+        let mode = viewMode
+        if mode == .week && leftAligned { anchor = math.addDays(anchor, 7 * direction) }
+        else { anchor = math.step(mode: mode, anchor: mode == .month ? anchor : (mode == .week ? visibleStart : anchor), direction: direction) }
+        reload()
+    }
+    func next() { step(1) }
+    func previous() { step(-1) }
+    func setMode(_ m: ViewMode) {
+        guard m != viewMode else { return }
+        viewMode = m
+        if m != .week { leftAligned = false }
+        reload()
+    }
+    /// Mini calendar month chevrons: moves the anchor by whole months.
+    func stepMonth(_ d: Int) {
+        anchor = math.addMonths(anchor, d); leftAligned = false; reload()
+    }
+    func toggleCalendar(_ id: String) {
+        if hiddenCalendars.contains(id) { hiddenCalendars.remove(id) } else { hiddenCalendars.insert(id) }
+        reload()
+    }
+
+    var isCurrentPeriodToday: Bool { visibleDays.contains { math.isSameDay($0, now) } }
+    var todayIndex: Int? { visibleDays.firstIndex { math.isSameDay($0, now) } }
+
+    /// The reference shows "September 2026" for Mon Sep 28 - Sun Oct 4, so the title follows the first visible day.
+    var headerTitle: String { fmt.monthTitle(visibleStart) }
+
+    // MARK: Teammates
+
+    func showTeammate(_ t: Teammate) {
+        if !shownTeammates.contains(t) { shownTeammates.append(t) }
+        overlay = nil
+        reload()
+    }
+    func removeTeammate(_ t: Teammate) { shownTeammates.removeAll { $0 == t }; reload() }
+
+    func filteredTeammates(_ q: String) -> [Teammate] {
+        let query = q.trimmingCharacters(in: .whitespaces)
+        return FuzzyMatcher.filter(store.teammates, query: query) { "\($0.name) \($0.email)" }
+    }
+
+    // MARK: Selection & mutation
+
+    func select(eventID: String?, focusTitle: Bool = false) {
+        discardUntitledIfNeeded(except: eventID)
+        selectedEventID = eventID
+        if eventID != nil { selectedSlot = nil; rightPanelVisible = true }
+        if focusTitle && eventID != nil { focusTitleTick += 1 }
+    }
+
+    func deselect() {
+        discardUntitledIfNeeded(except: nil)
+        selectedEventID = nil
+        selectedSlot = nil
+    }
+
+    private func discardUntitledIfNeeded(except keep: String?) {
+        guard let id = untitledNewEventID, id != keep else { return }
+        untitledNewEventID = nil
+        if let e = event(id: id), e.title.isEmpty {
+            try? store.delete(e, span: .this)
+            if case .created(let c)? = undoStack.changes.last, c.id == id { _ = undoStack.pop() }
+        }
+    }
+
+    @discardableResult
+    func createEvent(start: Date, end: Date, allDay: Bool = false) -> CalendarEvent? {
+        let cal = settings.defaultCalendarID.flatMap { store.calendar($0) }?.id ?? store.defaultCalendarID
+            ?? store.allCalendars.first(where: { $0.isWritable })?.id ?? ""
+        var e = CalendarEvent(calendarID: cal, title: "", start: start, end: end, isAllDay: allDay, reminderMinutes: 10, timeZoneID: math.timeZone.identifier)
+        do { e = try store.create(e) } catch { toast = "Could not create event"; return nil }
+        undoStack.push(.created(e))
+        untitledNewEventID = nil
+        select(eventID: e.id, focusTitle: true)
+        untitledNewEventID = e.id
+        // store.create triggered a reload before selection; make sure the new event is resolvable.
+        eventsByID[e.id] = eventsByID[e.id] ?? e
+        return e
+    }
+
+    /// `C`: next free half hour on the selected slot's day, or today.
+    func createAtNextFreeSlot() {
+        let day: Date = selectedSlot.map { math.startOfDay($0) } ?? math.startOfDay(now)
+        var from = selectedSlot.map { math.minutesSinceMidnight($0) } ?? math.minutesSinceMidnight(now)
+        if selectedSlot == nil, !math.isSameDay(day, now) { from = 9 * 60 }
+        let dur = settings.defaultDurationMinutes
+        let dayEvents = store.events(in: DateInterval(start: day, end: math.addDays(day, 1)))
+            .filter { !$0.isAllDay && !hiddenCalendars.contains($0.calendarID) }
+            .map { (start: max(0, math.minutesSinceMidnight($0.start)), end: math.isSameDay($0.end.addingTimeInterval(-1), day) ? math.minutesSinceMidnight($0.end) : 1440) }
+        let startMin: Int
+        if selectedSlot != nil { startMin = from } else { startMin = FreeSlot.next(from: from + 1, duration: dur, busy: dayEvents) ?? 9 * 60 }
+        if !visibleDays.contains(where: { math.isSameDay($0, day) }) { go(to: day) }
+        let s = math.date(on: day, minutes: startMin)
+        createEvent(start: s, end: s.addingTimeInterval(Double(dur) * 60))
+    }
+
+    /// Write-through edit from the inspector. Not undoable (text editing has its own undo).
+    func updateSelected(span: EditSpan = .this, _ change: (inout CalendarEvent) -> Void) {
+        guard var e = selectedEvent, isWritable(e) else { return }
+        change(&e)
+        if e.end < e.start { e.end = e.start }
+        commit(e, span: span, old: nil)
+    }
+
+    func commit(_ e: CalendarEvent, span: EditSpan, old: CalendarEvent?) {
+        do {
+            let saved = try store.update(e, span: span)
+            eventsByID[saved.id] = saved
+            if let old { undoStack.push(.updated(old: old, new: saved)) }
+            if untitledNewEventID == saved.id, !saved.title.isEmpty { untitledNewEventID = nil }
+            selectedEventID = saved.id
+        } catch { toast = "Could not save event" }
+    }
+
+    func duplicateSelected() {
+        guard var e = selectedEvent else { return }
+        e.id = UUID().uuidString; e.seriesID = nil; e.recurrence = nil; e.title += " (copy)"
+        if let saved = try? store.create(e) { undoStack.push(.created(saved)); select(eventID: saved.id) }
+    }
+
+    func copySelectedDetails() {
+        guard let e = selectedEvent else { return }
+        var s = "\(e.title)\n\(fmt.inspectorDate(e.start)) \(e.isAllDay ? "All-day" : fmt.timeRange(e.start, e.end))"
+        if !e.location.isEmpty { s += "\n\(e.location)" }
+        if !e.notes.isEmpty { s += "\n\(e.notes)" }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(s, forType: .string)
+        showToast("Event details copied")
+    }
+
+    func requestDeleteSelected() {
+        guard let e = selectedEvent, isWritable(e) else { return }
+        if e.isRecurring && store.series(of: e).count > 1 { overlay = .deleteRecurring(e.id) } else { delete(e, span: .this) }
+    }
+
+    func delete(_ e: CalendarEvent, span: EditSpan) {
+        let removed: [CalendarEvent]
+        switch span {
+        case .this: removed = [e]
+        case .all: removed = store.series(of: e)
+        case .future: removed = store.series(of: e).filter { $0.start >= e.start }
+        }
+        do {
+            try store.delete(e, span: span)
+            undoStack.push(.deleted(removed))
+            if untitledNewEventID == e.id { untitledNewEventID = nil }
+            selectedEventID = nil
+            overlay = nil
+        } catch { toast = "Could not delete event" }
+    }
+
+    func undo() {
+        guard let change = undoStack.pop() else { showToast("Nothing to undo"); return }
+        switch change {
+        case .created(let e): try? store.delete(e, span: .this); if selectedEventID == e.id { selectedEventID = nil }
+        case .deleted(let es): for e in es { _ = try? store.create(e) }; selectedEventID = es.first?.id
+        case .updated(let old, _): _ = try? store.update(old, span: .this); selectedEventID = old.id
+        }
+    }
+
+    // MARK: Search
+
+    private func runSearch() {
+        let q = searchText.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { searchGroups = []; return }
+        if corpus == nil { corpus = store.searchCorpus(around: now) }
+        searchGroups = EventSearch.search((corpus ?? []).filter { !hiddenCalendars.contains($0.calendarID) }, query: q, math: math, near: now)
+    }
+
+    func openSearchResult(_ e: CalendarEvent) {
+        go(to: e.start)
+        if viewMode == .month { viewMode = .week; reload() }
+        eventsByID[e.id] = e
+        select(eventID: e.id)
+        scrollToHourTick += 1
+    }
+
+    /// Menu bar: open main window at that event.
+    func open(event e: CalendarEvent) {
+        searchText = ""
+        openSearchResult(e)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    // MARK: Toast
+
+    func showToast(_ text: String) {
+        toast = text
+        if options.freezeClock { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in
+            if self?.toast == text { self?.toast = nil }
+        }
+    }
+
+    // MARK: Commands
+
+    func toggleSidebar() { sidebarVisible.toggle() }
+    func toggleRightPanel() { rightPanelVisible.toggle() }
+
+    func openCommandMenu() { commandQuery = ""; commandIndex = 0; overlay = .command }
+    func openTeammatePicker() { teammateQuery = ""; teammateIndex = 0; overlay = .teammate }
+    func openGoToDate() { goToText = ""; overlay = .goToDate }
+    func closeOverlay() { overlay = nil }
+
+    var commandSections: [CommandSection] { CommandRegistry.sections(matching: commandQuery) }
+    var goToPreview: Date? { GoToDateParser.parse(goToText, now: now, math: math) }
+
+    func submitGoToDate() {
+        guard let d = goToPreview else { return }
+        overlay = nil
+        go(to: d)
+        selectedSlot = math.date(on: d, minutes: 9 * 60)
+    }
+
+    func perform(_ id: CommandID) {
+        overlay = nil
+        switch id {
+        case .createEvent: createAtNextFreeSlot()
+        case .meetWith: sidebarVisible = true; focusMeetField()
+        case .showTeammate: openTeammatePicker()
+        case .recurringLink: copyLink("recurring")
+        case .oneOffLink: copyLink("one-off")
+        case .addNotionDatabase: notionPopoverVisible = true; sidebarVisible = true
+        case .goToDate: openGoToDate()
+        case .goToToday: goToToday()
+        case .leftAlignToday: leftAlignToday()
+        case .nextPeriod: next()
+        case .previousPeriod: previous()
+        case .viewDay: setMode(.day)
+        case .viewWeek: setMode(.week)
+        case .viewMonth: setMode(.month)
+        case .toggleSidebar: toggleSidebar()
+        case .toggleRightPanel: toggleRightPanel()
+        case .settings: overlay = .settings
+        }
+    }
+
+    var focusMeetTick = 0
+    func focusMeetField() { focusMeetTick += 1 }
+
+    func copyLink(_ kind: String) {
+        let link = "https://calendr.example/luis/\(kind == "recurring" ? "meet" : "once-\(Int(now.timeIntervalSince1970) % 100000)")"
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(link, forType: .string)
+        showToast("Scheduling link copied")
+    }
+
+    /// Returns true when the key was consumed.
+    @discardableResult
+    func handle(_ action: ShortcutAction) -> Bool {
+        switch action {
+        case .escape:
+            if overlay != nil { overlay = nil }
+            else if notionPopoverVisible { notionPopoverVisible = false }
+            else if !searchText.isEmpty && rightPanelVisible && selectedEventID == nil { searchText = "" }
+            else if selectedEventID != nil || selectedSlot != nil { deselect() }
+            else { return false }
+        case .commandMenu: overlay == .command ? (overlay = nil) : openCommandMenu()
+        case .today: goToToday()
+        case .leftAlignToday: leftAlignToday()
+        case .nextPeriod: next()
+        case .previousPeriod: previous()
+        case .createEvent: createAtNextFreeSlot()
+        case .meetWith: perform(.meetWith)
+        case .showTeammate: openTeammatePicker()
+        case .goToDate: openGoToDate()
+        case .showShortcuts: overlay = .shortcuts
+        case .schedulingLink: copyLink("one-off")
+        case .addNotionDatabase: perform(.addNotionDatabase)
+        case .viewDay: setMode(.day)
+        case .viewWeek: setMode(.week)
+        case .viewMonth: setMode(.month)
+        case .toggleSidebar: toggleSidebar()
+        case .toggleRightPanel: toggleRightPanel()
+        case .settings: overlay = .settings
+        case .menuBarCalendar: showToast("Menu bar calendar: click the menu bar item")
+        case .mainWindow: NSApp.activate(ignoringOtherApps: true)
+        case .focusSearch: rightPanelVisible = true; selectedEventID = nil; focusSearchTick += 1
+        case .undo: undo()
+        case .refresh: store.refresh(); showToast("Refreshed")
+        case .deleteSelection: requestDeleteSelected()
+        }
+        return true
+    }
+
+    var isTypingOverlayOpen: Bool { overlay != nil }
+}

@@ -351,3 +351,45 @@ struct EventKitMappingTests {
         #expect(EventKitMapping.kind(forTitle: "Politik", calendarIsTasks: true) == .task)
     }
 }
+
+@Suite("Shortcuts")
+struct ShortcutTests {
+    func r(_ c: String, code: UInt16 = 0, cmd: Bool = false, opt: Bool = false, ctrl: Bool = false, shift: Bool = false, text: Bool = false) -> ShortcutAction? {
+        ShortcutResolver.resolve(KeyInput(characters: c, keyCode: code, command: cmd, option: opt, control: ctrl, shift: shift), textFocused: text)
+    }
+    @Test func singleKeys() {
+        #expect(r("t") == .today); #expect(r("j") == .nextPeriod); #expect(r("k") == .previousPeriod)
+        #expect(r("c") == .createEvent); #expect(r("w") == .viewWeek); #expect(r(".") == .goToDate)
+        #expect(r("?", shift: true) == .showShortcuts); #expect(r("`") == .toggleSidebar); #expect(r("p") == .showTeammate)
+        #expect(r("", code: 124) == .nextPeriod); #expect(r("", code: 123) == .previousPeriod)
+    }
+    @Test func bareKeysAreSwallowedByTextFields() {
+        #expect(r("t", text: true) == nil)
+        #expect(r("c", text: true) == nil)
+        #expect(r("", code: 51, text: true) == nil)   // backspace edits text, does not delete the event
+    }
+    @Test func commandKeysWorkWhileTyping() {
+        #expect(r("k", cmd: true, text: true) == .commandMenu)
+        #expect(r("/", cmd: true, text: true) == .toggleRightPanel)
+        #expect(r("", code: 53, text: true) == .escape)
+    }
+    @Test func modifiedVariants() {
+        #expect(r("t", opt: true) == .leftAlignToday)
+        #expect(r("k", cmd: true, ctrl: true) == .menuBarCalendar)
+        #expect(r(",", cmd: true) == .settings)
+        #expect(r("1", cmd: true) == .mainWindow)
+        #expect(r("z", cmd: true) == .undo)
+        #expect(r("z", cmd: true, text: true) == nil)  // text field owns its own undo
+        #expect(r("r", cmd: true) == .refresh)
+    }
+}
+
+@Suite("Free slot")
+struct FreeSlotTests {
+    @Test func skipsBusyBlocks() {
+        #expect(FreeSlot.next(from: 600, duration: 60, busy: [(600, 700)]) == 720)
+        #expect(FreeSlot.next(from: 610, duration: 30, busy: []) == 630)
+        #expect(FreeSlot.next(from: 1400, duration: 60, busy: []) == nil)
+        #expect(FreeSlot.next(from: 0, duration: 30, busy: [(0, 1440)]) == nil)
+    }
+}
