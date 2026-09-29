@@ -62,7 +62,7 @@ Sources/Calendr      SwiftUI + AppKit shell. AppModel (@Observable @MainActor) o
                      Picker, TextField, MenuBarExtra).
   Headless/          --snapshot, --walkthrough, --perf drivers (offscreen window, video writer).
 Tests/CalendrTests   App-level tests (model, gestures entry points, demo data vs the reference screenshot).
-design/              DESIGN.md (v2 system), mockup-v2 (HTML + shots), icon, the v1 Notion references and mockup, states.json.
+design/              DESIGN.md (v2 system), icon, states.json. (HTML mockups and reference screenshots are kept out of the public repo.)
 ```
 
 AppKit is used only where SwiftUI cannot: window chrome, the key event monitor, offscreen rendering, video writing, opening the menu bar item.
@@ -75,7 +75,7 @@ scripts/verify.sh --fast   # skips walkthrough video, perf and DMG
 ```
 
 - **Unit tests**: `swift test` (CalendrKit logic and app model).
-- **Snapshots**: `scripts/snapshots.sh` renders every state in `design/states.json` offscreen into `artifacts/snapshots/`; `scripts/compare-all.sh` writes mockup | snapshot | diff images to `artifacts/compare/`. Every visible difference to the reference is a bug.
+- **Snapshots**: `scripts/snapshots.sh` renders every state in `design/states.json` offscreen into `artifacts/snapshots/`; `scripts/compare-all.sh` writes mockup | snapshot | diff images to `artifacts/compare/` when the (private) mockup shots are present.
 - **Walkthrough / E2E**: `Calendr --walkthrough --record artifacts/walkthrough-v2.mp4` tours every feature (about two minutes, 1440x900, H.264 avc1, 30 fps, moov first so it streams in browsers and chat viewers, captions drawn into the frame) with 85+ assertions; the exit code is non-zero on any failure. Animated steps are recorded in real time: frames are captured back to back while SwiftUI animates and placed on the 30 fps timeline by wall-clock timestamp, so slides, palettes, toasts and the checkbox pop play at true speed. Keyboard shortcuts and typing are real `NSEvent`s dispatched through `NSApp.sendEvent`. Grid pointer gestures call `AppModel.gridMouseDown/Dragged/Up`, the exact functions the SwiftUI drag gesture forwards to, because synthesized mouse events cannot reach SwiftUI while the process cannot become the active app (unattended or locked session).
 - **Performance**: `Calendr --perf` navigates 50 weeks forward and 50 back with 300+ events per visible week and prints p50/p95 milliseconds per navigation (model reload + SwiftUI update + layout + draw) for week and month with animations off (the gated numbers: about 11-12 ms p50 / 15-17 ms p95 week, 11 / 13 ms month), the week again with animations on, and cold launch. `Calendr --demo --print-launch` prints launch-to-window time of the real app.
 
@@ -93,4 +93,3 @@ Launch flags: `--demo`, `--now <ISO time>`, `--snapshot <state> --out <png> [--s
 - The menu bar item uses a template glyph plus text; SwiftUI cannot color part of a MenuBarExtra label, so the imminence is not red there (it is red inside the popover).
 - The DMG is ad-hoc signed and not notarized (first launch needs right-click > Open); it has no custom background.
 - Screen capture of the running app needs Screen Recording permission, so pixel evidence comes from the offscreen renderer; real mouse gestures were never driven through the live window, and the animations were only observed through the offscreen window.
-- `artifacts/walkthrough-v2.mp4` and the snapshots show fictional demo data only. Older git history contains the previous personal demo data.

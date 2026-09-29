@@ -1,6 +1,6 @@
 # Calendr design system (v2)
 
-v1 was a pixel copy of Notion Calendar. v2 keeps what makes Notion Calendar good (layout, density, keyboard-first flows, command palette, right-hand inspector, menu bar list) and gives Calendr its own identity, borrowing the NoteTakr design language (`/tmp/notetakr/design/DESIGN-SYSTEM.md`) so both apps feel like siblings.
+v1 was a pixel copy of Notion Calendar. v2 keeps what makes Notion Calendar good (layout, density, keyboard-first flows, command palette, right-hand inspector, menu bar list) and gives Calendr its own identity, borrowing the NoteTakr design language so both apps feel like siblings.
 
 ## Rules
 

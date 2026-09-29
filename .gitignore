@@ -1,9 +1,7 @@
 .build/
 build/
+dist/
+artifacts/
 .DS_Store
 node_modules/
-artifacts/tmp/
-artifacts/frames/
-artifacts/compare/
-dist/
-artifacts/*.sb-*
+.swiftpm/
