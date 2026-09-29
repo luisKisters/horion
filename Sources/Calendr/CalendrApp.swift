@@ -65,9 +65,6 @@ struct AppCommands: Commands {
         CommandGroup(replacing: .appSettings) {
             Button("Settings\u{2026}") { model.handle(.settings) }.keyboardShortcut(",")
         }
-        CommandGroup(replacing: .undoRedo) {
-            Button("Undo") { model.undo() }.keyboardShortcut("z")
-        }
         CommandGroup(replacing: .newItem) {
             Button("New Event") { model.handle(.createEvent) }
             Button("Refresh") { model.handle(.refresh) }.keyboardShortcut("r")

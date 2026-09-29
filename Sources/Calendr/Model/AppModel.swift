@@ -487,7 +487,9 @@ final class AppModel {
     func toggleRightPanel() { rightPanelVisible.toggle() }
 
     func openCommandMenu() { commandQuery = ""; commandIndex = 0; overlay = .command }
-    func openTeammatePicker() { teammateQuery = ""; teammateIndex = 0; overlay = .teammate }
+    func openTeammatePicker() {
+        if store.teammates.isEmpty { _ = store.searchCorpus(around: now) }   // EventKit derives teammates from attendees
+        teammateQuery = ""; teammateIndex = 0; overlay = .teammate }
     func openGoToDate() { goToText = ""; overlay = .goToDate }
     func closeOverlay() { overlay = nil }
 

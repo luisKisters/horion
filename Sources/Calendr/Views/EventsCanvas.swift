@@ -45,7 +45,7 @@ struct EventsCanvas: View {
 /// Cached CoreText lines. Colors come from the graphics context, so one line serves every appearance and state.
 @MainActor
 enum TextCache {
-    enum Kind: Int { case title, time, pill, pillTime, mini, dow, header, badge, label11 }
+    enum Kind: Int { case title, time, pill, pillTime, mini, dow, header, badge, label11, chipTime, dayNum }
     struct Key: Hashable { var text: String; var kind: Int }
     private static var lines: [Key: (CTLine, CGFloat, CGFloat, CGFloat)] = [:]   // line, width, ascent, descent
     private static var frames: [Key: [(CTLine, CGFloat)]] = [:]
@@ -61,6 +61,8 @@ enum TextCache {
         case .header: return NSFont.systemFont(ofSize: 14, weight: .regular)
         case .badge: return NSFont.systemFont(ofSize: 13.5, weight: .regular)
         case .label11: return NSFont.systemFont(ofSize: 11, weight: .regular)
+        case .chipTime: return NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
+        case .dayNum: return NSFont.systemFont(ofSize: 12, weight: .regular)
         }
     }
 
@@ -95,6 +97,23 @@ enum EventPainter {
         }
         cg.restoreGState()
         return l.width
+    }
+
+    /// Like `text` but ends with an ellipsis when wider than `maxWidth` (returns the drawn width).
+    @MainActor
+    static func truncated(_ cg: CGContext, _ s: String, _ kind: TextCache.Kind, x: CGFloat, top: CGFloat, box: CGFloat = 14, color: CGColor, maxWidth: CGFloat) -> CGFloat {
+        let l = TextCache.line(s, kind)
+        if l.width <= maxWidth { return text(cg, s, kind, x: x, top: top, box: box, color: color) }
+        let token = TextCache.line("\u{2026}", kind).line
+        guard let cut = CTLineCreateTruncatedLine(l.line, Double(max(1, maxWidth)), .end, token) else { return 0 }
+        let baseline = top + (box - (l.ascent + l.descent)) / 2 + l.ascent
+        cg.saveGState()
+        cg.setFillColor(color)
+        cg.textMatrix = CGAffineTransform(scaleX: 1, y: -1)
+        cg.textPosition = CGPoint(x: x, y: baseline)
+        CTLineDraw(cut, cg)
+        cg.restoreGState()
+        return CGFloat(CTLineGetTypographicBounds(cut, nil, nil, nil))
     }
 
     /// Wraps `s` to at most `maxLines` lines of `lineHeight` inside `width`, returns the number of lines drawn.

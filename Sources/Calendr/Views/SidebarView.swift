@@ -127,6 +127,7 @@ struct SidebarRow: View {
 /// a single tap gesture picks the cell.
 struct MiniCalendar: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.colorScheme) private var scheme
     static let width: CGFloat = 226
     static let rowHeight: CGFloat = 28
     static let headerHeight: CGFloat = 24
@@ -138,30 +139,33 @@ struct MiniCalendar: View {
         let miniMonth = model.miniMonth
         let now = model.now
         let math = model.math
+        let dark = scheme == .dark
+        // CoreGraphics cannot resolve dynamic SwiftUI colors, so pick the appearance's values explicitly.
         Canvas { ctx, size in
+            func c(_ d: String, _ l: String) -> CGColor { RGB(hex: dark ? d : l).cg }
             ctx.withCGContext { cg in
                 let colW = size.width / 7
-                let dowColor = NSColor(Theme.miniDow).cgColor
+                let dowColor = c("#838383", "#8a8a8a")
                 for i in 0..<7 {
                     let s = String(Fmt.weekdayShort[(first - 1 + i) % 7].prefix(2))
                     let w = TextCache.line(s, .dow).width
                     _ = EventPainter.text(cg, s, .dow, x: (CGFloat(i) + 0.5) * colW - w / 2, top: 0, box: Self.headerHeight, color: dowColor)
                 }
-                let normal = NSColor(Theme.miniDay).cgColor, dim = NSColor(Theme.miniOther).cgColor, dimBand = CGColor(srgbRed: 0.396, green: 0.396, blue: 0.396, alpha: 1)
+                let normal = c("#d5d5d5", "#333333"), dim = c("#5c5c5c", "#c0c0c0"), dimBand = c("#656565", "#b0b0b0")
                 for r in 0..<6 {
                     let y = Self.headerHeight + CGFloat(r) * Self.rowHeight
                     let isBand = bandStart.map { math.isSameDay($0, grid[r][0]) } ?? false
                     if isBand {
                         cg.addPath(EventPainter.roundedPath(CGRect(x: 0, y: y, width: size.width, height: Self.rowHeight), 8))
-                        cg.setFillColor(NSColor(Theme.band).cgColor); cg.fillPath()
+                        cg.setFillColor(c("#2c2c2c", "#ebebe9")); cg.fillPath()
                     }
-                    for c in 0..<7 {
-                        let d = grid[r][c]
+                    for col in 0..<7 {
+                        let d = grid[r][col]
                         let today = math.isSameDay(d, now)
-                        let cx = (CGFloat(c) + 0.5) * colW
+                        let cx = (CGFloat(col) + 0.5) * colW
                         if today {
                             cg.addPath(EventPainter.roundedPath(CGRect(x: cx - 13.5, y: y + 2.5, width: 27, height: 23), 6))
-                            cg.setFillColor(NSColor(Theme.red).cgColor); cg.fillPath()
+                            cg.setFillColor(c("#df6057", "#e5534b")); cg.fillPath()
                         }
                         let other = !math.isSameMonth(d, miniMonth)
                         let color = today ? CGColor(gray: 1, alpha: 1) : other ? (isBand ? dimBand : dim) : normal

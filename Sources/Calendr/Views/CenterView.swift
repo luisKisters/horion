@@ -181,12 +181,36 @@ struct AllDayView: View {
     }
 }
 
+/// Layout of the month grid, shared by drawing and hit testing.
+struct MonthGeometry {
+    var size: CGSize
+    var cellWidth: CGFloat { size.width / 7 }
+    var cellHeight: CGFloat { size.height / 6 }
+    static let chipHeight: CGFloat = 17
+    static let chipPitch: CGFloat = 19
+    static let headerHeight: CGFloat = 22        // day number row incl. top padding
+
+    func cellRect(_ i: Int) -> CGRect { CGRect(x: CGFloat(i % 7) * cellWidth, y: CGFloat(i / 7) * cellHeight, width: cellWidth, height: cellHeight) }
+    var maxChips: Int { max(1, Int((cellHeight - 28) / Self.chipPitch)) }
+    func shownCount(_ n: Int) -> Int { n > maxChips ? maxChips - 1 : n }
+    func chipRect(cell i: Int, index k: Int) -> CGRect {
+        let c = cellRect(i)
+        return CGRect(x: c.minX + 5, y: c.minY + 4 + Self.headerHeight + 2 + CGFloat(k) * Self.chipPitch, width: c.width - 10, height: Self.chipHeight)
+    }
+    func hit(_ p: CGPoint, counts: [Int]) -> (cell: Int, chip: Int?)? {
+        guard p.x >= 0, p.y >= 0, p.x < size.width, p.y < size.height else { return nil }
+        let i = min(41, Int(p.y / cellHeight) * 7 + Int(p.x / cellWidth))
+        for k in 0..<shownCount(counts[i]) where chipRect(cell: i, index: k).contains(p) { return (i, k) }
+        return (i, nil)
+    }
+}
+
+/// The month grid is one Canvas (day numbers, chips, "+N more"); a tap gesture resolves cell/chip through `MonthGeometry`.
 struct MonthView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        let grid = model.monthGrid
         VStack(spacing: 0) {
             HStack(spacing: 0) {
                 ForEach(0..<7, id: \.self) { i in
@@ -196,79 +220,117 @@ struct MonthView: View {
             .frame(height: 26)
             .overlay(alignment: .bottom) { Rectangle().fill(Theme.line).frame(height: 1) }
             GeometryReader { geo in
-                let cw = geo.size.width / 7, ch = geo.size.height / 6
-                ZStack(alignment: .topLeading) {
-                    ForEach(0..<42, id: \.self) { i in
-                        let r = i / 7, c = i % 7
-                        MonthCell(day: grid[r][c], events: model.monthEvents[i], size: CGSize(width: cw, height: ch), dark: scheme == .dark)
-                            .offset(x: CGFloat(c) * cw, y: CGFloat(r) * ch)
-                    }
-                }
+                MonthCanvas(size: geo.size, dark: scheme == .dark)
             }
         }
     }
 }
 
-struct MonthCell: View {
+struct MonthCanvas: View {
     @Environment(AppModel.self) private var model
-    let day: Date
-    let events: [CalendarEvent]
     let size: CGSize
     let dark: Bool
 
     var body: some View {
-        let other = !model.math.isSameMonth(day, model.visibleStart)
-        let today = model.math.isSameDay(day, model.now)
-        let past = model.math.startOfDay(day) < model.math.startOfDay(model.now)
-        let maxChips = max(1, Int((size.height - 28) / 19))
-        let shown = events.count > maxChips ? maxChips - 1 : events.count
-        VStack(alignment: .leading, spacing: 2) {
-            HStack {
-                Spacer()
-                Text("\(model.math.day(day))").font(.ui(12)).foregroundStyle(today ? .white : (other ? Theme.t3 : Theme.t1))
-                    .frame(minWidth: 20, minHeight: 18).padding(.horizontal, 3)
-                    .background(RoundedRectangle(cornerRadius: 5).fill(today ? Theme.red : Color.clear))
-            }.frame(height: 20)
-            ForEach(Array(events.prefix(shown)), id: \.id) { e in
-                MonthChip(e: e, dark: dark, past: past).onTapGesture { model.select(eventID: e.id); model.rightPanelVisible = true }
+        let geo = MonthGeometry(size: size)
+        let grid = model.monthGrid
+        let events = model.monthEvents
+        let math = model.math
+        let now = model.now
+        let today = math.startOfDay(now)
+        let visibleStart = model.visibleStart
+        let selected = model.selectedEventID
+        let fmt = model.fmt
+        let m = model
+        let counts = events.map(\.count)
+        return Canvas { ctx, sz in
+            ctx.withCGContext { cg in
+                MonthPainter.draw(cg, geo: geo, dark: dark, grid: grid, events: events, math: math, today: today, visibleStart: visibleStart,
+                                  selected: selected, fmt: fmt, style: { e in m.style(for: e, dark: dark, now: now, selected: false, faded: false, overlapping: false) })
             }
-            if events.count > shown {
-                Text("+\(events.count - shown) more").font(.ui(11)).foregroundStyle(Theme.t2).padding(.leading, 4).padding(.top, 1)
-            }
-            Spacer(minLength: 0)
         }
-        .padding(.horizontal, 5).padding(.top, 4)
-        .frame(width: size.width, height: size.height, alignment: .topLeading)
-        .clipped()
-        .overlay(alignment: .trailing) { Rectangle().fill(Theme.line).frame(width: 1) }
-        .overlay(alignment: .bottom) { Rectangle().fill(Theme.line).frame(height: 1) }
+        .frame(width: size.width, height: size.height)
         .contentShape(Rectangle())
-        .onTapGesture(count: 2) { model.go(to: day); model.setMode(.day) }
-        .onTapGesture { model.selectedSlot = model.math.date(on: day, minutes: 9 * 60) }
+        .onTapGesture(count: 2, coordinateSpace: .local) { p in
+            if let h = geo.hit(p, counts: counts), h.chip == nil { model.go(to: grid[h.cell / 7][h.cell % 7]); model.setMode(.day) }
+        }
+        .onTapGesture(coordinateSpace: .local) { p in
+            guard let h = geo.hit(p, counts: counts) else { return }
+            if let k = h.chip { model.select(eventID: events[h.cell][k].id) }
+            else { model.deselect(); model.selectedSlot = math.date(on: grid[h.cell / 7][h.cell % 7], minutes: 9 * 60) }
+        }
     }
 }
 
-struct MonthChip: View {
-    @Environment(AppModel.self) private var model
-    let e: CalendarEvent
-    let dark: Bool
-    let past: Bool
-    var body: some View {
-        let st = model.style(for: e, dark: dark, now: model.now, selected: model.selectedEventID == e.id, faded: false, overlapping: false)
-        let pal = st.palette
-        let declined = e.status == .declined
-        HStack(spacing: 0) {
-            Text(e.title.isEmpty ? "(No title)" : e.title).font(.ui(11)).strikethrough(declined)
-                .foregroundStyle(declined ? Color(hex: "#f2d3cc") : (past ? pal.pastTitle : pal.title)).lineLimit(1)
-            if !e.isAllDay { Text(model.fmt.time(e.start)).font(.mono(11)).foregroundStyle(pal.time).padding(.leading, 3) }
-            Spacer(minLength: 0)
+enum MonthPainter {
+    @MainActor
+    static func draw(_ cg: CGContext, geo: MonthGeometry, dark: Bool, grid: [[Date]], events: [[CalendarEvent]], math: CalendarMath, today: Date,
+                     visibleStart: Date, selected: String?, fmt: Fmt, style: (CalendarEvent) -> EventStyle) {
+        func c(_ d: String, _ l: String) -> CGColor { RGB(hex: dark ? d : l).cg }
+        let line = c("#222222", "#ebebeb"), t1 = c("#d4d4d4", "#2a2a2a"), t3 = c("#5a5a5a", "#b4b4b4"), t2 = c("#7f7f7f", "#8a8a8a")
+        let red = c("#df6057", "#e5534b")
+        cg.setStrokeColor(line); cg.setLineWidth(1)
+        for i in 0..<42 {
+            let r = geo.cellRect(i)
+            cg.move(to: CGPoint(x: r.maxX - 0.5, y: r.minY)); cg.addLine(to: CGPoint(x: r.maxX - 0.5, y: r.maxY))
+            cg.move(to: CGPoint(x: r.minX, y: r.maxY - 0.5)); cg.addLine(to: CGPoint(x: r.maxX, y: r.maxY - 0.5))
         }
-        .padding(.leading, 8).frame(height: 17)
-        .background(declined ? Color.clear : pal.fill)
-        .overlay(alignment: .leading) { if !declined { Rectangle().fill(past ? pal.pastBar : pal.bar).frame(width: e.kind == .task ? 4 : 3) } }
-        .clipShape(RoundedRectangle(cornerRadius: 5))
-        .overlay { if declined { RoundedRectangle(cornerRadius: 5).strokeBorder(Theme.declinedRed, style: StrokeStyle(lineWidth: 1, dash: [3, 2])) } }
-        .brightness(st.selected ? 0.13 : 0)
+        cg.strokePath()
+        for i in 0..<42 {
+            let d = grid[i / 7][i % 7]
+            let r = geo.cellRect(i)
+            let other = !math.isSameMonth(d, visibleStart)
+            let isToday = math.isSameDay(d, today)
+            let past = math.startOfDay(d) < today
+            // day number, right aligned in a 20pt pill
+            let s = "\(math.day(d))"
+            let w = TextCache.line(s, .dayNum).width
+            let pillW = max(20, w + 6)
+            let px = r.maxX - 5 - pillW
+            if isToday {
+                cg.addPath(EventPainter.roundedPath(CGRect(x: px, y: r.minY + 5, width: pillW, height: 18), 5)); cg.setFillColor(red); cg.fillPath()
+            }
+            _ = EventPainter.text(cg, s, .dayNum, x: px + (pillW - w) / 2, top: r.minY + 4, box: 20, color: isToday ? CGColor(gray: 1, alpha: 1) : (other ? t3 : t1))
+            let list = events[i]
+            let shown = geo.shownCount(list.count)
+            for k in 0..<shown {
+                let e = list[k]
+                let cr = geo.chipRect(cell: i, index: k)
+                let st = style(e)
+                let pal = st.palette
+                cg.saveGState()
+                if past { cg.setAlpha(0.7) }
+                let shape = EventPainter.roundedPath(cr, 5)
+                if e.status == .declined {
+                    cg.addPath(EventPainter.roundedPath(cr.insetBy(dx: 0.5, dy: 0.5), 5)); cg.setStrokeColor(CGColor(srgbRed: 0.878, green: 0.282, blue: 0.227, alpha: 1))
+                    cg.setLineWidth(1); cg.setLineDash(phase: 0, lengths: [3, 2]); cg.strokePath(); cg.setLineDash(phase: 0, lengths: [])
+                } else {
+                    cg.addPath(shape); cg.setFillColor(pal.fillRGB.cg); cg.fillPath()
+                }
+                cg.addPath(shape); cg.clip()
+                if e.status != .declined {
+                    cg.setFillColor(pal.barRGB.cg); cg.fill(CGRect(x: cr.minX, y: cr.minY, width: e.kind == .task ? 4 : 3, height: cr.height))
+                }
+                let titleColor = e.status == .declined ? CGColor(srgbRed: 0.949, green: 0.827, blue: 0.8, alpha: 1) : pal.titleRGB.cg
+                let title = e.title.isEmpty ? "(No title)" : e.title
+                let timeText = e.isAllDay ? "" : fmt.time(e.start)
+                let timeW = timeText.isEmpty ? 0 : TextCache.line(timeText, .chipTime).width + 3
+                let avail = cr.width - 8 - 4 - timeW
+                let tw: CGFloat
+                if e.status == .declined { tw = EventPainter.text(cg, title, .label11, x: cr.minX + 8, top: cr.minY + 1.5, box: 14, color: titleColor, strike: true) }
+                else { tw = EventPainter.truncated(cg, title, .label11, x: cr.minX + 8, top: cr.minY + 1.5, box: 14, color: titleColor, maxWidth: avail) }
+                if !timeText.isEmpty { _ = EventPainter.text(cg, timeText, .chipTime, x: cr.minX + 8 + tw + 3, top: cr.minY + 1.5, box: 14, color: pal.timeRGB.cg) }
+                cg.restoreGState()
+                if e.id == selected {
+                    cg.addPath(shape); cg.setFillColor(CGColor(gray: 1, alpha: 0.13)); cg.fillPath()
+                    cg.addPath(shape); cg.setStrokeColor(CGColor(gray: 1, alpha: 0.28)); cg.setLineWidth(1); cg.strokePath()
+                }
+            }
+            if list.count > shown {
+                let cr = geo.chipRect(cell: i, index: shown)
+                _ = EventPainter.text(cg, "+\(list.count - shown) more", .label11, x: cr.minX + 4, top: cr.minY + 1.5, box: 14, color: t2)
+            }
+        }
     }
 }
 
