@@ -6,3 +6,4 @@ artifacts/tmp/
 artifacts/frames/
 artifacts/compare/
 dist/
+artifacts/*.sb-*
