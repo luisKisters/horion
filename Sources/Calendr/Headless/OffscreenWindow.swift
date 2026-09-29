@@ -1,0 +1,69 @@
+import AppKit
+import SwiftUI
+
+/// A real (titled, full-size-content) window parked off screen. Everything the headless modes draw goes through
+/// `cacheDisplay` on its frame view, so no screen recording permission is needed.
+final class OffscreenNSWindow: NSWindow {
+    override func constrainFrameRect(_ frameRect: NSRect, to screen: NSScreen?) -> NSRect { frameRect }
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { true }
+}
+
+@MainActor
+final class OffscreenWindow {
+    let window: OffscreenNSWindow
+    let host: NSHostingView<AnyView>
+    let size: CGSize
+
+    init<V: View>(_ root: V, size: CGSize, dark: Bool = true, chrome: Bool = true) {
+        self.size = size
+        let mask: NSWindow.StyleMask = chrome ? [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView] : [.borderless]
+        window = OffscreenNSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: mask, backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.animationBehavior = .none
+        window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+        host = NSHostingView(rootView: AnyView(root))
+        host.frame = NSRect(origin: .zero, size: size)
+        window.contentView = host
+        if chrome { WindowChrome.apply(to: window); window.minSize = NSSize(width: 100, height: 100) }
+        window.setContentSize(size)
+        window.setFrameOrigin(NSPoint(x: -12000, y: -12000))
+        window.orderFront(nil)
+        window.makeKey()
+        settle()
+    }
+
+    /// Lets SwiftUI process pending state changes (a few short run-loop turns).
+    func settle(_ turns: Int = 4) {
+        for _ in 0..<turns {
+            RunLoop.main.run(until: Date().addingTimeInterval(0.03))
+            host.layoutSubtreeIfNeeded()
+        }
+    }
+
+    func setDark(_ dark: Bool) { window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua) }
+
+    /// Renders the whole window including the title bar controls.
+    func image(scale: CGFloat = 2) -> CGImage? {
+        host.layoutSubtreeIfNeeded()
+        let target: NSView = window.contentView?.superview ?? host
+        let bounds = target.bounds
+        guard let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(bounds.width * scale), pixelsHigh: Int(bounds.height * scale),
+                                         bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                                         colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0) else { return nil }
+        rep.size = bounds.size
+        target.cacheDisplay(in: bounds, to: rep)
+        return rep.cgImage
+    }
+
+    func writePNG(to path: String, scale: CGFloat = 2) -> Bool {
+        guard let img = image(scale: scale) else { return false }
+        let rep = NSBitmapImageRep(cgImage: img)
+        guard let data = rep.representation(using: .png, properties: [:]) else { return false }
+        let url = URL(fileURLWithPath: path)
+        try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        return (try? data.write(to: url)) != nil
+    }
+
+    func close() { window.orderOut(nil) }
+}

@@ -77,6 +77,8 @@ public struct CalendarEvent: Identifiable, Hashable, Sendable {
     public var ownerEmail: String?
     /// Per-event color override (fill tint). The leading bar keeps the calendar color.
     public var colorHex: String?
+    /// Optional second leading bar (e.g. a tag color next to the calendar bar).
+    public var secondaryBarHex: String?
 
     public init(id: String = UUID().uuidString, seriesID: String? = nil, calendarID: String, title: String,
                 start: Date, end: Date, isAllDay: Bool = false, kind: EventKind = .event,
@@ -84,13 +86,13 @@ public struct CalendarEvent: Identifiable, Hashable, Sendable {
                 recurrence: Recurrence? = nil, participants: [String] = [], conferencing: String = "",
                 reminderMinutes: Int? = nil, availability: Availability = .busy,
                 visibility: EventVisibility = .standard, timeZoneID: String = "Europe/Berlin",
-                ownerEmail: String? = nil, colorHex: String? = nil) {
+                ownerEmail: String? = nil, colorHex: String? = nil, secondaryBarHex: String? = nil) {
         self.id = id; self.seriesID = seriesID; self.calendarID = calendarID; self.title = title
         self.start = start; self.end = max(end, start); self.isAllDay = isAllDay; self.kind = kind
         self.status = status; self.location = location; self.notes = notes; self.recurrence = recurrence
         self.participants = participants; self.conferencing = conferencing; self.reminderMinutes = reminderMinutes
         self.availability = availability; self.visibility = visibility; self.timeZoneID = timeZoneID
-        self.ownerEmail = ownerEmail; self.colorHex = colorHex
+        self.ownerEmail = ownerEmail; self.colorHex = colorHex; self.secondaryBarHex = secondaryBarHex
     }
 
     public var durationMinutes: Int { Int((end.timeIntervalSince(start) / 60).rounded()) }

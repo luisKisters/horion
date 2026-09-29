@@ -24,19 +24,19 @@ enum DemoData {
             CalendarInfo(id: family, accountID: acc1, title: "Family", colorHex: "#EF8452"),
             CalendarInfo(id: tasks, accountID: acc1, title: "Tasks", colorHex: "#BDBCBC"),
             CalendarInfo(id: school, accountID: acc1, title: "School Board", colorHex: "#F1C55D"),
-            CalendarInfo(id: feiertage, accountID: acc1, title: "Feiertage in Deutschland", colorHex: "#A06CE8", icon: .feed, isWritable: false),
-            CalendarInfo(id: holidays, accountID: acc1, title: "Holidays in Germany", colorHex: "#5DBB7B", icon: .feed, isWritable: false),
-            CalendarInfo(id: ferien, accountID: acc1, title: "Ferien Berlin", colorHex: "#6FCB8F", icon: .feed, isWritable: false),
+            CalendarInfo(id: feiertage, accountID: acc1, title: "Feiertage in Deutschland", colorHex: "#8236DD", icon: .feed, isWritable: false),
+            CalendarInfo(id: holidays, accountID: acc1, title: "Holidays in Germany", colorHex: "#80CF93", icon: .feed, isWritable: false),
+            CalendarInfo(id: ferien, accountID: acc1, title: "Ferien Berlin", colorHex: "#80CF93", icon: .feed, isWritable: false),
         ]),
         CalendarAccount(id: acc2, name: "alex.work@example.com", calendars: [
-            CalendarInfo(id: services, accountID: acc2, title: "alex.work@example.com", colorHex: "#65A0D2"),
-            CalendarInfo(id: svcFeiertage, accountID: acc2, title: "Feiertage in Deutschland", colorHex: "#A06CE8", icon: .feed, isVisibleByDefault: false, isWritable: false),
-            CalendarInfo(id: svcHolidays, accountID: acc2, title: "Holidays in Germany", colorHex: "#5DBB7B", icon: .feed, isVisibleByDefault: false, isWritable: false),
-            CalendarInfo(id: svcItaly, accountID: acc2, title: "Holidays in Italy", colorHex: "#5DBB7B", icon: .feed, isVisibleByDefault: false, isWritable: false),
+            CalendarInfo(id: services, accountID: acc2, title: "alex.work@example.com", colorHex: "#69A9DD"),
+            CalendarInfo(id: svcFeiertage, accountID: acc2, title: "Feiertage in Deutschland", colorHex: "#80CF93", icon: .feed, isVisibleByDefault: false, isWritable: false),
+            CalendarInfo(id: svcHolidays, accountID: acc2, title: "Holidays in Germany", colorHex: "#80CF93", icon: .feed, isVisibleByDefault: false, isWritable: false),
+            CalendarInfo(id: svcItaly, accountID: acc2, title: "Holidays in Italy", colorHex: "#80CF93", icon: .feed, isVisibleByDefault: false, isWritable: false),
         ]),
         CalendarAccount(id: acc3, name: "alex@northwind.example.com", calendars: [
             CalendarInfo(id: work, accountID: acc3, title: "alex@northwind.example.com", colorHex: "#F1C55D"),
-            CalendarInfo(id: workHolidays, accountID: acc3, title: "Holidays in Germany", colorHex: "#5DBB7B", icon: .feed, isWritable: false),
+            CalendarInfo(id: workHolidays, accountID: acc3, title: "Holidays in Germany", colorHex: "#80CF93", icon: .feed, isWritable: false),
         ]),
     ]
 
@@ -175,15 +175,16 @@ enum DemoData {
     }
 
     static func ev(_ id: String, _ cal: String, _ title: String, _ d: Date, _ s: String, _ e: String, kind: EventKind = .event,
-                   status: ResponseStatus = .confirmed, color: String? = nil, location: String = "", notes: String = "") -> CalendarEvent {
+                   status: ResponseStatus = .confirmed, color: String? = nil, bar2: String? = nil, location: String = "", notes: String = "") -> CalendarEvent {
         CalendarEvent(id: "ref.\(id)", calendarID: cal, title: title, start: at(d, s), end: at(d, e), kind: kind, status: status,
-                      location: location, notes: notes, reminderMinutes: kind == .task ? nil : 1, colorHex: color)
+                      location: location, notes: notes, reminderMinutes: kind == .task ? nil : 1, colorHex: color, secondaryBarHex: bar2)
     }
     static func allDay(_ id: String, _ cal: String, _ title: String, _ from: Date, days: Int = 1, kind: EventKind = .event, notes: String = "") -> CalendarEvent {
         CalendarEvent(id: "ref.\(id)", calendarID: cal, title: title, start: from, end: math.addDays(from, days), isAllDay: true, kind: kind, notes: notes)
     }
 
-    static let green = "#5DBB7B"
+    static let green = "#80CF93"
+    static let brown = "#6F422C"
 
     static func referenceWeekOneOffs() -> [CalendarEvent] {
         let mon = refWeekStart, tue = day(9, 29), wed = day(9, 30), thu = day(10, 1), fri = day(10, 2), sat = day(10, 3), sun = day(10, 4)
@@ -191,7 +192,7 @@ enum DemoData {
             allDay("bei-stabilem", tasks, "[P1] Bei stabilem Internet...", mon, kind: .task),
             ev("bikeshop", tasks, "[P2] Call the bike shop", mon, "09:00", "09:15", kind: .task),
             ev("zahnarzt", tasks, "[P3] Call the library", mon, "10:00", "10:15", kind: .task),
-            ev("dad-son", family, "Dad <> Son", mon, "18:00", "19:00", color: green),
+            ev("dad-son", personal, "Dad <> Son", mon, "18:00", "19:00", color: green, bar2: brown),
             ev("chris", tasks, "[P1] Ask Chris: confirm the date", mon, "20:00", "20:15", kind: .task),
             ev("bouldern-fam", tasks, "[P0] Plan climbing + family dinner", mon, "20:10", "20:25", kind: .task),
             ev("fn", personal, "Fn?", mon, "21:00", "22:00"),
@@ -203,7 +204,7 @@ enum DemoData {
             allDay("halbjaehriges", personal, "Halbjähriges", wed),
             ev("mia-halbjahr", personal, "WRITE MIA ABOUT ANNIVERSARY", wed, "07:30", "08:00"),
             CalendarEvent(id: "ref.bouldern", calendarID: personal, title: "Bouldern", start: at(wed, "16:30"), end: at(wed, "18:30"), status: .declined),
-            ev("familienessen", family, "Familienessen", wed, "16:30", "18:30", color: green),
+            ev("familienessen", personal, "Familienessen", wed, "16:30", "18:30", color: green, bar2: brown),
             ev("mia-alex-wed", personal, "Mia /  Alex", wed, "19:00", "22:30"),
 
             ev("wg-cleaning", personal, "Flat cleaning", thu, "18:00", "19:00"),
@@ -216,14 +217,14 @@ enum DemoData {
             allDay("subscription", tasks, "[P3] Renew subscription...", fri, kind: .task),
             ev("form", tasks, "[P2] Fill in the form", fri, "16:00", "16:15", kind: .task),
 
-            allDay("lena", personal, "Lena birthday", sat),
+            allDay("a-lena", personal, "Lena birthday", sat),
             ev("lena-gratu", tasks, "Wish Lena a happy birthday", sat, "09:00", "09:15", kind: .task),
             ev("book", tasks, "[P3] Return the library book", sat, "18:00", "18:15", kind: .task),
 
             ev("run", personal, "morning run", sun, "09:45", "11:30", status: .tentative, color: green),
             ev("dana", tasks, "[P1] Text Dana", sun, "09:40", "09:55", kind: .task),
             ev("tickticks", tasks, "[P0?] Sunday calendar review", sun, "17:15", "17:30", kind: .task),
-            ev("schnacken", family, "Flat game night", sun, "19:00", "20:00", color: green),
+            ev("schnacken", personal, "Flat game night", sun, "19:00", "20:00", color: green, bar2: brown),
         ]
     }
 
@@ -274,7 +275,7 @@ enum DemoData {
     static func holidayEvents() -> [CalendarEvent] {
         var out: [CalendarEvent] = []
         for (i, h) in holidayList.enumerated() {
-            if h.2 == "Tag der Deutschen Einheit" || h.2 == "Day of German Unity" { out.append(CalendarEvent(id: "ref.hol.\(i)", calendarID: h.3, title: h.2, start: h.0, end: math.addDays(h.0, 1), isAllDay: true)); continue }
+            if h.2 == "Tag der Deutschen Einheit" || h.2 == "Day of German Unity" { out.append(CalendarEvent(id: "ref.hol.\(h.3 == holidays ? "b" : "c")", calendarID: h.3, title: h.2, start: h.0, end: math.addDays(h.0, 1), isAllDay: true)); continue }
             let endEx = math.addDays(h.1 ?? h.0, 1)
             out.append(CalendarEvent(id: "hol.\(i)", calendarID: h.3, title: h.2, start: h.0, end: endEx, isAllDay: true))
         }

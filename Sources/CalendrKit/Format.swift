@@ -120,3 +120,25 @@ public enum RecurrenceDescriber {
         return RecurrenceText(lead: lead, rest: rest.joined(separator: " "))
     }
 }
+
+public enum TimeParser {
+    /// "9", "930", "9:30", "09:30", "9.30", "9:30 pm" -> minutes since midnight.
+    public static func parse(_ raw: String) -> Int? {
+        var s = raw.lowercased().trimmingCharacters(in: .whitespaces)
+        var pm: Bool?
+        if s.hasSuffix("pm") { pm = true; s = String(s.dropLast(2)).trimmingCharacters(in: .whitespaces) }
+        else if s.hasSuffix("am") { pm = false; s = String(s.dropLast(2)).trimmingCharacters(in: .whitespaces) }
+        s = s.replacingOccurrences(of: ".", with: ":")
+        var h: Int, m = 0
+        if s.contains(":") {
+            let p = s.split(separator: ":", omittingEmptySubsequences: false)
+            guard p.count == 2, let hh = Int(p[0]), let mm = Int(p[1]) else { return nil }
+            h = hh; m = mm
+        } else if let v = Int(s) {
+            if s.count <= 2 { h = v } else if s.count <= 4 { h = v / 100; m = v % 100 } else { return nil }
+        } else { return nil }
+        if let pm { if h < 1 || h > 12 { return nil }; h = h % 12 + (pm ? 12 : 0) }
+        guard (0...23).contains(h), (0...59).contains(m) else { return nil }
+        return h * 60 + m
+    }
+}

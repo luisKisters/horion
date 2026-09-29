@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import SwiftUI
 import Observation
 import CalendrKit
 
@@ -63,9 +64,12 @@ final class AppModel {
 
     // MARK: Derived (cached)
     private(set) var visibleStart: Date
+    var miniMonth: Date
     private(set) var visibleDays: [Date] = []
     private(set) var layout: RangeLayout = .empty
     private(set) var overlayLayout: RangeLayout = .empty
+    private(set) var flatTimed: [PlacedEvent] = []
+    private(set) var flatOverlay: [PlacedEvent] = []
     private(set) var monthGrid: [[Date]] = []
     private(set) var monthEvents: [[CalendarEvent]] = []      // index = row*7+col
     private(set) var upcoming: UpcomingSummary
@@ -76,6 +80,7 @@ final class AppModel {
     private var windowEvents: [CalendarEvent] = []
     private var corpus: [CalendarEvent]?
     private(set) var reloadCount = 0
+    private(set) var authState: StoreAuthorization = .authorized
 
     // MARK: Interaction
     var dragPreview: DragPreview?
@@ -106,8 +111,10 @@ final class AppModel {
         now = n
         anchor = m.startOfDay(n)
         visibleStart = m.startOfWeek(n)
+        miniMonth = m.startOfMonth(n)
         hiddenCalendars = Set(store.allCalendars.filter { !$0.isVisibleByDefault }.map(\.id))
         upcoming = UpcomingSummary(next: nil, untilNext: "", label: "", sections: [])
+        authState = store.authorization
         store.onChange = { [weak self] in self?.storeChanged() }
         reload()
         if !options.freezeClock { startClock() }
@@ -138,7 +145,8 @@ final class AppModel {
 
     // MARK: Store reload
 
-    private func storeChanged() {
+    func storeChanged() {
+        authState = store.authorization
         windowRange = DateInterval(start: .distantPast, end: .distantPast)
         corpus = nil
         reload()
@@ -162,6 +170,16 @@ final class AppModel {
         return Self.teammatePalette[i % Self.teammatePalette.count]
     }
 
+    var defaultCalendarHex: String {
+        (settings.defaultCalendarID.flatMap { store.calendar($0) } ?? store.defaultCalendarID.flatMap { store.calendar($0) } ?? store.allCalendars.first)?.colorHex ?? "#5c88e4"
+    }
+
+    func style(for e: CalendarEvent, dark: Bool, now: Date, selected: Bool, faded: Bool, overlapping: Bool) -> EventStyle {
+        let pal = e.kind == .task ? Palettes.gray(dark) : Palettes.palette(barHex: calendarColorHex(of: e), fillHex: e.colorHex, dark: dark)
+        return EventStyle(palette: pal, secondaryBar: e.secondaryBarHex.map { Color(hex: $0) }, past: e.end <= now && !(e.end == e.start && e.start > now),
+                          selected: selected, faded: faded, overlapping: overlapping)
+    }
+
     func isWritable(_ e: CalendarEvent) -> Bool {
         if e.ownerEmail != nil { return false }
         return calendarInfo(e.calendarID)?.isWritable ?? true
@@ -171,6 +189,7 @@ final class AppModel {
     func reload() {
         reloadCount += 1
         let start = math.visibleStart(mode: viewMode, anchor: anchor, leftAligned: leftAligned)
+        if !math.isSameMonth(start, visibleStart) { miniMonth = math.startOfMonth(start) }
         visibleStart = start
         let q = math.queryRange(mode: viewMode, start: start)
         if !(windowRange.start <= q.start && windowRange.end >= q.end) {
@@ -207,6 +226,8 @@ final class AppModel {
             for var e in store.teammateEvents(t.email, in: q) { e.ownerEmail = t.email; teamEvents.append(e); eventsByID[e.id] = e }
         }
         overlayLayout = viewMode == .month ? .empty : RangeLayoutBuilder.build(events: teamEvents, days: visibleDays, math: math)
+        flatTimed = layout.timed.flatMap { $0 }
+        flatOverlay = overlayLayout.timed.flatMap { $0 }
         layoutGeneration += 1
         refreshUpcoming()
     }
@@ -263,9 +284,7 @@ final class AppModel {
         reload()
     }
     /// Mini calendar month chevrons: moves the anchor by whole months.
-    func stepMonth(_ d: Int) {
-        anchor = math.addMonths(anchor, d); leftAligned = false; reload()
-    }
+    func stepMiniMonth(_ d: Int) { miniMonth = math.addMonths(miniMonth, d) }
     func toggleCalendar(_ id: String) {
         if hiddenCalendars.contains(id) { hiddenCalendars.remove(id) } else { hiddenCalendars.insert(id) }
         reload()
@@ -536,4 +555,37 @@ final class AppModel {
     }
 
     var isTypingOverlayOpen: Bool { overlay != nil }
+
+    func addCalendarAccount() {
+        if options.isHeadless { showToast("Opens System Settings > Internet Accounts"); return }
+        if let url = URL(string: "x-apple.systempreferences:com.apple.Internet-Accounts-Settings.extension") { NSWorkspace.shared.open(url) }
+    }
+}
+
+extension AppModel {
+    /// Prev/next chevrons in the recurrence row.
+    func selectOccurrence(_ dir: Int) {
+        guard let e = selectedEvent else { return }
+        let all = store.series(of: e).sorted { $0.start < $1.start }
+        guard let i = all.firstIndex(where: { $0.id == e.id }) else { return }
+        let j = i + dir
+        guard all.indices.contains(j) else { return }
+        openSearchResult(all[j])
+    }
+
+    func openInMaps(_ location: String) {
+        let q = location.replacingOccurrences(of: "\n", with: " ").trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { return }
+        if options.isHeadless { showToast("Opens Maps"); return }
+        var c = URLComponents(string: "https://maps.apple.com/")!
+        c.queryItems = [URLQueryItem(name: "q", value: q)]
+        if let u = c.url { NSWorkspace.shared.open(u) }
+    }
+}
+
+extension AppModel {
+    func requestAccess() { Task { await store.requestAccess(); storeChanged() } }
+    func openPrivacySettings() {
+        if let u = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars") { NSWorkspace.shared.open(u) }
+    }
 }

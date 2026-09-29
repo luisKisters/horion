@@ -83,20 +83,20 @@ struct ModelBehaviourTests {
         let created = m.selectedEvent
         #expect(created != nil && m.fmt.time(created!.start) == "14:00" && m.fmt.time(created!.end) == "15:00")
         #expect(m.layout.timed[5].contains { $0.event.id == created!.id })
-        // Move it to Sunday 10:00.
+        // Move it to Sunday 15:00.
         let id = created!.id
         m.gridMouseDown(CGPoint(x: 5.5 * g.dayWidth, y: g.yPos(14 * 60 + 20)))
-        m.gridMouseDragged(CGPoint(x: 6.5 * g.dayWidth, y: g.yPos(10 * 60 + 20)))
-        m.gridMouseUp(CGPoint(x: 6.5 * g.dayWidth, y: g.yPos(10 * 60 + 20)))
+        m.gridMouseDragged(CGPoint(x: 6.5 * g.dayWidth, y: g.yPos(15 * 60 + 20)))
+        m.gridMouseUp(CGPoint(x: 6.5 * g.dayWidth, y: g.yPos(15 * 60 + 20)))
         let moved = m.event(id: id)!
-        #expect(m.math.weekdayIndex(moved.start) == 6 && m.fmt.time(moved.start) == "10:00" && m.fmt.time(moved.end) == "11:00")
-        // Resize by the bottom edge to 12:00.
-        m.gridMouseDown(CGPoint(x: 6.5 * g.dayWidth, y: g.yPos(11 * 60) - 2))
-        m.gridMouseDragged(CGPoint(x: 6.5 * g.dayWidth, y: g.yPos(12 * 60) + 3))
-        m.gridMouseUp(CGPoint(x: 6.5 * g.dayWidth, y: g.yPos(12 * 60) + 3))
-        #expect(m.fmt.time(m.event(id: id)!.end) == "12:00")
+        #expect(m.math.weekdayIndex(moved.start) == 6 && m.fmt.time(moved.start) == "15:00" && m.fmt.time(moved.end) == "16:00")
+        // Resize by the bottom edge to 17:00.
+        m.gridMouseDown(CGPoint(x: 6.5 * g.dayWidth, y: g.yPos(16 * 60) - 5))
+        m.gridMouseDragged(CGPoint(x: 6.5 * g.dayWidth, y: g.yPos(17 * 60) + 3))
+        m.gridMouseUp(CGPoint(x: 6.5 * g.dayWidth, y: g.yPos(17 * 60) + 3))
+        #expect(m.fmt.time(m.event(id: id)!.end) == "17:00")
         // Undo resize, undo move, undo create.
-        m.undo(); #expect(m.fmt.time(m.event(id: id)!.end) == "11:00")
+        m.undo(); #expect(m.fmt.time(m.event(id: id)!.end) == "16:00")
         m.undo(); #expect(m.math.weekdayIndex(m.event(id: id)!.start) == 5)
         m.undo(); #expect(m.layout.timed[5].allSatisfy { $0.event.id != id })
     }

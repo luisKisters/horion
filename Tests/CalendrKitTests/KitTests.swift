@@ -57,14 +57,26 @@ struct OverlapTests {
         let ps = OverlapLayout.layout([TimeSpan(id: "a", startMinute: 450, endMinute: 465), TimeSpan(id: "b", startMinute: 450, endMinute: 465)])
         let a = p(ps, "a"), b = p(ps, "b")
         #expect(a.left == 0 && a.z == 0)
-        #expect(b.left > 0.4 && b.z == 1)               // later event is offset and on top
+        #expect(b.left > 0.3 && b.z == 1)               // later event is offset and on top
         #expect(abs(b.left + b.width - 1) < 1e-9)       // and reaches the right edge
         #expect(a.width < 1)
     }
     @Test func shortEventsStillCollideWhenAdjacent() {
-        // 15-minute pills 10 minutes apart are drawn 20 minutes tall and would touch.
+        // 15-minute pills 10 minutes apart overlap in time.
         let ps = OverlapLayout.layout([TimeSpan(id: "a", startMinute: 1200, endMinute: 1215), TimeSpan(id: "b", startMinute: 1210, endMinute: 1225)])
         #expect(ps.allSatisfy { $0.columns == 2 })
+    }
+    @Test func lateStartingPillFloatsOverBlockWithoutNarrowingIt() {
+        // Englisch 08:00-09:45 and a task pill at 09:10: the block keeps the full column, the pill sits 8pt in.
+        let ps = OverlapLayout.layout([TimeSpan(id: "b", startMinute: 480, endMinute: 585), TimeSpan(id: "p", startMinute: 550, endMinute: 565, isPill: true)])
+        #expect(p(ps, "b").width == 1 && p(ps, "b").left == 0)
+        #expect(p(ps, "p").left > 0 && p(ps, "p").left < 0.1 && abs(p(ps, "p").left + p(ps, "p").width - 1) < 1e-9)
+        #expect(p(ps, "p").z > p(ps, "b").z)
+    }
+    @Test func pillStartingWithBlockSharesColumns() {
+        let ps = OverlapLayout.layout([TimeSpan(id: "b", startMinute: 1080, endMinute: 1140), TimeSpan(id: "p", startMinute: 1080, endMinute: 1095, isPill: true)])
+        #expect(ps.allSatisfy { $0.columns == 2 })
+        #expect(p(ps, "b").width < 1)
     }
     @Test func chainReusesColumns() {
         // a overlaps b, b overlaps c, a does not overlap c: c goes back into column 0.
@@ -391,5 +403,14 @@ struct FreeSlotTests {
         #expect(FreeSlot.next(from: 610, duration: 30, busy: []) == 630)
         #expect(FreeSlot.next(from: 1400, duration: 60, busy: []) == nil)
         #expect(FreeSlot.next(from: 0, duration: 30, busy: [(0, 1440)]) == nil)
+    }
+}
+
+@Suite("Time parser")
+struct TimeParserTests {
+    @Test func formats() {
+        #expect(TimeParser.parse("9") == 540); #expect(TimeParser.parse("930") == 570); #expect(TimeParser.parse("09:30") == 570)
+        #expect(TimeParser.parse("9.30") == 570); #expect(TimeParser.parse("9:30 pm") == 21 * 60 + 30); #expect(TimeParser.parse("12am") == 0)
+        #expect(TimeParser.parse("25:00") == nil); #expect(TimeParser.parse("abc") == nil); #expect(TimeParser.parse("13pm") == nil)
     }
 }

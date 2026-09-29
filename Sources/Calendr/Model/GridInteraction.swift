@@ -6,10 +6,12 @@ struct GridGeometry: Equatable {
     var dayWidth: Double
     var hourHeight: Double
     var dayCount: Int
-    /// Horizontal inset between neighbouring events and the column edge.
-    var eventInset: Double = 2
+    /// Left inset of events inside a day column; the right inset leaves room to click-create next to a full-width event.
+    var leftInset: Double = 1
+    var rightInset: Double = 12
+    var bottomGap: Double = 3
     /// Height of pills (events shorter than 30 minutes).
-    var minEventHeight: Double = 15
+    var minEventHeight: Double = 11
 
     var totalHeight: Double { hourHeight * 24 }
     func yPos(_ m: Int) -> Double { Double(m) / 60 * hourHeight }
@@ -17,11 +19,11 @@ struct GridGeometry: Equatable {
 
     func rect(for p: PlacedEvent) -> CGRect {
         let x0 = Double(p.dayIndex) * dayWidth
-        let inner = dayWidth - eventInset * 2
-        let x = x0 + eventInset + p.placement.left * inner
+        let inner = dayWidth - leftInset - rightInset
+        let x = x0 + leftInset + p.placement.left * inner
         let w = max(4, p.placement.width * inner)
         let y = yPos(p.startMinute)
-        let h = max(minEventHeight, yPos(p.endMinute) - y)
+        let h = max(minEventHeight, yPos(p.endMinute) - y - bottomGap)
         return CGRect(x: x, y: y, width: w, height: h)
     }
 }

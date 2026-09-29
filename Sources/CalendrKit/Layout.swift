@@ -6,8 +6,10 @@ public struct TimeSpan: Sendable {
     public var id: String
     public var startMinute: Int
     public var endMinute: Int
-    public init(id: String, startMinute: Int, endMinute: Int) {
-        self.id = id; self.startMinute = startMinute; self.endMinute = endMinute
+    /// Short task-style items. They float over blocks that started well before them instead of squeezing them.
+    public var isPill: Bool
+    public init(id: String, startMinute: Int, endMinute: Int, isPill: Bool = false) {
+        self.id = id; self.startMinute = startMinute; self.endMinute = endMinute; self.isPill = isPill
     }
 }
 
@@ -24,22 +26,47 @@ public struct Placement: Equatable, Sendable {
 
 public enum OverlapLayout {
     /// Events shorter than this still occupy this much room when deciding whether they collide (they render as pills).
-    public static let minLayoutMinutes = 20
-    /// How far each cascaded event is pushed right, as a share of the column, when two events overlap.
-    static let cascadeSpan = 0.55
-    static let maxCascadeWidth = 0.8
+    public static let minLayoutMinutes = 15
+    /// Cascade offsets measured from the reference: a later block starts ~37% into the column, a later short item ~53%.
+    static let blockStep = 0.37
+    static let shortStep = 0.53
+    static let maxLastStart = 0.73
+    static let maxCascadeWidth = 0.82
+    /// A pill starting at least this long after a block did floats over it; earlier than that it shares columns.
+    static let floatAfterMinutes = 60
+    /// Left offset of a floating pill relative to the block it covers (8pt in a ~177pt column).
+    static let floatInset = 0.045
+
+    static func end(_ s: TimeSpan) -> Int { max(s.endMinute, s.startMinute + minLayoutMinutes) }
+    static func overlaps(_ a: TimeSpan, _ b: TimeSpan) -> Bool { a.startMinute < end(b) && b.startMinute < end(a) }
 
     public static func layout(_ spans: [TimeSpan]) -> [Placement] {
-        let items = spans.enumerated().map { (i, s) in
-            (index: i, span: s, end: max(s.endMinute, s.startMinute + minLayoutMinutes))
-        }.sorted {
+        let blocks = spans.filter { !$0.isPill }
+        var joined = blocks
+        var floating: [TimeSpan] = []
+        for p in spans where p.isPill {
+            let hit = blocks.filter { overlaps(p, $0) }
+            if hit.isEmpty || hit.contains(where: { p.startMinute - $0.startMinute < floatAfterMinutes }) { joined.append(p) }
+            else { floating.append(p) }
+        }
+        var result = cascade(joined)
+        let byID = Dictionary(uniqueKeysWithValues: result.map { ($0.id, $0) })
+        for p in floating {
+            let covered = blocks.filter { overlaps(p, $0) }.compactMap { byID[$0.id] }
+            let left = min(0.9, (covered.map(\.left).max() ?? 0) + floatInset)
+            result.append(Placement(id: p.id, column: 0, columns: 1, left: left, width: 1 - left, z: 100))
+        }
+        return result
+    }
+
+    static func cascade(_ spans: [TimeSpan]) -> [Placement] {
+        let items = spans.enumerated().map { (i, s) in (index: i, span: s, end: end(s)) }.sorted {
             if $0.span.startMinute != $1.span.startMinute { return $0.span.startMinute < $1.span.startMinute }
             if $0.end != $1.end { return $0.end > $1.end }
             return $0.index < $1.index
         }
         var result: [Placement] = []
         result.reserveCapacity(items.count)
-
         var cluster: [(span: TimeSpan, end: Int, col: Int)] = []
         var clusterEnd = Int.min
         var columnEnds: [Int] = []
@@ -47,7 +74,8 @@ public enum OverlapLayout {
         func flush() {
             guard !cluster.isEmpty else { return }
             let n = columnEnds.count
-            let step = n > 1 ? cascadeSpan / Double(n - 1) : 0
+            let laterAreShort = cluster.filter { $0.col > 0 }.allSatisfy { $0.span.isPill || $0.span.endMinute - $0.span.startMinute < 30 }
+            let step = n > 1 ? min(laterAreShort ? shortStep : blockStep, maxLastStart / Double(n - 1)) : 0
             for c in cluster {
                 let left = Double(c.col) * step
                 let isLast = c.col == n - 1
@@ -195,7 +223,7 @@ public enum RangeLayoutBuilder {
         timed.reserveCapacity(dayCount)
         for d in 0..<dayCount {
             let spans = perDaySpans[d]
-            let placements = OverlapLayout.layout(spans.enumerated().map { TimeSpan(id: String($0.offset), startMinute: $0.element.s, endMinute: $0.element.e) })
+            let placements = OverlapLayout.layout(spans.enumerated().map { TimeSpan(id: String($0.offset), startMinute: $0.element.s, endMinute: $0.element.e, isPill: $0.element.event.kind == .task && $0.element.e - $0.element.s < 30) })
             var byIdx = [Placement?](repeating: nil, count: spans.count)
             for p in placements { if let i = Int(p.id) { byIdx[i] = p } }
             var placed: [PlacedEvent] = []
