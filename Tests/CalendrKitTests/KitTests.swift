@@ -66,6 +66,12 @@ struct OverlapTests {
         let ps = OverlapLayout.layout([TimeSpan(id: "a", startMinute: 1200, endMinute: 1215), TimeSpan(id: "b", startMinute: 1210, endMinute: 1225)])
         #expect(ps.allSatisfy { $0.columns == 2 })
     }
+    @Test func earlierStartingPillDoesNotTakeFirstColumnFromLongerBlock() {
+        // Sunday Oct 4 in the reference: run 09:45-11:30 is the left block, "[P1] Dana" 09:40 cascades on top at the right.
+        let ps = OverlapLayout.layout([TimeSpan(id: "dana", startMinute: 580, endMinute: 595, isPill: true), TimeSpan(id: "run", startMinute: 585, endMinute: 690)])
+        #expect(p(ps, "run").left == 0 && p(ps, "run").column == 0)
+        #expect(p(ps, "dana").left > 0.4 && p(ps, "dana").z > p(ps, "run").z)
+    }
     @Test func lateStartingPillFloatsOverBlockWithoutNarrowingIt() {
         // Englisch 08:00-09:45 and a task pill at 09:10: the block keeps the full column, the pill sits 8pt in.
         let ps = OverlapLayout.layout([TimeSpan(id: "b", startMinute: 480, endMinute: 585), TimeSpan(id: "p", startMinute: 550, endMinute: 565, isPill: true)])

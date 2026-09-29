@@ -60,8 +60,16 @@ public enum OverlapLayout {
     }
 
     static func cascade(_ spans: [TimeSpan]) -> [Placement] {
-        let items = spans.enumerated().map { (i, s) in (index: i, span: s, end: end(s)) }.sorted {
-            if $0.span.startMinute != $1.span.startMinute { return $0.span.startMinute < $1.span.startMinute }
+        // A short pill never claims the first column from a longer block it overlaps, even when it starts a few minutes
+        // earlier (reference: "morning run" 09:45 is the wide left block, "[P1] Dana" 09:40 cascades on top).
+        let blocks = spans.filter { !$0.isPill }
+        let items = spans.enumerated().map { (i, s) -> (index: Int, span: TimeSpan, end: Int, key: Int) in
+            var key = s.startMinute
+            if s.isPill { for b in blocks where overlaps(s, b) && b.startMinute > key { key = b.startMinute } }
+            return (i, s, end(s), key)
+        }.sorted {
+            if $0.key != $1.key { return $0.key < $1.key }
+            if $0.span.isPill != $1.span.isPill { return !$0.span.isPill }
             if $0.end != $1.end { return $0.end > $1.end }
             return $0.index < $1.index
         }
@@ -79,7 +87,7 @@ public enum OverlapLayout {
             for c in cluster {
                 let left = Double(c.col) * step
                 let isLast = c.col == n - 1
-                let width = n == 1 ? 1.0 : (isLast ? 1 - left : min(1 - left, maxCascadeWidth))
+                let width = n == 1 ? 1.0 : (isLast ? 1 - left : min(1 - left, laterAreShort ? step + 0.2 : maxCascadeWidth))
                 result.append(Placement(id: c.span.id, column: c.col, columns: n, left: left, width: width, z: c.col))
             }
             cluster.removeAll(keepingCapacity: true)
