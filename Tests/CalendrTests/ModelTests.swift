@@ -15,38 +15,38 @@ struct DemoWeekTests {
     @Test func tuesdayTimedTitlesInOrder() {
         let m = makeModel()
         let tue = m.layout.timed[1].map(\.event).sorted { $0.start < $1.start }.map { "\(m.fmt.time($0.start)) \($0.title)" }
-        #expect(tue == ["07:30 Meal Prep", "07:30 Sportzeug", "08:00 Spanisch", "10:10 Biologie", "12:00 Mathe", "14:00 Ben / Alex", "16:00 [P1] Friseurtermin machen",
-                        "16:15 Politik", "18:00 [P1] Daily stretch until done", "20:00 [P1] Ask Mia when we meet next",
-                        "22:00 Mia / Alex", "22:49 Water the plants", "23:00 [P0] Evening review, 10 minutes"])
+        #expect(tue == ["07:30 Meal Prep", "07:30 Gym bag", "08:00 Data Structures", "10:10 Genetics", "12:00 Calculus", "14:00 Sam / Alex", "16:00 [P1] Book a haircut",
+                        "16:15 Public Policy", "18:00 [P1] Water the plants - every day until done", "20:00 [P1] Plan the weekend trip with Jamie",
+                        "22:00 Call with Jamie", "22:49 Evening journal", "23:00 [P0] Stretch for ten minutes"])
     }
     @Test func allDayLanesForFriSun() {
         let m = makeModel()
         let byTitle = Dictionary(uniqueKeysWithValues: m.layout.allDay.placements.map { (m.layout.allDayEvents[$0.id]!.title, $0) })
-        #expect(byTitle["Maybe (see desc)"]?.span == 3)
-        #expect(byTitle["Noah away"]?.lane == 1)
+        #expect(byTitle["OFFSITE?? (maybe, see desc)"]?.span == 3)
+        #expect(byTitle["Sam away"]?.lane == 1)
         #expect(m.layout.allDay.laneCount == 5)
     }
-    @Test func wednesdayHasDeclinedBouldern() {
+    @Test func wednesdayHasDeclinedClimbing() {
         let m = makeModel()
-        #expect(m.layout.timed[2].contains { $0.event.title == "Bouldern" && $0.event.status == .declined })
+        #expect(m.layout.timed[2].contains { $0.event.title == "Climbing" && $0.event.status == .declined })
     }
-    @Test func inspectorSampleIsRecurringPolitik() {
+    @Test func inspectorSampleIsRecurringPolicy() {
         let m = makeModel()
-        let politik = m.layout.timed[2].first { $0.event.title == "Politik" }!.event
-        #expect(politik.recurrence?.frequency == .weekly)
-        #expect(politik.location.hasPrefix("Freie Schoolschule"))
-        let t = RecurrenceDescriber.describe(politik.recurrence!, start: politik.start, fmt: m.fmt)
+        let policy = m.layout.timed[2].first { $0.event.title == "Public Policy" }!.event
+        #expect(policy.recurrence?.frequency == .weekly)
+        #expect(policy.location.hasPrefix("Halden College"))
+        let t = RecurrenceDescriber.describe(policy.recurrence!, start: policy.start, fmt: m.fmt)
         #expect(t.lead == "Every week" && t.rest.hasPrefix("on Wed until"))
     }
     @Test func menuBarLabelMatchesReference() {
         let m = makeModel()
-        #expect(Upcoming.menuBarLabel(m.upcoming) == "Mathe \u{00B7} in 12m")
+        #expect(Upcoming.menuBarLabel(m.upcoming) == "Calculus \u{00B7} in 12m")
         #expect(m.upcoming.sections.map(\.title).prefix(3) == ["Today", "Tomorrow", "Thu Oct 1"])
-        #expect(m.upcoming.sections[0].events.first?.title == "Ben / Alex")
+        #expect(m.upcoming.sections[0].events.first?.title == "Sam / Alex")
     }
     @Test func sidebarAccountsMatchSpec() {
         let m = makeModel()
-        #expect(m.store.accounts.map(\.name) == ["alex.rivera@example.com", "alex.work@example.com", "alex@northwind.example.com"])
+        #expect(m.store.accounts.map(\.name) == ["alex.rivera@mail.example.com", "alex.rivera.studio@mail.example.com", "alex.rivera@northwind.example.com"])
         #expect(m.store.accounts[0].calendars.count == 7 && m.store.accounts[1].calendars.count == 4)
         #expect(m.hiddenCalendars.count == 3)
         #expect(m.store.teammates.count == 11)
@@ -102,7 +102,7 @@ struct ModelBehaviourTests {
     }
     @Test func deleteAndUndoRestores() {
         let m = makeModel()
-        let ev = m.layout.timed[0].first { $0.event.title == "Biologie" }!.event
+        let ev = m.layout.timed[0].first { $0.event.title == "Chemistry Lab" }!.event
         m.select(eventID: ev.id)
         m.requestDeleteSelected()       // recurring: asks first
         #expect(m.overlay == .deleteRecurring(ev.id))
@@ -113,10 +113,10 @@ struct ModelBehaviourTests {
     }
     @Test func deleteAllRemovesSeries() {
         let m = makeModel()
-        let ev = m.layout.timed[0].first { $0.event.title == "Biologie" }!.event
+        let ev = m.layout.timed[0].first { $0.event.title == "Chemistry Lab" }!.event
         m.delete(ev, span: .all)
         m.next()
-        #expect(m.layout.timed.flatMap { $0 }.allSatisfy { $0.event.title != "Biologie" || $0.event.seriesID != ev.seriesID })
+        #expect(m.layout.timed.flatMap { $0 }.allSatisfy { $0.event.title != "Chemistry Lab" || $0.event.seriesID != ev.seriesID })
     }
     @Test func untitledDraftIsDiscardedOnDeselect() {
         let m = makeModel()
@@ -128,16 +128,16 @@ struct ModelBehaviourTests {
     }
     @Test func inspectorEditWritesThrough() {
         let m = makeModel()
-        let ev = m.layout.timed[2].first { $0.event.title == "Politik" }!.event
+        let ev = m.layout.timed[2].first { $0.event.title == "Public Policy" }!.event
         m.select(eventID: ev.id)
-        m.updateSelected { $0.title = "Politik 2"; $0.location = "Raum 5" }
-        #expect(m.layout.timed[2].contains { $0.event.title == "Politik 2" && $0.event.location == "Raum 5" })
+        m.updateSelected { $0.title = "Public Policy 2"; $0.location = "Room 5" }
+        #expect(m.layout.timed[2].contains { $0.event.title == "Public Policy 2" && $0.event.location == "Room 5" })
     }
     @Test func createShortcutPicksNextFreeHalfHour() {
         let m = makeModel()
         m.handle(.createEvent)
         let e = m.selectedEvent!
-        #expect(m.fmt.time(e.start) == "15:00")     // now is 11:48; 12:00-13:40 Mathe and 14:00 Ben are busy
+        #expect(m.fmt.time(e.start) == "15:00")     // now is 11:48; 12:00-13:40 Calculus and 14:00 Sam are busy
         #expect(e.durationMinutes == 60)
     }
     @Test func hiddenCalendarsAndTeammatesAffectLayout() {
@@ -152,7 +152,7 @@ struct ModelBehaviourTests {
     }
     @Test func searchFindsAcrossWeeksAndNavigates() {
         let m = makeModel()
-        m.searchText = "Zahnarzt"
+        m.searchText = "Bike repair"
         #expect(!m.searchGroups.isEmpty)
         let hit = m.searchGroups.flatMap(\.events).first { $0.start > m.now }!
         m.openSearchResult(hit)
@@ -194,7 +194,7 @@ struct WritePathTests {
         store.coalescesTextEdits = true
         var o = LaunchOptions(); o.demo = true; o.freezeClock = true; o.now = DemoData.defaultNow
         let m = AppModel(store: store, options: o, persist: false)
-        let e = m.layout.timed[1].first { $0.event.title == "Spanisch" }!.event
+        let e = m.layout.timed[1].first { $0.event.title == "Data Structures" }!.event
         m.select(eventID: e.id)
         let before = m.reloadCount
         for t in ["S", "Sp", "Spa", "Span"] { m.updateSelected { $0.title = t } }

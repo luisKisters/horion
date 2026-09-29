@@ -67,26 +67,26 @@ struct OverlapTests {
         #expect(ps.allSatisfy { $0.columns == 2 })
     }
     @Test func capsuleNeverSqueezesABlockAndSitsAboveIt() {
-        // Sunday Oct 4: run 09:45-11:30 keeps the full column, "[P1] Dana" 09:40 moves up to a free slot above it.
-        let ps = OverlapLayout.layout([TimeSpan(id: "dana", startMinute: 580, endMinute: 595, isPill: true), TimeSpan(id: "run", startMinute: 585, endMinute: 690)])
-        #expect(p(ps, "run").left == 0 && p(ps, "run").width == 1)
-        #expect(p(ps, "dana").shiftMinutes < 0 && p(ps, "dana").z > p(ps, "run").z)
+        // Sunday Oct 4: brunch 09:45-11:30 keeps the full column, "[P1] Dana" 09:40 moves up to a free slot above it.
+        let ps = OverlapLayout.layout([TimeSpan(id: "dana", startMinute: 580, endMinute: 595, isPill: true), TimeSpan(id: "brunch", startMinute: 585, endMinute: 690)])
+        #expect(p(ps, "brunch").left == 0 && p(ps, "brunch").width == 1)
+        #expect(p(ps, "dana").shiftMinutes < 0 && p(ps, "dana").z > p(ps, "brunch").z)
         #expect(580 + p(ps, "dana").shiftMinutes + OverlapLayout.capsuleMinutes <= 585)      // clear of the block
     }
     @Test func capsuleFloatsOverALongRunningBlock() {
-        // Englisch 08:00-09:45 and a task capsule at 09:00: it started long before, so the capsule stays put on top of it.
+        // Statistics 08:00-09:45 and a task capsule at 09:00: it started long before, so the capsule stays put on top of it.
         let ps = OverlapLayout.layout([TimeSpan(id: "b", startMinute: 480, endMinute: 585), TimeSpan(id: "p", startMinute: 540, endMinute: 555, isPill: true)])
         #expect(p(ps, "b").width == 1 && p(ps, "p").shiftMinutes == 0 && p(ps, "p").z > p(ps, "b").z)
     }
     @Test func simultaneousCapsulesStackVertically() {
-        // Tuesday 07:30: Sportzeug and Meal Prep do not share columns, the second one moves down a row.
+        // Tuesday 07:30: Gym bag and Meal Prep do not share columns, the second one moves down a row.
         let ps = OverlapLayout.layout([TimeSpan(id: "a", startMinute: 450, endMinute: 465, isPill: true), TimeSpan(id: "b", startMinute: 450, endMinute: 465, isPill: true)])
         #expect(p(ps, "a").shiftMinutes == 0)
         #expect(p(ps, "b").shiftMinutes >= OverlapLayout.capsuleMinutes && !p(ps, "b").chip)
         #expect(ps.allSatisfy { $0.width == 1 })
     }
     @Test func capsulesAroundABlockGoAboveAndBelow() {
-        // Wednesday: MIA 07:30-08:00 with two capsules at 07:30: one above the block, one below.
+        // Wednesday: Notes block 07:30-08:00 with two capsules at 07:30: one above the block, one below.
         let ps = OverlapLayout.layout([TimeSpan(id: "j", startMinute: 450, endMinute: 480), TimeSpan(id: "m", startMinute: 450, endMinute: 465, isPill: true), TimeSpan(id: "s", startMinute: 450, endMinute: 465, isPill: true)])
         #expect(p(ps, "m").shiftMinutes < 0 && p(ps, "s").shiftMinutes > 0)
     }
@@ -108,7 +108,7 @@ struct OverlapTests {
         #expect(p(ps, "c").columns == 1 && p(ps, "c").width == 1)
     }
     @Test func wednesdayCluster() {
-        // Bouldern 16:30-18:30, Familienessen 16:30-18:30, Daily stretch 18:00 pill -> three columns.
+        // Climbing 16:30-18:30, Family dinner 16:30-18:30, Water the plants 18:00 pill -> three columns.
         let ps = OverlapLayout.layout([TimeSpan(id: "b", startMinute: 990, endMinute: 1110), TimeSpan(id: "f", startMinute: 990, endMinute: 1110), TimeSpan(id: "v", startMinute: 1080, endMinute: 1095)])
         #expect(ps.allSatisfy { $0.columns == 3 })
         #expect(Set(ps.map(\.column)) == [0, 1, 2])
@@ -120,15 +120,15 @@ struct AllDayTests {
     @Test func packsWithoutGaps() {
         // Mirrors Fri-Sun of the reference week: two 3-day banners, then one-day items fill lanes below.
         let l = AllDayPacker.pack([
-            AllDayItem(id: "lena", firstDay: 5, lastDay: 5),
+            AllDayItem(id: "birthday", firstDay: 5, lastDay: 5),
             AllDayItem(id: "unity", firstDay: 5, lastDay: 5),
             AllDayItem(id: "at", firstDay: 4, lastDay: 6),
-            AllDayItem(id: "noah", firstDay: 4, lastDay: 6),
+            AllDayItem(id: "away", firstDay: 4, lastDay: 6),
             AllDayItem(id: "know", firstDay: 4, lastDay: 4),
         ], dayCount: 7)
         func lane(_ id: String) -> Int { l.placements.first { $0.id == id }!.lane }
-        #expect(lane("at") == 0 && lane("noah") == 1 && lane("know") == 2)
-        #expect(lane("lena") == 2 && lane("unity") == 3)
+        #expect(lane("at") == 0 && lane("away") == 1 && lane("know") == 2)
+        #expect(lane("birthday") == 2 && lane("unity") == 3)
         #expect(l.laneCount == 4)
     }
     @Test func clipsToVisibleRange() {
@@ -241,14 +241,14 @@ struct UpcomingTests {
     }
     @Test func nextEventIsLiftedAndLabelled() {
         let s = Upcoming.summarize(events: [
-            ev("Sportzeug", d(2026, 9, 29, 7, 30)), ev("Meal Prep", d(2026, 9, 29, 7, 30)),
-            ev("Spanisch", d(2026, 9, 29, 8)), ev("Politik", d(2026, 9, 30, 10, 10)),
+            ev("Pack gym bag", d(2026, 9, 29, 7, 30)), ev("Meal Prep", d(2026, 9, 29, 7, 30)),
+            ev("Data Structures", d(2026, 9, 29, 8)), ev("Public Policy", d(2026, 9, 30, 10, 10)),
         ], now: now, fmt: fmt)
         #expect(s.next?.title == "Meal Prep")
         #expect(s.untilNext == "4h 58min")
         #expect(Upcoming.menuBarLabel(s) == "Meal Prep \u{00B7} in 4h 58m")
         #expect(s.sections.map(\.title) == ["Today", "Tomorrow"])
-        #expect(s.sections[0].events.map(\.title) == ["Sportzeug", "Spanisch"])
+        #expect(s.sections[0].events.map(\.title) == ["Pack gym bag", "Data Structures"])
     }
     @Test func skipsAllDayDeclinedAndPast() {
         let s = Upcoming.summarize(events: [
@@ -308,13 +308,13 @@ struct FormatTests {
 struct SearchUndoTests {
     @Test func searchIsDiacriticInsensitiveAndAllWordsMustMatch() {
         let evs = [
-            CalendarEvent(calendarID: "c", title: "WRITE MIA ABOUT ANNIVERSARY", start: d(2026, 9, 30, 7, 30), end: d(2026, 9, 30, 8)),
-            CalendarEvent(calendarID: "c", title: "Mathe", start: d(2026, 9, 29, 12), end: d(2026, 9, 29, 13), location: "Raum 2"),
-            CalendarEvent(calendarID: "c", title: "Mathe", start: d(2026, 9, 29, 15), end: d(2026, 9, 29, 16)),
+            CalendarEvent(calendarID: "c", title: "SEND HALF-YEAR NOTES", start: d(2026, 9, 30, 7, 30), end: d(2026, 9, 30, 8)),
+            CalendarEvent(calendarID: "c", title: "Calculus", start: d(2026, 9, 29, 12), end: d(2026, 9, 29, 13), location: "Room 2"),
+            CalendarEvent(calendarID: "c", title: "Calculus", start: d(2026, 9, 29, 15), end: d(2026, 9, 29, 16)),
         ]
-        #expect(EventSearch.search(evs, query: "halbjahriges", math: berlin).flatMap(\.events).count == 1)
-        #expect(EventSearch.search(evs, query: "mathe raum", math: berlin).flatMap(\.events).count == 1)
-        #expect(EventSearch.search(evs, query: "mathe", math: berlin).count == 1)     // grouped in one day
+        #expect(EventSearch.search(evs, query: "half year", math: berlin).flatMap(\.events).count == 1)
+        #expect(EventSearch.search(evs, query: "calculus room", math: berlin).flatMap(\.events).count == 1)
+        #expect(EventSearch.search(evs, query: "calculus", math: berlin).count == 1)     // grouped in one day
         #expect(EventSearch.search(evs, query: "  ", math: berlin).isEmpty)
     }
     @Test func searchLimitKeepsEventsNearestReference() {
@@ -339,13 +339,13 @@ struct EventKitMappingTests {
     }
     @Test func groupsCalendarsUnderGoogleAccountAndPutsDefaultFirst() {
         let sources = [RawSource(id: "s2", title: "Holidays", type: .subscribed),
-                       RawSource(id: "s1", title: "luis@gmail.com", type: .calDAV),
+                       RawSource(id: "s1", title: "alex@mail.example.com", type: .calDAV),
                        RawSource(id: "s0", title: "Empty", type: .calDAV)]
         let cals = [RawCalendar(id: "c2", sourceID: "s1", title: "Zeta", type: .calDAV, red: 0, green: 0, blue: 1, allowsContentModifications: true),
                     RawCalendar(id: "c1", sourceID: "s1", title: "Personal", type: .calDAV, red: 1, green: 0, blue: 0, allowsContentModifications: true),
                     RawCalendar(id: "c3", sourceID: "s2", title: "Feiertage", type: .subscription, red: 0, green: 1, blue: 0, allowsContentModifications: false)]
         let a = EventKitMapping.accounts(sources: sources, calendars: cals, defaultCalendarID: "c2")
-        #expect(a.map(\.name) == ["luis@gmail.com", "Subscribed calendars"])   // empty source dropped, subscribed last
+        #expect(a.map(\.name) == ["alex@mail.example.com", "Subscribed calendars"])   // empty source dropped, subscribed last
         #expect(a[0].calendars.map(\.title) == ["Zeta", "Personal"])
         #expect(a[0].calendars[0].isDefault)
         #expect(a[1].calendars[0].icon == .feed && !a[1].calendars[0].isWritable)
@@ -370,15 +370,15 @@ struct EventKitMappingTests {
         #expect(EventKitMapping.alarmOffsetSeconds(minutes: 10) == -600)
     }
     @Test func participantLabels() {
-        #expect(EventKitMapping.participantLabel(name: "Max", email: "max@x.de") == "Max <max@x.de>")
+        #expect(EventKitMapping.participantLabel(name: "Sam", email: "sam@x.example.com") == "Sam <sam@x.example.com>")
         #expect(EventKitMapping.participantLabel(name: "max@x.de", email: "max@x.de") == "max@x.de")
         #expect(EventKitMapping.participantLabel(name: nil, email: nil) == nil)
     }
     @Test func priorityTitlesAreTasks() {
-        #expect(EventKitMapping.kind(forTitle: "[P1] Daily stretch nehmen", calendarIsTasks: false) == .task)
+        #expect(EventKitMapping.kind(forTitle: "[P1] Water the plants", calendarIsTasks: false) == .task)
         #expect(EventKitMapping.kind(forTitle: "[P0?] x", calendarIsTasks: false) == .task)
-        #expect(EventKitMapping.kind(forTitle: "Politik", calendarIsTasks: false) == .event)
-        #expect(EventKitMapping.kind(forTitle: "Politik", calendarIsTasks: true) == .task)
+        #expect(EventKitMapping.kind(forTitle: "Public Policy", calendarIsTasks: false) == .event)
+        #expect(EventKitMapping.kind(forTitle: "Public Policy", calendarIsTasks: true) == .task)
     }
 }
 

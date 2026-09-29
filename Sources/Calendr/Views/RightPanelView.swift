@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import CalendrKit
 
 struct RightPanelView: View {
@@ -229,7 +230,7 @@ struct InspectorView: View {
                             .focused($titleFocused)
                             .padding(.horizontal, 16).frame(height: 44)
                             .disabled(!writable)
-                            .onChange(of: model.focusTitleTick) { _, _ in if model.titleFocusPending { model.titleFocusPending = false; titleFocused = true } }
+                            .onChange(of: model.focusTitleTick) { _, _ in focusTitleIfPending() }
                             .onChange(of: model.blurTick) { _, _ in titleFocused = false }
                             .onSubmit { titleFocused = false }
                         HStack(spacing: 8) {
@@ -244,8 +245,13 @@ struct InspectorView: View {
                 }
             }
             .frame(width: Theme.rightPanelWidth, alignment: .topLeading)
-            .onAppear { if model.titleFocusPending { model.titleFocusPending = false; titleFocused = true } }
+            .onAppear { focusTitleIfPending() }
+            .background(ResignFocusOnInsert(skip: { model.titleFocusPending }))
         }
+    }
+
+    private func focusTitleIfPending() {
+        if model.titleFocusPending { titleFocused = true }
     }
 }
 
@@ -511,4 +517,21 @@ struct Section3: View {
         .overlay(alignment: .top) { Hairline() }
     }
     static func reminder(_ m: Int) -> String { m >= 1440 && m % 1440 == 0 ? "\(m / 1440) day" : (m >= 60 && m % 60 == 0 ? "\(m / 60) h" : "\(m) min") }
+}
+
+/// A freshly inserted inspector must not steal the keyboard: SwiftUI focuses the first text field of a new hierarchy on macOS, which would
+/// swallow single-key shortcuts (Delete, T, J ...). Resign it shortly after insertion unless a new event asked for title focus.
+struct ResignFocusOnInsert: NSViewRepresentable {
+    let skip: () -> Bool
+    func makeNSView(context: Context) -> NSView {
+        let v = NSView()
+        for delay in [0.0, 0.03, 0.09, 0.18] {
+            after(delay) { [weak v] in
+                guard !skip(), let w = v?.window, w.firstResponder is NSText else { return }
+                w.makeFirstResponder(nil)
+            }
+        }
+        return v
+    }
+    func updateNSView(_ nsView: NSView, context: Context) {}
 }

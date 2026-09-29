@@ -17,13 +17,13 @@ enum SnapshotStates {
         switch name {
         case "week": break
         case "week-selected-event":
-            if let e = find(m, "Politik", day: 2) { m.select(eventID: e.id) }
+            if let e = find(m, "Public Policy", day: 2) { m.select(eventID: e.id) }
         case "command-menu": m.openCommandMenu()
         case "teammate-picker": m.openTeammatePicker(); m.teammateIndex = 3
         case "teammate-overlay":
             for i in [3, 0] { m.showTeammate(m.store.teammates[i]) }
         case "go-to-date": m.openGoToDate(); m.goToText = "oct 12"
-        case "search-results": m.searchText = "mathe"
+        case "search-results": m.searchText = "calculus"
         case "month": m.setMode(.month)
         case "day": m.setMode(.day)
         case "sidebar-hidden": m.sidebarVisible = false
@@ -37,7 +37,7 @@ enum SnapshotStates {
         case "settings": m.overlay = .settings
         case "light-week": m.settings.appearance = .light
         case "delete-recurring":
-            if let e = find(m, "Politik", day: 2) { m.select(eventID: e.id); m.requestDeleteSelected() }
+            if let e = find(m, "Public Policy", day: 2) { m.select(eventID: e.id); m.requestDeleteSelected() }
         case "meet-with": m.meetQuery = "ma"
         case "readonly-event":
             if let e = m.layout.allDayEvents.values.first(where: { $0.title == "Tag der Deutschen Einheit" }) { m.select(eventID: e.id) }

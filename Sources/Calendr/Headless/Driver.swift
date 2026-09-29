@@ -18,6 +18,10 @@ final class Driver {
     var pressed = false
     var popover: CGImage?
     var menuBarLabel: String?
+    /// While true, key and pointer helpers do not pump the run loop, so an animation they start is captured frame by frame by `animate`.
+    var live = false
+    /// Frames captured by the last `animate` (a check that motion really was sampled).
+    private(set) var lastAnimateFrames = 0
     private var eventNumber = 1
     private var lastFrame: CGImage?
 
@@ -44,6 +48,41 @@ final class Driver {
             lastFrame = img
             recorder.append(img, hold: max(1, Int((hold * Double(recorder.fps)).rounded())))
         }
+    }
+
+    /// Runs `body` (a key press, a click, a model call) and records `seconds` of real time while SwiftUI animates. Frames are captured
+    /// back to back and placed on the 30 fps timeline by their wall-clock timestamps, so the video plays the motion at true speed.
+    func play(_ seconds: Double, _ body: () -> Void) {
+        live = true
+        body()
+        live = false
+        animate(seconds)
+    }
+
+    func animate(_ seconds: Double) {
+        let t0 = Date()
+        guard let recorder else {
+            while Date().timeIntervalSince(t0) < seconds { RunLoop.main.run(until: Date().addingTimeInterval(0.005)) }
+            return
+        }
+        var frames: [(img: CGImage, t: Double)] = []
+        defer { lastAnimateFrames = frames.count }
+        repeat {
+            RunLoop.main.run(until: Date().addingTimeInterval(0.001))
+            win.host.layoutSubtreeIfNeeded()
+            let t = Date().timeIntervalSince(t0)
+            guard let raw = win.image(scale: 1) else { continue }
+            let o = FrameComposer.Overlay(caption: caption, keys: keyBadge, cursor: cursor, pressed: pressed, popover: popover, menuBarLabel: menuBarLabel)
+            if let img = FrameComposer.compose(window: raw, size: size, overlay: o) { frames.append((img, t)) }
+        } while Date().timeIntervalSince(t0) < seconds
+        let fps = Double(recorder.fps)
+        for (i, f) in frames.enumerated() {
+            let start = Int((f.t * fps).rounded())
+            let end = i + 1 < frames.count ? Int((frames[i + 1].t * fps).rounded()) : max(start + 1, Int((seconds * fps).rounded()))
+            recorder.append(f.img, hold: max(1, end - start))
+            lastFrame = f.img
+        }
+        settle(2)
     }
 
     func hold(_ seconds: Double) {
@@ -81,7 +120,7 @@ final class Driver {
                                      context: nil, characters: base, charactersIgnoringModifiers: k.chars, isARepeat: false, keyCode: k.code) {
             NSApp.sendEvent(up)
         }
-        settle(3)
+        if !live { settle(3) }
     }
 
     static let codes: [Character: UInt16] = ["a": 0, "s": 1, "d": 2, "f": 3, "h": 4, "g": 5, "z": 6, "x": 7, "c": 8, "v": 9, "b": 11, "q": 12, "w": 13, "e": 14, "r": 15,
@@ -162,6 +201,17 @@ final class Driver {
         settle(3); frame()
     }
 
+    /// A click whose consequences animate (selection ring, inspector sliding in): recorded in real time.
+    func clickAnimated(grid: CGPoint, clickCount: Int = 1, seconds: Double = 0.55) {
+        let p = windowPoint(fromGrid: grid)
+        moveCursor(to: p, steps: 6)
+        pressed = true
+        model.gridMouseDown(grid, clickCount: clickCount)
+        settle(2); frame()
+        pressed = false
+        play(seconds) { model.gridMouseUp(grid) }
+    }
+
     func moveCursor(to p: CGPoint, steps: Int) {
         let from = cursor ?? CGPoint(x: p.x + 80, y: p.y + 60)
         for i in 1...max(1, steps) {
@@ -184,8 +234,7 @@ final class Driver {
             model.gridMouseDragged(p)
             settle(2); frame()
         }
-        model.gridMouseUp(b)
         pressed = false
-        settle(4); frame()
+        play(0.3) { model.gridMouseUp(b) }      // the drop settles in 120 ms
     }
 }

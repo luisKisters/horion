@@ -69,6 +69,7 @@ struct ToastView: View {
 }
 
 struct PaletteFrame<Content: View>: View {
+    @Environment(AppModel.self) private var model
     let placeholder: String
     @Binding var text: String
     var width: CGFloat = 640
@@ -98,6 +99,7 @@ struct PaletteFrame<Content: View>: View {
         .overlay(RoundedRectangle(cornerRadius: Radius.surface).strokeBorder(Theme.hair, lineWidth: 1))
         .popShadow()
         .onAppear { focused = true }
+        .onChange(of: model.blurTick) { _, _ in focused = false }
     }
 }
 

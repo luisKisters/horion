@@ -8,7 +8,7 @@ No animations anywhere. No third-party packages. SwiftPM only.
 
 ```sh
 scripts/build-app.sh && open build/Calendr.app                # real calendars (asks for calendar access)
-open build/Calendr.app --args --demo                          # demo data, clock pinned to Tue Sep 29 2026 02:32
+open build/Calendr.app --args --demo                          # demo data, clock pinned to Tue Sep 29 2026 11:48
 open build/Calendr.app --args --demo --now "2026-10-12T09:00" # demo data with another pinned time
 ```
 

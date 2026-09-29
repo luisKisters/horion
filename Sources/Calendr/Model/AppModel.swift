@@ -4,6 +4,14 @@ import SwiftUI
 import Observation
 import CalendrKit
 
+/// Main-thread delayed call on a common-mode Timer. (GCD `asyncAfter` on the main queue cannot run while the headless drivers
+/// pump a nested run loop from inside a main-queue block, and a Timer also keeps firing while menus track events.)
+@MainActor
+func after(_ delay: TimeInterval, _ block: @escaping @MainActor () -> Void) {
+    let t = Timer(timeInterval: delay, repeats: false) { _ in MainActor.assumeIsolated { block() } }
+    RunLoop.main.add(t, forMode: .common)
+}
+
 enum Overlay: Equatable {
     case command, teammate, goToDate, shortcuts, settings
     case deleteRecurring(String)   // event id
@@ -56,7 +64,16 @@ final class AppModel {
     var sidebarVisible = true
     var rightPanelVisible = true
     var allDayCollapsed = false
-    var overlay: Overlay?
+    var overlay: Overlay? {
+        didSet {
+            // The palette fades out over 260 ms; its text field must not keep the keyboard meanwhile.
+            if overlay == nil && oldValue != nil {
+                // Submitting with Return re-focuses the field after the action returns, so resign now and again once the event is done.
+                resignTextFocus()
+                for d in [0.02, 0.08, 0.2, 0.3] { after(d) { [weak self] in if self?.overlay == nil { self?.resignTextFocus() } } }
+            }
+        }
+    }
     var searchText = "" { didSet { if searchText != oldValue { runSearch() } } }
     struct ToastState: Equatable { var id = UUID(); var text: String; var undo = false }
     var toast: ToastState?
@@ -391,7 +408,20 @@ final class AppModel {
         discardUntitledIfNeeded(except: eventID)
         selectedEventID = eventID
         if eventID != nil { selectedSlot = nil; rightPanelVisible = true }
-        if focusTitle && eventID != nil { titleFocusPending = true; focusTitleTick += 1 }
+        if focusTitle && eventID != nil { requestTitleFocus() }
+    }
+
+    func resignTextFocus() {
+        blurTick += 1
+        guard NSApp != nil else { return }      // unit tests run without an application object
+        for w in NSApp.windows where w.firstResponder is NSText { w.makeFirstResponder(nil) }
+    }
+
+    /// The inspector may still be sliding in when a new event is created: nudge the title field a few times, then give up.
+    func requestTitleFocus() {
+        titleFocusPending = true; focusTitleTick += 1
+        for delay in [0.03, 0.08, 0.16] { after(delay) { [weak self] in if self?.titleFocusPending == true { self?.focusTitleTick += 1 } } }
+        after(0.25) { [weak self] in self?.titleFocusPending = false }
     }
 
     func deselect() {
@@ -584,7 +614,7 @@ final class AppModel {
         let t = ToastState(text: text, undo: undo)
         toast = t
         if options.freezeClock { return }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+        after(3) { [weak self] in
             if self?.toast?.id == t.id { self?.toast = nil }
         }
     }
@@ -661,7 +691,7 @@ final class AppModel {
     func focusMeetField() { focusMeetTick += 1 }
 
     func copyLink(_ kind: String) {
-        let link = "https://calendr.example/luis/\(kind == "recurring" ? "meet" : "once-\(Int(now.timeIntervalSince1970) % 100000)")"
+        let link = "https://calendr.example/alex/\(kind == "recurring" ? "meet" : "once-\(Int(now.timeIntervalSince1970) % 100000)")"
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(link, forType: .string)
         showToast("Scheduling link copied")

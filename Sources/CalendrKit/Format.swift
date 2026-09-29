@@ -145,7 +145,7 @@ public enum TimeParser {
 
 /// Tasks are events whose title starts with "[P1]" ... "[P9]" (or "[P0?]"): the priority is shown apart from the title.
 public enum TaskTitle {
-    /// ("P1", "Daily stretch nehmen") for "[P1] Daily stretch nehmen"; (nil, title) otherwise.
+    /// ("P1", "Water the plants") for "[P1] Water the plants"; (nil, title) otherwise.
     public static func split(_ title: String) -> (priority: String?, text: String) {
         guard title.hasPrefix("[P"), let close = title.firstIndex(of: "]") else { return (nil, title) }
         let pr = String(title[title.index(after: title.startIndex)..<close])

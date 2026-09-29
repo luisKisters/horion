@@ -86,7 +86,7 @@ public enum OverlapLayout {
 
     static func cascade(_ spans: [TimeSpan]) -> [Placement] {
         // A short pill never claims the first column from a longer block it overlaps, even when it starts a few minutes
-        // earlier (reference: "morning run" 09:45 is the wide left block, "[P1] Dana" 09:40 cascades on top).
+        // earlier (showcase week: the 09:45 brunch is the wide left block, the 09:40 task cascades on top).
         let blocks = spans.filter { !$0.isPill }
         let items = spans.enumerated().map { (i, s) -> (index: Int, span: TimeSpan, end: Int, key: Int) in
             var key = s.startMinute

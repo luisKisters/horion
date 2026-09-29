@@ -1,7 +1,8 @@
 import Foundation
 import CalendrKit
 
-/// Seed data. The week of Mon Sep 28 - Sun Oct 4 2026 mirrors design/reference/1-week-view.png; other weeks
+/// Fictional seed data (Alex Rivera, a design student with a freelance studio and a part-time job at Northwind). The week of Mon Sep 28 -
+/// Sun Oct 4 2026 is the showcase week; other weeks
 /// get the same recurring rhythm plus deterministic one-off appointments so month view and search have content.
 enum DemoData {
     static let math = CalendarMath(timeZone: TimeZone(identifier: "Europe/Berlin")!)
@@ -13,45 +14,45 @@ enum DemoData {
     // MARK: Accounts
 
     static let acc1 = "acc.personal", acc2 = "acc.services", acc3 = "acc.work"
-    static let personal = "cal.personal", family = "cal.family", tasks = "cal.tasks", school = "cal.school"
+    static let personal = "cal.personal", family = "cal.family", tasks = "cal.tasks", study = "cal.study"
     static let feiertage = "cal.feiertage", holidays = "cal.holidays", ferien = "cal.ferien"
     static let services = "cal.services", svcFeiertage = "cal.svc.feiertage", svcHolidays = "cal.svc.holidays", svcItaly = "cal.svc.italy"
     static let work = "cal.work", workHolidays = "cal.work.holidays"
 
     static let accounts: [CalendarAccount] = [
-        CalendarAccount(id: acc1, name: "alex.rivera@example.com", calendars: [
+        CalendarAccount(id: acc1, name: "alex.rivera@mail.example.com", calendars: [
             CalendarInfo(id: personal, accountID: acc1, title: "Personal", colorHex: "#6F97F0", isDefault: true),
             CalendarInfo(id: family, accountID: acc1, title: "Family", colorHex: "#EF8452"),
             CalendarInfo(id: tasks, accountID: acc1, title: "Tasks", colorHex: "#B9B6C9"),
-            CalendarInfo(id: school, accountID: acc1, title: "School Board", colorHex: "#F1C55D"),
+            CalendarInfo(id: study, accountID: acc1, title: "Study Group", colorHex: "#F1C55D"),
             CalendarInfo(id: feiertage, accountID: acc1, title: "Feiertage in Deutschland", colorHex: "#DD6FAE", icon: .feed, isWritable: false),
             CalendarInfo(id: holidays, accountID: acc1, title: "Holidays in Germany", colorHex: "#80CF93", icon: .feed, isWritable: false),
             CalendarInfo(id: ferien, accountID: acc1, title: "Ferien Berlin", colorHex: "#80CF93", icon: .feed, isWritable: false),
         ]),
-        CalendarAccount(id: acc2, name: "alex.work@example.com", calendars: [
-            CalendarInfo(id: services, accountID: acc2, title: "alex.work@example.com", colorHex: "#69A9DD"),
+        CalendarAccount(id: acc2, name: "alex.rivera.studio@mail.example.com", calendars: [
+            CalendarInfo(id: services, accountID: acc2, title: "alex.rivera.studio@mail.example.com", colorHex: "#69A9DD"),
             CalendarInfo(id: svcFeiertage, accountID: acc2, title: "Feiertage in Deutschland", colorHex: "#80CF93", icon: .feed, isVisibleByDefault: false, isWritable: false),
             CalendarInfo(id: svcHolidays, accountID: acc2, title: "Holidays in Germany", colorHex: "#80CF93", icon: .feed, isVisibleByDefault: false, isWritable: false),
             CalendarInfo(id: svcItaly, accountID: acc2, title: "Holidays in Italy", colorHex: "#80CF93", icon: .feed, isVisibleByDefault: false, isWritable: false),
         ]),
-        CalendarAccount(id: acc3, name: "alex@northwind.example.com", calendars: [
-            CalendarInfo(id: work, accountID: acc3, title: "alex@northwind.example.com", colorHex: "#F1C55D"),
+        CalendarAccount(id: acc3, name: "alex.rivera@northwind.example.com", calendars: [
+            CalendarInfo(id: work, accountID: acc3, title: "alex.rivera@northwind.example.com", colorHex: "#F1C55D"),
             CalendarInfo(id: workHolidays, accountID: acc3, title: "Holidays in Germany", colorHex: "#80CF93", icon: .feed, isWritable: false),
         ]),
     ]
 
     static let teammates: [Teammate] = [
-        Teammate(name: "Sam Lee", email: "sam.lee@northwind.example.com"),
-        Teammate(name: "Board Admin", email: "board@northwind.example.com"),
-        Teammate(name: "IT Department", email: "noreply@northwind.example.com"),
-        Teammate(name: "Max Mustermann", email: "test1@northwind.example.com"),
-        Teammate(name: "Tine Tester", email: "test2@northwind.example.com"),
-        Teammate(name: "Jordan Kim", email: "jordan.kim@northwind.example.com"),
-        Teammate(name: "Billing Test", email: "billing-test@northwind.example.com"),
-        Teammate(name: "Billing", email: "billing@northwind.example.com"),
-        Teammate(name: "Taylor Reed", email: "taylor.reed@northwind.example.com"),
-        Teammate(name: "Casey Morgan", email: "social@northwind.example.com"),
-        Teammate(name: "Chapter Berlin", email: "berlin@northwind.example.com"),
+        Teammate(name: "Mateo Alvarez", email: "mateo.alvarez@northwind.example.com"),
+        Teammate(name: "Chair Office", email: "chair.office@northwind.example.com"),
+        Teammate(name: "IT Department", email: "it@northwind.example.com"),
+        Teammate(name: "Maya Sterling", email: "maya.sterling@northwind.example.com"),
+        Teammate(name: "Tina Tester", email: "tina.tester@northwind.example.com"),
+        Teammate(name: "Lucas Marlowe", email: "lucas.marlowe@northwind.example.com"),
+        Teammate(name: "Payments Test", email: "payments.test@northwind.example.com"),
+        Teammate(name: "Payments", email: "payments@northwind.example.com"),
+        Teammate(name: "Tom Fielding", email: "tom.fielding@northwind.example.com"),
+        Teammate(name: "Social Media Team", email: "social@northwind.example.com"),
+        Teammate(name: "Berlin Chapter", email: "berlin@northwind.example.com"),
     ]
 
     // MARK: Helpers
@@ -76,38 +77,38 @@ enum DemoData {
     }
 
     static let schoolUntil = day(7, 9, year: 2027)
-    static let classNotes = "Room 2.04, second floor."
-    static let schoolLocation = "City School,\nMain St. 1, 10115 Berlin"
+    static let policyNotes = "Bring laptop. Seminar room on the 2nd floor."
+    static let studyLocation = "Halden College, North Campus,\n12 Example Street, 10115 Berlin"
 
     static func school(_ t: String, _ wd: [Int], _ s: String, _ e: String) -> Series {
-        Series(title: t, calendar: personal, weekdays: wd, start: s, end: e, location: schoolLocation, notes: t == "Politik" ? classNotes : "", until: schoolUntil, skipHolidays: true, reminder: 1)
+        Series(title: t, calendar: personal, weekdays: wd, start: s, end: e, location: studyLocation, notes: t == "Public Policy" ? policyNotes : "", until: schoolUntil, skipHolidays: true, reminder: 1)
     }
 
     // Calendar weekdays: Sun=1 Mon=2 Tue=3 Wed=4 Thu=5 Fri=6 Sat=7
     static var series: [Series] {
         let all = [2, 3, 4, 5, 6, 7, 1]
         return [
-            school("Englisch", [2, 5], "08:00", "09:45"),
-            school("Spanisch", [3, 6], "08:00", "09:45"),
-            school("Biologie", [2], "14:35", "16:10"),
-            school("Biologie", [3], "10:10", "11:50"),
-            school("Kunst", [2, 5], "16:15", "17:50"),
-            school("Mathe", [3], "12:00", "13:40"),
-            school("Mathe", [5], "10:10", "11:50"),
-            school("Politik", [3], "16:15", "17:50"),
-            school("Politik", [4], "10:10", "11:50"),
-            school("Deutsch", [4], "12:55", "14:30"),
-            school("Deutsch", [5], "14:35", "16:10"),
-            school("Geschichte", [4, 6], "14:35", "16:10"),
-            school("Englisch", [6], "12:00", "13:40"),
-            Series(title: "Ben / Alex", calendar: personal, weekdays: [3], start: "14:00", end: "15:00"),
-            Series(title: "Coaching", calendar: personal, weekdays: [5], start: "13:00", end: "14:00"),
-            Series(title: "Mia / Alex", calendar: personal, weekdays: [2, 3, 5, 6, 7, 1], start: "22:00", end: "22:30"),
+            school("Statistics", [2, 5], "08:00", "09:45"),
+            school("Data Structures", [3, 6], "08:00", "09:45"),
+            school("Chemistry Lab", [2], "14:35", "16:10"),
+            school("Genetics", [3], "10:10", "11:50"),
+            school("Studio Art", [2, 5], "16:15", "17:50"),
+            school("Calculus", [3], "12:00", "13:40"),
+            school("Calculus", [5], "10:10", "11:50"),
+            school("Public Policy", [3], "16:15", "17:50"),
+            school("Public Policy", [4], "10:10", "11:50"),
+            school("Composition", [4], "12:55", "14:30"),
+            school("Composition", [5], "14:35", "16:10"),
+            school("World History", [4, 6], "14:35", "16:10"),
+            school("Statistics", [6], "12:00", "13:40"),
+            Series(title: "Sam / Alex", calendar: personal, weekdays: [3], start: "14:00", end: "15:00"),
+            Series(title: "Piano lesson", calendar: personal, weekdays: [5], start: "13:00", end: "14:00"),
+            Series(title: "Call with Jamie", calendar: personal, weekdays: [2, 3, 5, 6, 7, 1], start: "22:00", end: "22:30"),
             Series(title: "Meal Prep", calendar: tasks, weekdays: [2, 3, 4, 5, 6], start: "07:30", end: "07:45", kind: .task),
-            Series(title: "Sportzeug", calendar: tasks, weekdays: [3, 4, 6], start: "07:30", end: "07:45", kind: .task),
-            Series(title: "[P1] Daily stretch until done", calendar: tasks, weekdays: all, start: "18:00", end: "18:15", kind: .task),
-            Series(title: "Water the plants", calendar: tasks, weekdays: all, start: "22:49", end: "23:00", kind: .task),
-            Series(title: "[P0] Evening review, 10 minutes", calendar: tasks, weekdays: all, start: "23:00", end: "23:15", kind: .task),
+            Series(title: "Gym bag", calendar: tasks, weekdays: [3, 4, 6], start: "07:30", end: "07:45", kind: .task),
+            Series(title: "[P1] Water the plants - every day until done", calendar: tasks, weekdays: all, start: "18:00", end: "18:15", kind: .task),
+            Series(title: "Evening journal", calendar: tasks, weekdays: all, start: "22:49", end: "23:00", kind: .task),
+            Series(title: "[P0] Stretch for ten minutes", calendar: tasks, weekdays: all, start: "23:00", end: "23:15", kind: .task),
         ]
     }
 
@@ -183,48 +184,48 @@ enum DemoData {
         CalendarEvent(id: "ref.\(id)", calendarID: cal, title: title, start: from, end: math.addDays(from, days), isAllDay: true, kind: kind, notes: notes)
     }
 
-    static let green = "#EF8452"      // orange override tint (mockup v2: run, Dad <> Son, ...)
+    static let green = "#EF8452"      // orange override tint (mockup v2: brunch, dinner with Dad, ...)
     static let brown: String? = nil
 
     static func referenceWeekOneOffs() -> [CalendarEvent] {
         let mon = refWeekStart, tue = day(9, 29), wed = day(9, 30), thu = day(10, 1), fri = day(10, 2), sat = day(10, 3), sun = day(10, 4)
         return [
-            allDay("bei-stabilem", tasks, "[P1] Bei stabilem Internet...", mon, kind: .task),
-            ev("bikeshop", tasks, "[P2] Call the bike shop", mon, "09:00", "09:15", kind: .task),
-            ev("zahnarzt", tasks, "[P3] Call the library", mon, "10:00", "10:15", kind: .task),
-            ev("dad-son", personal, "Dad <> Son", mon, "18:00", "19:00", color: green),
-            ev("chris", tasks, "[P1] Ask Chris: confirm the date", mon, "20:00", "20:15", kind: .task),
-            ev("bouldern-fam", tasks, "[P0] Plan climbing + family dinner", mon, "20:10", "20:25", kind: .task),
-            ev("fn", personal, "Fn?", mon, "21:00", "22:00"),
-            ev("cousin", tasks, "[P2] Call cousin", mon, "21:40", "21:55", kind: .task),
+            allDay("domain", tasks, "[P1] Renew domain when online...", mon, kind: .task),
+            ev("landlord", tasks, "[P2] Call the landlord about heating", mon, "09:00", "09:15", kind: .task),
+            ev("car-service", tasks, "[P3] Book the car service", mon, "10:00", "10:15", kind: .task),
+            ev("dinner-dad", personal, "Dinner with Dad", mon, "18:00", "19:00", color: green),
+            ev("roadmap", tasks, "[P1] Ask Sam: confirm roadmap slot", mon, "20:00", "20:15", kind: .task),
+            ev("climb-plan", tasks, "[P0] Plan climbing + family dinner", mon, "20:10", "20:25", kind: .task),
+            ev("hold", personal, "Hold: workshop", mon, "21:00", "22:00"),
+            ev("riley", tasks, "[P2] Call cousin Riley", mon, "21:40", "21:55", kind: .task),
 
-            ev("friseur", tasks, "[P1] Friseurtermin machen", tue, "16:00", "16:15", kind: .task),
-            ev("mia-chat", tasks, "[P1] Ask Mia when we meet next", tue, "20:00", "20:15", kind: .task),
+            ev("haircut", tasks, "[P1] Book a haircut", tue, "16:00", "16:15", kind: .task),
+            ev("weekend-trip", tasks, "[P1] Plan the weekend trip with Jamie", tue, "20:00", "20:15", kind: .task),
 
-            allDay("halbjaehriges", personal, "Halbjähriges", wed),
-            ev("mia-halbjahr", personal, "WRITE MIA ABOUT ANNIVERSARY", wed, "07:30", "08:00"),
-            CalendarEvent(id: "ref.bouldern", calendarID: personal, title: "Bouldern", start: at(wed, "16:30"), end: at(wed, "18:30"), status: .declined),
-            ev("familienessen", personal, "Familienessen", wed, "16:30", "18:30", color: green),
-            ev("mia-alex-wed", personal, "Mia /  Alex", wed, "19:00", "22:30"),
+            allDay("half-year", personal, "Half-year review", wed),
+            ev("half-year-notes", personal, "SEND HALF-YEAR NOTES", wed, "07:30", "08:00"),
+            CalendarEvent(id: "ref.climbing", calendarID: personal, title: "Climbing", start: at(wed, "16:30"), end: at(wed, "18:30"), status: .declined),
+            ev("family-dinner", personal, "Family dinner", wed, "16:30", "18:30", color: green),
+            ev("game-night", personal, "Board game night", wed, "19:00", "22:30"),
 
-            ev("wg-cleaning", personal, "Flat cleaning", thu, "18:00", "19:00"),
-            ev("grants", school, "How to grants", thu, "19:00", "19:30", status: .tentative),
-            ev("oet", school, "ÖT Meeting", thu, "19:00", "20:00"),
-            ev("donnerstag", school, "Donnerstagmeeting", thu, "20:00", "21:30"),
+            ev("flat-cleaning", personal, "Flat Cleaning Time", thu, "18:00", "19:00"),
+            ev("grants", study, "How to GRANTS", thu, "19:00", "19:30", status: .tentative),
+            ev("ops", study, "Ops Meeting", thu, "19:00", "20:00"),
+            ev("thursday", study, "Thursday sync", thu, "20:00", "21:30"),
 
-            allDay("at", personal, "Maybe (see desc)", fri, days: 3, notes: "eher nicht"),
-            allDay("noah", personal, "Noah away", fri, days: 3),
-            allDay("subscription", tasks, "[P3] Renew subscription...", fri, kind: .task),
-            ev("form", tasks, "[P2] Fill in the form", fri, "16:00", "16:15", kind: .task),
+            allDay("offsite", personal, "OFFSITE?? (maybe, see desc)", fri, days: 3, notes: "maybe, see the invite"),
+            allDay("sam-away", personal, "Sam away", fri, days: 3),
+            allDay("saas", tasks, "[P3] Renew SaaS plan 249,90 E...", fri, kind: .task),
+            ev("taxform", tasks, "[P2] Fill in the tax form", fri, "16:00", "16:15", kind: .task),
 
-            allDay("a-lena", personal, "Lena birthday", sat),
-            ev("lena-gratu", tasks, "Wish Lena a happy birthday", sat, "09:00", "09:15", kind: .task),
-            ev("book", tasks, "[P3] Return the library book", sat, "18:00", "18:15", kind: .task),
+            allDay("a-casey", personal, "Casey's birthday", sat),
+            ev("casey-wishes", tasks, "Congratulate Casey", sat, "09:00", "09:15", kind: .task),
+            ev("library", tasks, "[P3] Return the library book", sat, "18:00", "18:15", kind: .task),
 
-            ev("run", personal, "morning run", sun, "09:45", "11:30", status: .tentative, color: green),
-            ev("dana", tasks, "[P1] Text Dana", sun, "09:40", "09:55", kind: .task),
-            ev("tickticks", tasks, "[P0?] Sunday calendar review", sun, "17:15", "17:30", kind: .task),
-            ev("schnacken", personal, "Flat game night", sun, "19:00", "20:00", color: green),
+            ev("brunch", personal, "Farmers market + brunch", sun, "09:45", "11:30", status: .tentative, color: green),
+            ev("dana", tasks, "[P1] Reply to Dana", sun, "09:40", "09:55", kind: .task),
+            ev("weekly-review", tasks, "[P0?] Sundays: weekly review", sun, "17:15", "17:30", kind: .task),
+            ev("game-night-sun", personal, "Flat game night", sun, "19:00", "20:00", color: green),
         ]
     }
 
@@ -232,18 +233,18 @@ enum DemoData {
     static func filler() -> [CalendarEvent] {
         struct Item { var title: String; var cal: String; var start: String; var mins: Int; var location = "" }
         let items: [Item] = [
-            Item(title: "Zahnarzt", cal: personal, start: "09:30", mins: 45, location: "Clinic, Berlin"),
-            Item(title: "Friseur", cal: personal, start: "15:00", mins: 60),
+            Item(title: "Bike repair", cal: personal, start: "09:30", mins: 45, location: "Velo Werkstatt, Berlin"),
+            Item(title: "Haircut", cal: personal, start: "15:00", mins: 60),
             Item(title: "Sprint Planning", cal: work, start: "10:00", mins: 90),
-            Item(title: "Bouldern", cal: personal, start: "19:30", mins: 120, location: "Boulderklub Kreuzberg"),
-            Item(title: "Call with Ben", cal: personal, start: "17:00", mins: 30),
-            Item(title: "Vorstandssitzung", cal: work, start: "18:30", mins: 120),
-            Item(title: "Familienessen", cal: family, start: "18:00", mins: 150, location: "Zuhause"),
-            Item(title: "Elternabend", cal: school, start: "19:00", mins: 120, location: "City School"),
-            Item(title: "Movie with Mia", cal: personal, start: "20:15", mins: 130, location: "Babylon Kino"),
-            Item(title: "Steuerberater", cal: services, start: "11:00", mins: 60),
-            Item(title: "Lauftraining", cal: personal, start: "07:00", mins: 60),
-            Item(title: "Team Meetup", cal: work, start: "19:30", mins: 150),
+            Item(title: "Climbing", cal: personal, start: "19:30", mins: 120, location: "Climbing Hall Example"),
+            Item(title: "Call with Sam", cal: personal, start: "17:00", mins: 30),
+            Item(title: "Board meeting", cal: work, start: "18:30", mins: 120),
+            Item(title: "Family dinner", cal: family, start: "18:00", mins: 150, location: "Zuhause"),
+            Item(title: "Study session", cal: study, start: "19:00", mins: 120, location: "Halden College, Library"),
+            Item(title: "Cinema with Jamie", cal: personal, start: "20:15", mins: 130, location: "Cinema Example"),
+            Item(title: "Tax advisor", cal: services, start: "11:00", mins: 60),
+            Item(title: "Running club", cal: personal, start: "07:00", mins: 60),
+            Item(title: "Berlin Chapter Meetup", cal: work, start: "19:30", mins: 150),
         ]
         var out: [CalendarEvent] = []
         var seed: UInt64 = 42
@@ -265,7 +266,7 @@ enum DemoData {
             if rnd(3) == 0 {
                 i += 1
                 let d = math.addDays(week, rnd(7))
-                out.append(CalendarEvent(id: "fill.\(i)", calendarID: personal, title: ["Grandma birthday", "Ella birthday", "Konzert Tempodrom", "Flug nach Rom", "Umzug Helfer"][rnd(5)],
+                out.append(CalendarEvent(id: "fill.\(i)", calendarID: personal, title: ["Birthday: Casey", "Birthday: Jordan", "Concert Tempodrom", "Flight to Rome", "Moving day"][rnd(5)],
                                          start: d, end: math.addDays(d, 1), isAllDay: true))
             }
         }
@@ -290,9 +291,9 @@ enum DemoData {
         while week < generateTo {
             defer { week = math.addDays(week, 14) }
             i += 1
-            out.append(CalendarEvent(id: "svc.\(i)", calendarID: services, title: "Rechnungen prüfen", start: at(math.addDays(week, 1), "14:00"), end: at(math.addDays(week, 1), "15:00")))
-            out.append(CalendarEvent(id: "work.\(i)", calendarID: work, title: "Team Weekly", start: at(math.addDays(week, 2), "17:00"), end: at(math.addDays(week, 2), "18:00"),
-                                     recurrence: Recurrence(frequency: .weekly, interval: 2), participants: ["sam.lee@northwind.example.com"]))
+            out.append(CalendarEvent(id: "svc.\(i)", calendarID: services, title: "Review invoices", start: at(math.addDays(week, 1), "14:00"), end: at(math.addDays(week, 1), "15:00")))
+            out.append(CalendarEvent(id: "work.\(i)", calendarID: work, title: "Northwind Weekly", start: at(math.addDays(week, 2), "17:00"), end: at(math.addDays(week, 2), "18:00"),
+                                     recurrence: Recurrence(frequency: .weekly, interval: 2), participants: ["mateo.alvarez@northwind.example.com"]))
         }
         return out
     }
@@ -300,7 +301,7 @@ enum DemoData {
     // MARK: Teammates
 
     static func teammateEvents() -> [CalendarEvent] {
-        let titles = ["Standup", "1:1", "Planung", "Review", "Workshop", "Mittagspause", "Kundencall", "Design Sync", "Retro", "Fokuszeit"]
+        let titles = ["Standup", "1:1", "Planning", "Review", "Workshop", "Lunch", "Client call", "Design sync", "Retro", "Focus time"]
         var out: [CalendarEvent] = []
         for (ti, t) in teammates.enumerated() {
             var seed = UInt64(ti + 7) &* 2654435761
@@ -328,7 +329,7 @@ enum DemoData {
         var out: [CalendarEvent] = []
         var seed: UInt64 = 99
         func rnd(_ n: Int) -> Int { seed = seed &* 6364136223846793005 &+ 1442695040888963407; return Int((seed >> 33) % UInt64(n)) }
-        let cals = [personal, family, tasks, school, services, work]
+        let cals = [personal, family, tasks, study, services, work]
         var week = math.addDays(math.startOfWeek(day(9, 28)), -60 * 7)
         for w in 0..<120 {
             for k in 0..<300 {
