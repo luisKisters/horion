@@ -564,7 +564,7 @@ final class AppModel {
         case .toggleSidebar: toggleSidebar()
         case .toggleRightPanel: toggleRightPanel()
         case .settings: overlay = .settings
-        case .menuBarCalendar: showToast("Menu bar calendar: click the menu bar item")
+        case .menuBarCalendar: if !MenuBarControl.open() { showToast("Menu bar calendar: click the menu bar item") }
         case .mainWindow: NSApp.activate(ignoringOtherApps: true)
         case .focusSearch: rightPanelVisible = true; selectedEventID = nil; focusSearchTick += 1
         case .undo: undo()

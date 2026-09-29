@@ -34,6 +34,10 @@ struct MenuBarPopover: View {
 
     var body: some View {
         let s = model.upcoming
+        // A MenuBarExtra window sizes itself from ideal sizes, and a ScrollView has none: give it its content height, capped to the screen.
+        let rows = (s.next != nil ? 2 : 1) + 1 + s.sections.reduce(0) { $0 + 1 + $1.events.count }
+        let maxScroll = (NSScreen.main?.visibleFrame.height ?? 900) - 130
+        let scrollHeight = min(CGFloat(rows) * 24 + 6, maxScroll)
         VStack(spacing: 0) {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
@@ -51,6 +55,7 @@ struct MenuBarPopover: View {
                 }
                 .padding(.top, 6)
             }
+            .frame(height: scrollHeight)
             Rectangle().fill(Color.dyn("#2f2f2f", "#e3e3e1")).frame(height: 1).padding(.horizontal, 16).padding(.vertical, 6)
             PopFooter(title: "Open Calendr", shortcut: "\u{2318} 1") { show() }
             PopFooter(title: "Settings\u{2026}", shortcut: "\u{2318} ,") { show(); model.handle(.settings) }
@@ -58,7 +63,6 @@ struct MenuBarPopover: View {
         }
         .padding(.bottom, 2)
         .frame(width: 455)
-        .frame(maxHeight: 760)
         .background(Theme.pop)
         .onAppear { MainWindow.openAction = { openWindow(id: "main") } }
     }
@@ -137,5 +141,22 @@ struct PopFooter: View {
             .background(hover ? Color.dyn("#2a2a2a", "#ececea") : Color.clear)
             .contentShape(Rectangle())
         }.buttonStyle(.plain).onHover { hover = $0 }
+    }
+}
+
+/// SwiftUI has no API to open a MenuBarExtra window, so control-cmd-K clicks its status item button.
+@MainActor
+enum MenuBarControl {
+    static func open() -> Bool {
+        for w in NSApp.windows where String(describing: type(of: w)).contains("StatusBar") {
+            if let b = findButton(in: w.contentView) { b.performClick(nil); return true }
+        }
+        return false
+    }
+    private static func findButton(in v: NSView?) -> NSButton? {
+        guard let v else { return nil }
+        if let b = v as? NSButton { return b }
+        for s in v.subviews { if let b = findButton(in: s) { return b } }
+        return nil
     }
 }

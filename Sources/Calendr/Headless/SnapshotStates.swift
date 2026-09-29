@@ -6,7 +6,7 @@ import CalendrKit
 enum SnapshotStates {
     static let all = ["week", "week-selected-event", "command-menu", "teammate-picker", "teammate-overlay", "go-to-date", "search-results",
                       "month", "day", "menubar-popover", "sidebar-hidden", "all-day-collapsed", "create-drag", "shortcuts-sheet",
-                      "settings", "light-week", "delete-recurring", "meet-with"]
+                      "settings", "light-week", "delete-recurring", "meet-with", "readonly-event", "access-prompt", "month-light"]
 
     static func find(_ m: AppModel, _ title: String, day: Int) -> CalendarEvent? {
         m.layout.timed[day].first { $0.event.title == title }?.event
@@ -39,6 +39,10 @@ enum SnapshotStates {
         case "delete-recurring":
             if let e = find(m, "Politik", day: 2) { m.select(eventID: e.id); m.requestDeleteSelected() }
         case "meet-with": m.meetQuery = "ma"
+        case "readonly-event":
+            if let e = m.layout.allDayEvents.values.first(where: { $0.title == "Tag der Deutschen Einheit" }) { m.select(eventID: e.id) }
+        case "access-prompt": break
+        case "month-light": m.setMode(.month); m.settings.appearance = .light
         default: return false
         }
         return true

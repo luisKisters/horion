@@ -51,6 +51,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         MainActor.assumeIsolated {
             KeyRouter.shared.install(model: AppContext.model)
             if launchOptions.demo { NSApp.activate(ignoringOtherApps: true) }
+            if CommandLine.arguments.contains("--open-menubar") {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) { _ = MenuBarControl.open() }
+            }
         }
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }

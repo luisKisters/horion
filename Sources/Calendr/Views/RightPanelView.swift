@@ -248,16 +248,16 @@ struct Section1: View {
                                 ev.start = model.math.date(on: ev.start, minutes: m); ev.end = ev.start.addingTimeInterval(dur)
                             }
                         }.frame(width: 75, alignment: .leading)
-                        SFIcon(name: "arrow.right", size: 13).padding(.trailing, 26)
                         TimeField(minutes: model.math.minutesSinceMidnight(e.end), fmt: fmt, writable: writable) { m in
                             model.updateSelected { ev in
                                 var end = model.math.date(on: ev.end, minutes: m)
                                 if end <= ev.start { end = ev.start.addingTimeInterval(15 * 60) }
                                 ev.end = end
                             }
-                        }.frame(width: 42, alignment: .leading)
+                        }.frame(width: 42, alignment: .leading).padding(.leading, 26)
                         Text(DurationText.minutes(e.durationMinutes)).font(.mono(14)).foregroundStyle(Theme.t2).padding(.leading, 5)
                     }
+                    .overlay(alignment: .leading) { SFIcon(name: "arrow.right", size: 13).offset(x: 75) }
                 }
             }.padding(.leading, 0)
             InspectorRow {
@@ -351,7 +351,7 @@ struct Section2: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             InspectorRow(icon: "person", muted: true) {
-                TextField("Participants", text: $newParticipant)
+                TextField("", text: $newParticipant, prompt: Text("Participants").foregroundStyle(Theme.t3))
                     .textFieldStyle(.plain).font(.ui(14)).foregroundStyle(Theme.t1)
                     .disabled(!writable || !model.store.canEditParticipants)
                     .onSubmit {
@@ -373,7 +373,7 @@ struct Section2: View {
                 Text("Attendees are read-only (EventKit cannot edit them).").font(.ui(11)).foregroundStyle(Theme.t3).padding(.leading, 41).padding(.bottom, 4)
             }
             InspectorRow(icon: "video", muted: true) {
-                TextField("Conferencing", text: Binding(get: { model.selectedEvent?.conferencing ?? "" }, set: { v in model.updateSelected { $0.conferencing = v } }))
+                TextField("", text: Binding(get: { model.selectedEvent?.conferencing ?? "" }, set: { v in model.updateSelected { $0.conferencing = v } }), prompt: Text("Conferencing").foregroundStyle(Theme.t3))
                     .textFieldStyle(.plain).font(.ui(14)).foregroundStyle(Theme.t1).disabled(!writable)
             }
             InspectorRow(icon: "waveform.and.mic", muted: true) { Text("Add AI meeting notes").font(.ui(14)).foregroundStyle(Theme.t3) }
@@ -392,13 +392,13 @@ struct LocationRow: View {
         ZStack(alignment: .topLeading) {
             Button { model.openInMaps(e.location) } label: {
                 SFIcon(name: "mappin.and.ellipse", size: 14, color: e.location.isEmpty ? Theme.t3 : Theme.t2).frame(width: 18)
-            }.buttonStyle(.plain).padding(.leading, 15).padding(.top, 7)
-            TextField("Add location", text: Binding(get: { model.selectedEvent?.location ?? "" }, set: { v in model.updateSelected { $0.location = v } }), axis: .vertical)
+            }.buttonStyle(.plain).padding(.leading, 15).padding(.top, e.location.isEmpty ? 7 : 13)
+            TextField("", text: Binding(get: { model.selectedEvent?.location ?? "" }, set: { v in model.updateSelected { $0.location = v } }), prompt: Text("Add location").foregroundStyle(Theme.t3), axis: .vertical)
                 .textFieldStyle(.plain).font(.ui(14)).foregroundStyle(Theme.t1).lineSpacing(0)
                 .lineLimit(1...4).disabled(!writable)
-                .padding(.leading, 41).padding(.trailing, 12).padding(.top, 7).padding(.bottom, 7)
+                .padding(.leading, 41).padding(.trailing, 12).padding(.top, e.location.isEmpty ? 7 : 6).padding(.bottom, e.location.isEmpty ? 7 : 6)
         }
-        .frame(minHeight: 32, alignment: .topLeading)
+        .frame(minHeight: e.location.isEmpty ? 32 : 48, alignment: .topLeading)
     }
 }
 
@@ -407,7 +407,7 @@ struct Description: View {
     let e: CalendarEvent
     let writable: Bool
     var body: some View {
-        TextField("Add description", text: Binding(get: { model.selectedEvent?.notes ?? "" }, set: { v in model.updateSelected { $0.notes = v } }), axis: .vertical)
+        TextField("", text: Binding(get: { model.selectedEvent?.notes ?? "" }, set: { v in model.updateSelected { $0.notes = v } }), prompt: Text("Add description").foregroundStyle(Theme.t3), axis: .vertical)
             .textFieldStyle(.plain).font(.ui(14)).foregroundStyle(Theme.t1).lineLimit(2...10).lineSpacing(2)
             .disabled(!writable)
             .padding(.horizontal, 15).padding(.top, 13).frame(minHeight: 82, alignment: .topLeading)

@@ -10,7 +10,7 @@ struct CenterView: View {
             Text(model.headerTitle)
                 .font(.ui(22, .semibold)).foregroundStyle(Theme.t1)
                 .frame(maxWidth: .infinity, minHeight: 36, maxHeight: 36, alignment: .leading)
-                .padding(.leading, 20).padding(.top, 2).padding(.bottom, -2)
+                .padding(.leading, 20).padding(.top, 3).padding(.bottom, -3)
                 .frame(height: 36, alignment: .topLeading)
             if model.viewMode == .month {
                 MonthView()
@@ -134,11 +134,13 @@ struct AllDayView: View {
         let collapsed = model.allDayCollapsed
         let collapsedResult = model.layout.allDay.collapsed(maxLanes: 1)
         let rows = max(1, collapsed ? (lanes > 1 ? 2 : 1) : lanes)
-        let height = CGFloat(rows) * 21 + 3
+        let total = CGFloat(rows) * 21 + 3          // box height incl. both 1pt borders (108 for five lanes)
+        let height = total - 2
         HStack(spacing: 0) {
             ZStack(alignment: .topLeading) {
-                IconButton(name: collapsed ? "chevron.up.chevron.down" : "chevron.up", size: 10, box: 16) { model.allDayCollapsed.toggle() }
-                    .offset(x: 52, y: 3)
+                Button { model.allDayCollapsed.toggle() } label: {
+                    ChevronPair(outward: collapsed).stroke(Theme.t2, style: StrokeStyle(lineWidth: 1.4, lineCap: .round, lineJoin: .round)).frame(width: 16, height: 16)
+                }.buttonStyle(.plain).offset(x: 52, y: 3)
             }.frame(width: Theme.gutterWidth, height: height, alignment: .topLeading)
             GeometryReader { geo in
                 let dw = geo.size.width / CGFloat(n)
@@ -172,7 +174,8 @@ struct AllDayView: View {
                 }
             }.frame(height: height)
         }
-        .frame(height: height + 2)
+        .padding(.top, 1).padding(.bottom, 1)
+        .frame(height: total)
         .overlay(alignment: .top) { Rectangle().fill(Theme.line).frame(height: 1) }
         .overlay(alignment: .bottom) { Rectangle().fill(Theme.line).frame(height: 1) }
     }
@@ -266,5 +269,23 @@ struct MonthChip: View {
         .clipShape(RoundedRectangle(cornerRadius: 5))
         .overlay { if declined { RoundedRectangle(cornerRadius: 5).strokeBorder(Theme.declinedRed, style: StrokeStyle(lineWidth: 1, dash: [3, 2])) } }
         .brightness(st.selected ? 0.13 : 0)
+    }
+}
+
+/// The all-day collapse/expand glyph from the mockup: two chevrons pointing at each other (collapse) or apart (expand).
+struct ChevronPair: Shape {
+    var outward: Bool
+    func path(in r: CGRect) -> Path {
+        var p = Path()
+        let s = r.width / 24
+        func pt(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: r.minX + x * s, y: r.minY + y * s) }
+        if outward {   // expand: top chevron up, bottom chevron down
+            p.move(to: pt(8, 9)); p.addLine(to: pt(12, 5)); p.addLine(to: pt(16, 9))
+            p.move(to: pt(8, 15)); p.addLine(to: pt(12, 19)); p.addLine(to: pt(16, 15))
+        } else {       // collapse: top chevron down, bottom chevron up
+            p.move(to: pt(8, 4.5)); p.addLine(to: pt(12, 8.5)); p.addLine(to: pt(16, 4.5))
+            p.move(to: pt(8, 19.5)); p.addLine(to: pt(12, 15.5)); p.addLine(to: pt(16, 19.5))
+        }
+        return p
     }
 }

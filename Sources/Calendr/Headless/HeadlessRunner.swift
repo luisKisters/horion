@@ -29,7 +29,7 @@ enum HeadlessRunner {
     }
 
     static func runSnapshot(_ state: String, _ o: LaunchOptions) -> Int32 {
-        let model = makeModel(o)
+        let model = state == "access-prompt" ? AppModel(store: DemoStore(authorization: .notDetermined), options: o, persist: false) : makeModel(o)
         guard let out = o.out else { print("--snapshot needs --out"); return 2 }
         KeyRouter.shared.install(model: model)
         if state == "menubar-popover" {
@@ -44,7 +44,7 @@ enum HeadlessRunner {
         w.settle(6)
         model.gridGeometry = model.gridGeometry
         guard SnapshotStates.apply(state, to: model) else { print("unknown state \(state)"); return 2 }
-        if state == "light-week" { w.setDark(false) }
+        if state == "light-week" || state == "month-light" { w.setDark(false) }
         w.settle(8)
         let ok = w.writePNG(to: out, scale: o.scale)
         print(ok ? "wrote \(out)" : "failed \(out)")

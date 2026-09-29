@@ -4,3 +4,6 @@ build/
 node_modules/
 artifacts/tmp/
 artifacts/*.mp4
+
+artifacts/compare/
+artifacts/frames/

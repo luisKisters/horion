@@ -65,6 +65,7 @@ struct SidebarView: View {
                     Circle().fill(Theme.red).frame(width: 6, height: 6).offset(x: -3, y: 3)
                 }
                 .frame(width: 30, height: 30)
+                .background(Circle().fill(Theme.side))
                 .contentShape(Rectangle())
                 .onTapGesture { model.handle(.showShortcuts) }
                 .padding(.leading, 8).padding(.bottom, 9)

@@ -6,7 +6,7 @@ import CalendrKit
 final class DemoStore: CalendarStore {
     private(set) var accounts: [CalendarAccount] = DemoData.accounts
     let teammates: [Teammate] = DemoData.teammates
-    let authorization: StoreAuthorization = .authorized
+    var authorization: StoreAuthorization = .authorized
     let defaultCalendarID: String? = DemoData.personal
     let canEditParticipants = true
     var onChange: (() -> Void)?
@@ -17,7 +17,8 @@ final class DemoStore: CalendarStore {
     private let math = DemoData.math
     private(set) var refreshCount = 0
 
-    init(dense: Bool = false) {
+    init(dense: Bool = false, authorization: StoreAuthorization = .authorized) {
+        self.authorization = authorization
         let t0 = CFAbsoluteTimeGetCurrent()
         events = DemoData.buildEvents(dense: dense)
         if ProcessInfo.processInfo.environment["CALENDR_PROF"] != nil { print(String(format: "buildEvents %.0f ms (%d events)", (CFAbsoluteTimeGetCurrent() - t0) * 1000, events.count)) }

@@ -60,7 +60,7 @@ struct AllDayChip: View, Equatable {
     var body: some View {
         let pal = style.palette
         ZStack(alignment: .leading) {
-            Text(title).font(.ui(11.6)).foregroundStyle(style.past ? pal.pastTitle : pal.title).lineLimit(1).fixedSize()
+            Text(title).font(.ui(11.6)).foregroundStyle(style.past ? pal.pastTitle : pal.title).lineLimit(1)
                 .padding(.leading, style.secondaryBar != nil ? 15 : 8).padding(.trailing, 4)
             HStack(spacing: 0) {
                 Rectangle().fill(style.past ? pal.pastBar : pal.bar).frame(width: 3.5)
