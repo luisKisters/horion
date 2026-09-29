@@ -21,13 +21,24 @@ enum Perf {
 
     static func run(_ o: LaunchOptions) -> Int32 {
         let t0 = processStart()
-        let model = HeadlessRunner.makeModel(o, dense: true)
+        print(String(format: "  (perf started %.0f ms after process start)", Date().timeIntervalSince(t0) * 1000))
+        // Cold launch: normal demo data, model + window + first frame, measured from process start.
+        let coldModel = HeadlessRunner.makeModel(o)
         let tModel = Date()
+        print(String(format: "  (model built after %.0f ms)", tModel.timeIntervalSince(t0) * 1000))
+        let coldWindow = OffscreenWindow(RootView().environment(coldModel), size: o.size, dark: true, settle: false)
+        RunLoop.main.run(until: Date())
+        coldWindow.host.layoutSubtreeIfNeeded()
+        coldWindow.host.display()
+        let cold = Date().timeIntervalSince(t0) * 1000
+        print(String(format: "cold launch (demo data, offscreen window, process start to first drawn frame): %.0f ms (model ready at %.0f ms)", cold, tModel.timeIntervalSince(t0) * 1000))
+        coldWindow.close()
+
+        // Navigation: ~300+ events per week (dense demo store, 120 weeks).
+        let model = HeadlessRunner.makeModel(o, dense: true)
         let w = OffscreenWindow(RootView().environment(model), size: o.size, dark: true)
         w.settle(6)
         _ = w.image(scale: 1)
-        let cold = Date().timeIntervalSince(t0) * 1000
-        print(String(format: "cold launch to first rendered frame (demo, offscreen): %.0f ms (process start to frame; model ready at %.0f ms)", cold, tModel.timeIntervalSince(t0) * 1000))
 
         // Events per visible week
         var perWeek: [Int] = []
@@ -76,6 +87,7 @@ enum Perf {
         print(String(format: "month navigation x20: p50 %.1f ms, p95 %.1f ms", percentile(mt, 0.5), percentile(mt, 0.95)))
         let ok = percentile(times, 0.95) < 16.7 && cold < 500
         print(ok ? "PERF OK (budget: p95 < 16.7 ms per navigation, cold < 500 ms)" : "PERF OVER BUDGET (p95 < 16.7 ms per navigation, cold < 500 ms)")
+        if ProcessInfo.processInfo.environment["CALENDR_PERF_STRICT"] != nil && !ok { return 1 }
         return 0
     }
 }

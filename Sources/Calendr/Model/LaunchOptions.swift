@@ -12,6 +12,8 @@ struct LaunchOptions {
     var size = CGSize(width: 1440, height: 900)
     var freezeClock = false
     var scale: CGFloat = 2
+    /// Real app: print process-start-to-first-window-content time and quit (used by scripts/verify.sh).
+    var printLaunch = false
 
     var isHeadless: Bool { snapshot != nil || walkthrough || perf }
 
@@ -29,6 +31,7 @@ struct LaunchOptions {
             case "--record": o.record = value()
             case "--perf": o.perf = true; o.demo = true; o.freezeClock = true
             case "--freeze-clock": o.freezeClock = true
+            case "--print-launch": o.printLaunch = true
             case "--scale": o.scale = value().flatMap { Double($0) }.map { CGFloat($0) } ?? 2
             case "--size":
                 if let v = value()?.split(separator: "x").compactMap({ Double($0) }), v.count == 2 { o.size = CGSize(width: v[0], height: v[1]) }

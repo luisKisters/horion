@@ -21,6 +21,16 @@ struct CalendrApp: App {
                 .environment(model)
                 .frame(minWidth: 1100, minHeight: 700)
                 .background(WindowConfigurator(model: model))
+                .onAppear {
+                    guard launchOptions.printLaunch else { return }
+                    // Two run-loop turns later the first frame has been laid out and committed.
+                    DispatchQueue.main.async { DispatchQueue.main.async {
+                        let ms = Date().timeIntervalSince(Perf.processStart()) * 1000
+                        print(String(format: "launch to interactive window: %.0f ms", ms))
+                        fflush(stdout)
+                        exit(0)
+                    } }
+                }
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 1440, height: 900)

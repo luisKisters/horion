@@ -23,7 +23,7 @@ final class OffscreenWindow {
     let size: CGSize
     var drawTrafficLights = true
 
-    init<V: View>(_ root: V, size: CGSize, dark: Bool = true, chrome: Bool = true) {
+    init<V: View>(_ root: V, size: CGSize, dark: Bool = true, chrome: Bool = true, settle waits: Bool = true) {
         self.size = size
         drawTrafficLights = chrome
         let mask: NSWindow.StyleMask = chrome ? [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView] : [.borderless]
@@ -39,7 +39,7 @@ final class OffscreenWindow {
         window.setFrameOrigin(ProcessInfo.processInfo.environment["CALENDR_ONSCREEN"] != nil ? NSPoint(x: 40, y: 40) : NSPoint(x: -12000, y: -12000))
         if chrome { NSApp.activate(ignoringOtherApps: true) }
         window.makeKeyAndOrderFront(nil)
-        settle()
+        if waits { settle() }
     }
 
     /// Lets SwiftUI process pending state changes (a few short run-loop turns).
