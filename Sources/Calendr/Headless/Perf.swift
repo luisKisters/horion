@@ -74,6 +74,19 @@ enum Perf {
         print(String(format: "  of which model reload (fetch + layout): p50 %.2f ms, p95 %.2f ms", percentile(modelTimes, 0.5), percentile(modelTimes, 0.95)))
 
         print(String(format: "  breakdown p50: runloop/update %.1f ms, layout %.1f ms, draw %.1f ms", percentile(updateTimes, 0.5), percentile(layoutTimes, 0.5), percentile(drawTimes, 0.5)))
+        let weekTimes = times
+        // Same navigation with animations on (the slide starts at each step; cost of the work done per step, not of the 180 ms itself).
+        Motion.forcedInstant = false
+        var animated: [Double] = []
+        for _ in 0..<3 { nav(true) }
+        times.removeAll()
+        for _ in 0..<20 { nav(true) }
+        for _ in 0..<20 { nav(false) }
+        animated = times
+        Motion.forcedInstant = true
+        for _ in 0..<20 { nav(true) }; for _ in 0..<20 { nav(false) }
+        print(String(format: "week navigation with animations on (x40): p50 %.1f ms, p95 %.1f ms", percentile(animated, 0.5), percentile(animated, 0.95)))
+        times = weekTimes
         // Month view too.
         model.setMode(.month)
         w.settle(4)

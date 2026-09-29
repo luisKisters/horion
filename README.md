@@ -1,8 +1,12 @@
 # Calendr
 
-A native macOS SwiftUI calendar that copies Notion Calendar 1:1 (dark appearance first). Week, day and month views, a keyboard-first command menu, an event inspector with write-through edits, teammate overlays, a menu bar calendar, and two stores: your real Google / iCloud / local calendars through EventKit, or seeded demo data.
+A native macOS SwiftUI calendar. It keeps what makes Notion Calendar good (dense week grid, keyboard-first command palette, right-hand inspector, menu bar list) and has its own identity (design v2, see `design/DESIGN.md`): an ink ramp with violet undertones, one action accent (`act` purple: selection, focus, today, primary buttons, toggles), one "now" accent (`live` red: the current-time line and imminence), SF Mono for every machine value (times, dates, keycaps) and SF Pro for everything human. Week, day and month views, tasks as checkable capsules, an Up Next card, an event inspector with write-through edits, teammate overlays, a menu bar calendar, empty states, undo toasts, and two stores: your real Google / iCloud / local calendars through EventKit, or fictional demo data.
 
-No animations anywhere. No third-party packages. SwiftPM only.
+Motion follows one curve and four durations (120 / 180 / 260 / 300 ms) and collapses to instant under System Settings > Accessibility > Reduce Motion or Calendr's own Settings override. No third-party packages. SwiftPM only.
+
+## Install
+
+Download `Calendr.dmg` (build it with `scripts/make-dmg.sh`; it lands in `dist/`), open it and drag Calendr onto Applications. The app is ad-hoc signed, not notarized: on first launch macOS refuses to open it by double-click. Right-click (or Control-click) Calendr in Applications, choose **Open**, then **Open** again in the dialog. macOS remembers the choice. Calendr then asks for calendar access; without it you see an empty state with a shortcut to System Settings > Privacy & Security > Calendars.
 
 ## Run it
 
@@ -33,7 +37,8 @@ Single keys only fire when no text field is focused.
 | `T` | Go to today | `C` | Create event at next free half hour |
 | `Option T` | Left-align today in view | `P` | Show teammate calendar |
 | `J` or `Right` | Next period | `F` | Meet with... (sidebar field) |
-| `K` or `Left` | Previous period | `.` | Go to date ("oct 12", "12.10.", "next friday", "2026-12-24") |
+| `K` or `Left` | Previous period | `/` | Search events (focuses the field) |
+| `.` | Go to date ("oct 12", "12.10.", "next friday", "2026-12-24") |
 | `D` `W` `M` | Day / Week / Month | `?` | All keyboard shortcuts |
 | `` ` `` | Toggle sidebar | `Delete` | Delete selected event (recurring: this / all) |
 | `Cmd /` | Toggle right panel | `Esc` | Deselect / close |
@@ -53,11 +58,11 @@ Sources/CalendrKit   Foundation-only logic: models, week math (Monday start), ov
 Sources/Calendr      SwiftUI + AppKit shell. AppModel (@Observable @MainActor) owns state and caches layouts;
                      views are thin bindings. Stores/ has CalendarStore, EventKitStore, DemoStore.
   Views/             Sidebar, toolbar, grid, inspector, palettes, menu bar. The event grid, the mini calendar and the
-                     hour lines are Canvas/CoreGraphics; everything else is native SwiftUI (List-free, Menu, Toggle,
+                     hour lines, the day header row and the mini calendar are Canvas/CoreGraphics; everything else is native SwiftUI (List-free, Menu, Toggle,
                      Picker, TextField, MenuBarExtra).
   Headless/          --snapshot, --walkthrough, --perf drivers (offscreen window, video writer).
 Tests/CalendrTests   App-level tests (model, gestures entry points, demo data vs the reference screenshot).
-design/              reference screenshots, the HTML mockup + TOKENS.md, states.json.
+design/              DESIGN.md (v2 system), mockup-v2 (HTML + shots), icon, the v1 Notion references and mockup, states.json.
 ```
 
 AppKit is used only where SwiftUI cannot: window chrome, the key event monitor, offscreen rendering, video writing, opening the menu bar item.
@@ -65,28 +70,27 @@ AppKit is used only where SwiftUI cannot: window chrome, the key event monitor, 
 ## Verify
 
 ```sh
-scripts/verify.sh          # grep gates, build, tests, app bundle, snapshots, walkthrough video, perf, launch time
-scripts/verify.sh --fast   # skips walkthrough video and perf
+scripts/verify.sh          # gates, build, tests, app bundle, snapshots, walkthrough-v2.mp4, perf, launch time, DMG build + mount check
+scripts/verify.sh --fast   # skips walkthrough video, perf and DMG
 ```
 
 - **Unit tests**: `swift test` (CalendrKit logic and app model).
 - **Snapshots**: `scripts/snapshots.sh` renders every state in `design/states.json` offscreen into `artifacts/snapshots/`; `scripts/compare-all.sh` writes mockup | snapshot | diff images to `artifacts/compare/`. Every visible difference to the reference is a bug.
-- **Walkthrough / E2E**: `Calendr --walkthrough --record artifacts/walkthrough.mp4` tours every feature (about 100 s, 1440x900, 30 fps, captions drawn into the frame), with 70+ assertions; exit code is non-zero on any failure. Keyboard shortcuts and typing are real `NSEvent`s dispatched through `NSApp.sendEvent`. Grid pointer gestures call `AppModel.gridMouseDown/Dragged/Up`, the exact functions the SwiftUI drag gesture forwards to, because synthesized mouse events cannot reach SwiftUI while the process cannot become the active app (unattended or locked session). Pickers and toggles in the inspector call the same `updateSelected` setter their bindings call.
-- **Performance**: `Calendr --perf` navigates 50 weeks forward and 50 back with 300+ events per visible week and prints p50/p95 milliseconds per navigation (model reload + SwiftUI update + layout + draw) and cold launch. `Calendr --demo --print-launch` prints launch-to-window time of the real app.
+- **Walkthrough / E2E**: `Calendr --walkthrough --record artifacts/walkthrough-v2.mp4` tours every feature (about two minutes, 1440x900, H.264 avc1, 30 fps, moov first so it streams in browsers and chat viewers, captions drawn into the frame) with 85+ assertions; the exit code is non-zero on any failure. Animated steps are recorded in real time: frames are captured back to back while SwiftUI animates and placed on the 30 fps timeline by wall-clock timestamp, so slides, palettes, toasts and the checkbox pop play at true speed. Keyboard shortcuts and typing are real `NSEvent`s dispatched through `NSApp.sendEvent`. Grid pointer gestures call `AppModel.gridMouseDown/Dragged/Up`, the exact functions the SwiftUI drag gesture forwards to, because synthesized mouse events cannot reach SwiftUI while the process cannot become the active app (unattended or locked session).
+- **Performance**: `Calendr --perf` navigates 50 weeks forward and 50 back with 300+ events per visible week and prints p50/p95 milliseconds per navigation (model reload + SwiftUI update + layout + draw) for week and month with animations off (the gated numbers: about 11-12 ms p50 / 15-17 ms p95 week, 11 / 13 ms month), the week again with animations on, and cold launch. `Calendr --demo --print-launch` prints launch-to-window time of the real app.
 
 Launch flags: `--demo`, `--now <ISO time>`, `--snapshot <state> --out <png> [--size WxH]`, `--walkthrough [--record <mp4>]`, `--perf`, `--print-launch`.
 
 ## Known gaps
 
-- The EventKit store could not be exercised here: the session has no calendar permission, so Google (CalDAV) and iCloud paths are reviewed and unit-tested at the mapping level only (grouping, read-only, status, alarms). Real-account behavior (saves, "this and following" spans, all-day dates) is unverified on a live account.
-- Recurring edits from the inspector or drag always apply to the single occurrence (span `.future` / `.all` exist in the store but only delete offers the choice); recurrence rules cannot be edited, only shown and stepped through.
-- The time zone is read at launch; changing it while running needs a relaunch. All-day events are treated as floating dates in that zone.
-- Search and the teammate list fetch a year each way; on EventKit this now runs on a background thread, but results appear a moment after the first keystroke on large calendars. Visible-range fetches (a month plus a week either side) still run on the main thread.
-- All-day events cannot be dragged in the grid (use the inspector).
-- Participants can be added only in the demo store; EventKit exposes attendees read-only. Teammates for a real account are derived from attendees of your events; there is no directory.
-- Notion database and Notion rows, "Start transcription", "Add AI meeting notes" and "Get Calendr to go" are static (a "not connected" popover or a toast), as in the spec.
-- At 1440x900 the sidebar calendar list shows about seven rows and scrolls; the Notion rows and help button are pinned like the reference.
-- Overlap layout is a heuristic fitted to the reference week (cascade steps, short pills on top); unusual dense clusters may differ from Notion Calendar.
-- Light appearance is implemented from the mockup tokens but only the week and month views were visually reviewed.
-- Undo history is per launch; after an EventKit delete + undo the restored event gets a new identifier.
-- Screen capture of the running app needs Screen Recording permission (or an unlocked session), so pixel evidence comes from the offscreen renderer; real mouse gestures were never driven through the live window.
+- The EventKit store could not be exercised here: the session has no calendar permission, so Google (CalDAV) and iCloud paths are reviewed and unit-tested at the mapping level only. Real-account behavior (saves, "this and following" spans, all-day dates, the debounced text saves) is unverified on a live account.
+- Recurring edits from the inspector or drag always apply to the single occurrence; only delete offers this / all. Recurrence rules cannot be edited, only shown and stepped through.
+- Tasks are events whose title starts with `[P1]`.. or that live in a calendar named Tasks/Reminders; completion is a local marker (EventKit reminders are out of scope), so it does not sync.
+- The time zone is read at launch; changing it while running needs a relaunch.
+- Search and the teammate list fetch a year each way on a background thread; visible-range fetches (a month plus a week either side) still run on the main thread.
+- All-day events cannot be dragged in the grid (use the inspector). Participants can be added only in the demo store.
+- The week-grid capsule slot search (free slot within 35 minutes, otherwise a 19 pt checkbox chip) is a heuristic fitted to the mockup, not a full packing solver.
+- The menu bar item uses a template glyph plus text; SwiftUI cannot color part of a MenuBarExtra label, so the imminence is not red there (it is red inside the popover).
+- The DMG is ad-hoc signed and not notarized (first launch needs right-click > Open); it has no custom background.
+- Screen capture of the running app needs Screen Recording permission, so pixel evidence comes from the offscreen renderer; real mouse gestures were never driven through the live window, and the animations were only observed through the offscreen window.
+- `artifacts/walkthrough-v2.mp4` and the snapshots show fictional demo data only. Older git history contains the previous personal demo data.

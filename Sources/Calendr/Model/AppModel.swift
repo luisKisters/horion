@@ -628,10 +628,11 @@ final class AppModel {
         if persist { TaskStore.save(completedTasks) }
     }
 
+    private var isoCalendar = Calendar(identifier: .iso8601)
     /// ISO week number of the first visible day ("W40").
     var weekLabel: String {
-        var c = Calendar(identifier: .iso8601); c.timeZone = math.timeZone
-        return "W\(c.component(.weekOfYear, from: visibleStart))"
+        if isoCalendar.timeZone != math.timeZone { isoCalendar.timeZone = math.timeZone }
+        return "W\(isoCalendar.component(.weekOfYear, from: visibleStart))"
     }
 
     // MARK: Commands
