@@ -83,13 +83,13 @@ struct EventBlockV11Tests {
             let s = style("#A9A6F5", dark: dark)
             let px = paint(s)
             let c = s.colors
-            // 3.5 pt flush bar: pixels 10, 11, 12 are the bar from the top padding to the bottom (clear of the 4.5 pt corners).
+            // 3.5 pt flush bar: pixels 10, 11, 12 are the bar from the top padding to the bottom (clear of the 7 pt corners).
             #expect(px(11, 15) == c.bar.c8 && px(11, 30) == c.bar.c8 && px(12, 46) == c.bar.c8, "dark \(dark): bar")
             #expect(px(14, 30) == c.fill.c8, "dark \(dark): fill right after the bar")
             #expect(px(110, 30) == c.fill.c8 && px(125, 30) == InkRGB.of(dark).bg.c8, "dark \(dark): the block ends at its width")
         }
         #expect(EventPainter.textInset(dark: true) == 9.5 && EventPainter.textInset(dark: false) == 9.5)
-        #expect(Radius.event == 5)
+        #expect(Radius.event == 7)
     }
 
     @Test func anUnansweredBlockHasAnOutlineAndNoBar() {

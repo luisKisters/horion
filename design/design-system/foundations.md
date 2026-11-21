@@ -88,10 +88,10 @@ Face: Geist, bundled under SIL OFL (mockup `fonts/geist-latin*.woff2`). Use tabu
 |---|---|---|
 | Window | sidebar 236, right column 320, header 48, day header 32, hour gutter 56, hour 44 | `Dim.*` |
 | Rows | sidebar row 26, all-day chip 19 (+3 gap) | `Dim.row` |
-| Event block | padding 3 top, 6 left after a 3.5 bar; gap 2 left, 4 right, 2 below; radius 4.5; min height 16 | `EventPainter` |
+| Event block | padding 3 top, 6 left after a 3.5 bar; gap 2 left, 4 right, 2 below; radius 7 (`Radius.inner`); min height 16 | `EventPainter` |
 | One-line rule | two lines only when 3 + 15.5 + 14 + 2 ≤ height; otherwise the time goes inline; the title clamps to the lines that fit | `EventPainter` |
 | Pane padding | 12 (sidebar), header 20 | `Space.m` |
-| Radius | 4.5 events and chips, 6 rows and icon buttons, 8 fields and buttons, 12 menus and dialogs | `Radius.*` |
+| Radius | 4 marks (caps, colour squares, now pill), 5 small (today mark, mini month days), 7 inner (rows, segments, icon buttons, event blocks and all-day chips), 9 controls (fields, buttons, tracks), 13 surfaces (menus, dialogs, cards) | `Radius.*` |
 | Spacing | 4, 8, 12, 16, 24 | `Space` |
 
 
