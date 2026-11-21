@@ -195,27 +195,27 @@ input { font: inherit; color: inherit; background: none; border: 0; outline: 0; 
 <div id="root"><div id="stage"><div class="desk" id="desk"></div></div><aside id="picker"></aside></div>
 <script>
 // ================= edit for each round =================
-const PRODUCT = 'Horion', VERSION = 'v17', ROUND = 1;
+const PRODUCT = 'Horion', VERSION = 'v17', ROUND = 2;
 const DESK = { w: 1560, h: 760 };
 const SCENES = [['week', 'Week, Dark'], ['paper', 'Week, Paper'], ['scale', 'All corners']];
 const HOWTO = ['Wednesday is busy on purpose: 15 and 30 min blocks, a cascade, a selected block, not answered, maybe and declined.', '"All corners" puts the event corner next to every other radius in the app (13 surfaces, 9 controls, 7 inner, 5, 4).', 'Hover an option to preview it. G shows alignment guides.'];
 const READ = 'Quiet neutral chrome; calendar colour leads. Dials: variance 2, motion 2, density 7. Events join the corner scale instead of sitting below it.';
-const LOCKED = {};
+const LOCKED = { evr: '7', bar: 'flush', chip: 'same' };
 const BEFORE = {};
 const FB = 'make an mockup of how the events could have more radius and radious that is consient with the rest ofh te app';
 const DECISIONS = [
-  { g: 'Round 1', id: 'evr', name: 'Event block corners', fb: FB, note: 'Look at Wednesday (short blocks, the cascade, the selected 1:1), then "All corners".', scene: 'week', hl: '.ev', opts: [
+  { g: 'Round 1', lock: true, id: 'evr', name: 'Event block corners', fb: FB, note: 'Look at Wednesday (short blocks, the cascade, the selected 1:1), then "All corners".', scene: 'week', hl: '.ev', opts: [
     ['7', '7: the inner step, like rows and segments', 'A block sits 2 pt inside its day column the way a segment sits 2 pt inside its track, so it takes the same rule: control 9 minus 2 = 7 (Radius.inner). Rows, segments, icon buttons and the week band already use 7. Short 16 pt blocks stay rectangles with soft corners, not pills.'],
     ['9', '9: same as buttons and fields', 'Radius.control. The roundest option that is still on the scale. 30 min blocks (20 pt) get close to a pill; the selected ring grows to 12.'],
     ['h', 'Grows with height: a quarter of the block, 5 to 9', 'A 15 min block gets 5, 30 min 5, 1 h 9. Short blocks keep crisp corners, long ones look soft. Two values per view instead of one.'],
     ['5', '5: as now', 'Radius.small, today\'s event and chip corner.'],
   ] },
-  { g: 'Round 1', id: 'bar', name: 'Calendar colour bar on rounder corners', fb: FB, note: 'With more radius the flush bar is cut into a curve at its ends. Compare the bar at the corners of short and tall blocks.', scene: 'week', hl: '.ev, .chip', opts: [
+  { g: 'Round 1', lock: true, id: 'bar', name: 'Calendar colour bar on rounder corners', fb: FB, note: 'With more radius the flush bar is cut into a curve at its ends. Compare the bar at the corners of short and tall blocks.', scene: 'week', hl: '.ev, .chip', opts: [
     ['inset', 'Inset bar: 3 pt, rounded, 3 pt from the edge', 'The bar becomes the same rounded 3 pt bar the right column\'s "Later today" rows use, inset by 3 pt so it never meets the corner. Text moves 2.5 pt right.'],
     ['flush', 'Flush bar, cut by the corner (as now)', 'Full height on the left edge, clipped by the block\'s corner. At 7 and 9 the ends of the bar curve away.'],
     ['none', 'No bar: a stronger fill', 'The fill carries the calendar colour on its own (34 % instead of 25 %). Not answered keeps its hue outline.'],
   ] },
-  { g: 'Round 1', id: 'chip', name: 'All-day chips', fb: FB, note: 'The all-day lane above the grid.', scene: 'week', hl: '.chip', opts: [
+  { g: 'Round 1', lock: true, id: 'chip', name: 'All-day chips', fb: FB, note: 'The all-day lane above the grid.', scene: 'week', hl: '.chip', opts: [
     ['same', 'Same corner as event blocks', 'One corner for every event shape, timed or all-day, and in the month view. With "Grows with height" chips (19 pt) get 5.'],
     ['5', '5: as now', 'Chips keep Radius.small; only timed blocks change.'],
     ['pill', 'Round ends', 'Chips become pills (radius 10 on 19 pt), like tags. They no longer look like a short block.'],
