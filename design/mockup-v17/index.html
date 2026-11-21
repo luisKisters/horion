@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Horion v17 event corners</title>
+<!-- designr starter. Replace the app part (tokens, demo data, app()). Keep the picker part. -->
+<style>
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; overflow: hidden; background: #08080a; color: #d8d8dc; font: 13px/1.4 -apple-system, system-ui, sans-serif; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; text-align: inherit; padding: 0; }
+input { font: inherit; color: inherit; background: none; border: 0; outline: 0; }
+#root { display: flex; height: 100%; }
+#stage { flex: 1; position: relative; overflow: hidden; }
+.shot #picker { display: none; }
+
+/* ---------- picker (outside the app) ---------- */
+#picker { width: 380px; flex: none; border-left: 1px solid #222; background: #111113; overflow-y: auto; padding: 18px 18px 84px; }
+#picker h1 { font-size: 15px; font-weight: 650; color: #f2f2f4; margin: 0; }
+#picker h2 { font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: #6c6c74; font-weight: 600; margin: 22px 0 8px; }
+#picker .lede { color: #8a8a92; font-size: 12px; margin: 4px 0 14px; }
+.pk-btn { padding: 5px 9px; border-radius: 7px; background: #1b1b1f; color: #b4b4bb; font-size: 12px; border: 1px solid #26262b; }
+.pk-btn:hover { background: #222227; color: #eee; }
+.pk-btn.on { background: #ececf0; color: #111; border-color: #ececf0; }
+.pk-scenes { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.pk-notes { padding: 10px 12px; border-radius: 9px; background: #17171a; border: 1px solid #222226; color: #a6a6ae; font-size: 12px; }
+.pk-notes ul { margin: 0; padding-left: 15px; }
+.pk-ba { display: flex; gap: 4px; align-items: center; margin-bottom: 10px; }
+.pk-ba span { color: #6c6c74; font-size: 11px; margin-left: 4px; }
+.pk-tog { display: flex; gap: 8px; align-items: center; color: #a6a6ae; font-size: 12px; margin-top: 6px; }
+.pk-tog i { width: 24px; height: 14px; border-radius: 7px; background: #2a2a30; position: relative; flex: none; }
+.pk-tog i::after { content: ""; position: absolute; left: 2px; top: 2px; width: 10px; height: 10px; border-radius: 50%; background: #8a8a92; transition: transform .15s; }
+.pk-tog.on i { background: #ececf0; } .pk-tog.on i::after { transform: translateX(10px); background: #111; }
+.pk-audit { margin-top: 8px; color: #8a8a92; font-size: 11.5px; }
+.pk-audit b { color: #eee; }
+.pk-dec { margin-bottom: 14px; }
+.pk-dec > b { color: #f2f2f4; font-size: 12.5px; }
+.pk-dec p { color: #8a8a92; font-size: 12px; margin: 3px 0 6px; }
+.pk-new { color: #a6a6ae; font-size: 12px; margin: 3px 0 6px; }
+.pk-new q { color: #e6e6ea; }
+.pk-opt { display: flex; align-items: center; gap: 8px; width: 100%; padding: 5px 8px; border-radius: 7px; color: #b4b4bb; font-size: 12px; }
+.pk-opt:hover { background: #1b1b1f; color: #eee; }
+.pk-opt.on { color: #f4f4f6; background: #1d1d22; }
+.pk-opt .r { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid #4a4a52; flex: none; }
+.pk-opt.on .r { border-color: #f4f4f6; background: radial-gradient(#f4f4f6 0 2.5px, transparent 3px); }
+.pk-opt .end { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+.pk-opt .rec, .pk-opt .lk { font-size: 10.5px; color: #6c6c74; }
+.pk-opt .hq { width: 16px; height: 16px; border-radius: 50%; border: 1px solid #3a3a42; color: #8a8a92; font-size: 10px; display: inline-grid; place-items: center; position: relative; }
+.pk-opt .hq:hover::after { content: attr(data-help); position: absolute; right: -4px; top: 22px; width: 270px; padding: 8px 10px; border-radius: 8px; background: #26262c; border: 1px solid #3a3a42; color: #e6e6ea; font-size: 11.5px; line-height: 1.45; white-space: normal; z-index: 10; }
+.pk-lock { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; padding: 3px 0; color: #8a8a92; }
+.pk-lock b { font-weight: 500; color: #c4c4cb; }
+.pk-foot { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 22px; }
+/* Agentation toolbar: bottom right of the app, not over the picker. */
+.agt-host { right: 396px !important; bottom: 16px !important; }
+#picker .read { color: #a6a6ae; font-size: 12px; margin: -6px 0 14px; padding-left: 10px; border-left: 2px solid #2a2a30; }
+#picks { margin-top: 10px; width: 100%; height: 150px; background: #141417; color: #bdbdc4; border: 1px solid #25252a; border-radius: 8px; padding: 8px; font: 11px/1.45 ui-monospace, Menlo, monospace; resize: vertical; }
+
+/* ---------- preview: crossfade, short glow, alignment guides ---------- */
+.ghost { pointer-events: none; z-index: 140; transition: opacity 140ms ease; }
+.pvhl { animation: pvpulse 900ms ease-out forwards; }
+@keyframes pvpulse { 0% { box-shadow: 0 0 0 0 rgba(90,160,255,.9), 0 0 0 1.5px rgba(90,160,255,.9); } 60% { box-shadow: 0 0 0 8px rgba(90,160,255,0), 0 0 0 1.5px rgba(90,160,255,.9); } 100% { box-shadow: 0 0 0 8px rgba(90,160,255,0), 0 0 0 1.5px transparent; } }
+#guides { position: absolute; inset: 0; pointer-events: none; z-index: 150; }
+#guides .gv { position: absolute; width: 0; border-left: 1px solid rgba(64, 214, 120, .55); }
+#guides .gv.r { border-left-color: rgba(90, 160, 255, .55); }
+#guides .gv span { position: absolute; top: 2px; left: 2px; font: 9px ui-monospace, Menlo, monospace; color: rgba(64, 214, 120, .95); background: rgba(0,0,0,.6); padding: 0 2px; }
+#guides .bx { position: absolute; outline: 1px solid rgba(255, 70, 90, .95); background: rgba(255, 70, 90, .12); }
+#guides .bx span { position: absolute; top: -12px; left: 0; font: 9px ui-monospace, Menlo, monospace; color: #fff; background: rgba(220, 40, 60, .9); padding: 0 3px; white-space: nowrap; }
+#guides .ol { position: absolute; outline: 1px dashed rgba(255, 255, 255, .14); }
+#guides .legend { position: absolute; left: 12px; bottom: 12px; padding: 8px 10px; border-radius: 8px; background: rgba(10,10,12,.88); border: 1px solid rgba(255,255,255,.12); font: 11px/1.5 -apple-system, system-ui; color: #ddd; }
+
+
+/* ================= the app: Horion week ================= */
+@font-face { font-family: "Geist"; src: url("../../Sources/Horion/Resources/Fonts/Geist%5Bwght%5D.ttf") format("truetype"); font-weight: 100 900; }
+/* Fixed tokens (foundations.md, Theme.swift Radius). Surfaces come from tok() (the locked v16 fitted colour system). */
+.desk { --gridV: #1B1B1C; --grid: #212123; --hairStrong: #2A2A2C; --hair: #1C1C1D; --live: #FF6B5F; --onLive: #0B0B0C;
+  --r-mark: 4px; --r-small: 5px; --r-inner: 7px; --r-control: 9px; --r-surface: 13px; --r-ev: 7px; --r-chip: 7px;
+  --font: "Geist", -apple-system, system-ui, sans-serif; }
+.desk.paper { --gridV: #EBEBEC; --grid: #E1E1E2; --hairStrong: #DCDCDC; --hair: #E8E8E8; --live: #C9372C; --onLive: #FFFFFF; }
+/* Options: event corners */
+.desk.ev-5 { --r-ev: 5px; } .desk.ev-7 { --r-ev: 7px; } .desk.ev-9 { --r-ev: 9px; }
+/* Options: all-day chips */
+.desk.chip-same { --r-chip: var(--r-ev); } .desk.chip-5 { --r-chip: 5px; } .desk.chip-pill { --r-chip: 10px; }
+.desk.ev-h.chip-same { --r-chip: 5px; }
+
+.desk { position: absolute; left: 0; top: 0; transform-origin: 0 0; overflow: hidden; background: var(--bg); color: var(--fg1); font: 12px/18px var(--font); display: flex; -webkit-font-smoothing: antialiased; letter-spacing: -.048px; }
+.side { width: 236px; flex: none; background: var(--side); border-right: 1px solid var(--hair); padding: 56px 12px 0; }
+.rc { width: 320px; flex: none; background: var(--side); border-left: 1px solid var(--hair); padding: 14px 12px; }
+.main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.pill { background: var(--fg1) !important; color: var(--bg) !important; font-weight: 600 !important; }
+
+/* mini month */
+.mm-hd { display: flex; align-items: center; height: 22px; padding-left: 8px; font-weight: 500; }
+.mm-hd .yr { color: var(--fg3); font-weight: 400; margin-left: 4px; }
+.mm-hd .nv { margin-left: auto; color: var(--fg3); display: flex; gap: 4px; }
+.mm-hd .nv button { width: 22px; height: 22px; display: grid; place-items: center; border-radius: var(--r-small); }
+.mm-hd .nv button:hover { background: var(--side-hover); color: var(--fg1); }
+.mm-wd, .mm-wk { display: grid; grid-template-columns: 20px repeat(7, 1fr); }
+.mm-wd { height: 24px; align-items: center; text-align: center; font-size: 11px; color: var(--fg3); font-weight: 500; margin-top: 4px; }
+.mm-wk { margin-top: 2px; border-radius: var(--r-inner); }
+.mm-wk.vis { background: var(--side-sel); }
+.mm-wn { font-size: 11px; color: var(--fg3); display: grid; place-items: center; font-weight: 500; }
+.mm-d { height: 24px; display: grid; place-items: center; }
+.mm-d b { font-weight: 400; font-size: 11px; font-variant-numeric: tabular-nums; min-width: 24px; height: 24px; border-radius: var(--r-small); display: grid; place-items: center; color: var(--fg2); }
+.mm-d.out b { color: var(--fg3); }
+.mm-wk.vis .mm-d b { color: var(--fg1); }
+.mm-d:hover b { background: var(--side-hover); }
+/* lists */
+.grp { margin-top: 18px; padding: 0 8px; height: 24px; line-height: 24px; color: var(--fg3); font-weight: 500; }
+.row { display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 8px; border-radius: var(--r-inner); width: 100%; }
+.row:hover { background: var(--side-hover); }
+.row.is-sel { background: var(--side-sel); }
+.row i { width: 12px; height: 12px; border-radius: var(--r-mark); background: var(--cc); flex: none; }
+.row .tm { width: 36px; text-align: right; color: var(--fg2); font-size: 11px; font-variant-numeric: tabular-nums; flex: none; }
+.row .bar { width: 3px; height: 14px; border-radius: 1.5px; background: var(--cc); flex: none; }
+.lead { padding: 4px 8px 12px; }
+.lead .lb { font-size: 11px; color: var(--fg3); font-weight: 500; } .lead .lb b { color: var(--live); font-weight: 500; margin-left: 6px; }
+.lead .t { font-weight: 600; margin-top: 6px; } .lead .m { font-size: 11px; color: var(--fg2); }
+.join { margin-top: 10px; height: 30px; width: 100%; border-radius: var(--r-control); background: var(--raised); box-shadow: inset 0 0 0 1px var(--raised-edge); display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 500; }
+.join:hover { background: var(--raised-hover); }
+.kc { font-size: 11px; color: var(--fg3); padding: 0 4px; border-radius: var(--r-mark); box-shadow: inset 0 0 0 1px var(--raised-edge); }
+.search { height: 30px; border-radius: var(--r-control); background: var(--surface); color: var(--fg3); display: flex; align-items: center; padding: 0 10px; margin-bottom: 12px; }
+.hint { margin-left: auto; color: var(--fg3); font-size: 11px; }
+
+/* toolbar */
+.tb { height: 48px; display: flex; align-items: center; padding: 0 12px 0 20px; gap: 4px; flex: none; }
+.tb h1 { font-size: 15px; line-height: 21px; font-weight: 600; margin: 0; letter-spacing: -.15px; }
+.tb h1 span { font-weight: 400; color: var(--fg3); }
+.tb .sp { flex: 1; }
+.seg { display: flex; padding: 2px; background: var(--surface); border-radius: var(--r-control); margin-right: 12px; }
+.seg button { height: 22px; padding: 0 10px; border-radius: var(--r-inner); color: var(--fg2); }
+.ib { width: 26px; height: 26px; border-radius: var(--r-inner); display: grid; place-items: center; color: var(--fg3); }
+.ib:hover { background: var(--bg-hover); color: var(--fg1); }
+.todaybtn { height: 26px; padding: 0 10px; border-radius: var(--r-control); background: var(--raised); box-shadow: inset 0 0 0 1px var(--raised-edge); }
+
+/* week */
+.wk { flex: 1; display: grid; grid-template-columns: 56px repeat(7, 1fr); grid-template-rows: 32px auto 1fr; position: relative; }
+.dh { display: flex; align-items: center; gap: 6px; padding-left: 8px; color: var(--fg3); font-weight: 500; }
+.dh .n { font-weight: 500; color: var(--fg1); font-variant-numeric: tabular-nums; }
+.dh.past .n { color: var(--fg2); }
+.dh.today { color: var(--fg1); }
+.dh.today .n { height: 18px; min-width: 20px; padding: 0 5px; border-radius: var(--r-small); display: inline-grid; place-items: center; }
+.ad-l { font-size: 11px; color: var(--fg3); text-align: right; padding: 4px 8px 0 0; line-height: 20px; border-bottom: 1px solid var(--hairStrong); }
+.ad { padding: 3px 3px 4px 2px; display: flex; flex-direction: column; gap: 3px; border-left: 1px solid var(--gridV); border-bottom: 1px solid var(--hairStrong); min-height: 30px; }
+.col { border-left: 1px solid var(--gridV); position: relative; background-image: repeating-linear-gradient(to bottom, transparent 0 43px, var(--grid) 43px 44px); }
+.hl { font-size: 11px; color: var(--fg2); text-align: right; padding-right: 8px; font-variant-numeric: tabular-nums; }
+.hl div { height: 44px; transform: translateY(-9px); }
+.now { position: absolute; left: 0; right: 0; height: 1px; background: color-mix(in srgb, var(--live) 30%, transparent); z-index: 5; }
+.col.today .now { height: 2px; background: var(--live); }
+.col.today .now::before { content: ""; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--live); box-shadow: 0 0 0 1.5px var(--bg); }
+.nowpill { position: absolute; right: 4px; transform: translateY(-50%); height: 16px; padding: 0 4px; border-radius: var(--r-mark); background: var(--live); color: var(--onLive); font-size: 11px; font-weight: 600; line-height: 16px; }
+.tcol { background-color: var(--today); }
+
+/* event blocks and all-day chips: fill, bar, reply state, rings */
+.ev, .chip { --fill: color-mix(in oklab, var(--cc) 25%, var(--bg)); background-color: var(--fill); position: relative; overflow: hidden; }
+.paper .ev, .paper .chip { --fill: color-mix(in oklab, var(--cc) 18%, var(--bg)); }
+.ev { position: absolute; left: 2px; right: 3px; border-radius: var(--r-ev); padding: 3px 6px 2px 9.5px; }
+.chip { height: 19px; border-radius: var(--r-chip); display: flex; align-items: center; font-weight: 500; padding-left: 7.5px; white-space: nowrap; flex: none; }
+.ev::before, .chip::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3.5px; background: var(--cc); }
+.ev b { font-weight: 500; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .ev span { color: var(--fg2); font-size: 11px; font-variant-numeric: tabular-nums; }
+.ev.one { display: flex; gap: 6px; align-items: center; padding-top: 0; padding-bottom: 0; } .ev.one b { flex: 0 1 auto; }
+.ev.over { left: 14px; box-shadow: 0 0 0 1px var(--bg); z-index: 2; }
+.ev.sel { box-shadow: 0 0 0 1.5px var(--bg), 0 0 0 3px var(--cc), 0 4px 12px rgba(0,0,0,.35); z-index: 4; }
+.ev.st-none { background: var(--bg); box-shadow: inset 0 0 0 1px var(--cc); }
+.ev.st-none.over { box-shadow: inset 0 0 0 1px var(--cc); }
+.ev.st-maybe { background-image: repeating-linear-gradient(135deg, color-mix(in oklab, var(--cc) 22%, transparent) 0 5px, transparent 5px 10px); }
+.ev.st-declined { opacity: .5; } .ev.st-declined b { text-decoration: line-through; }
+.ev.past { opacity: .62; }
+/* Options: the colour bar */
+.desk.bar-inset .ev::before, .desk.bar-inset .chip::before { left: 3px; top: 3px; bottom: 3px; width: 3px; border-radius: 1.5px; }
+.desk.bar-inset .ev { padding-left: 12px; } .desk.bar-inset .chip { padding-left: 11px; }
+.desk.bar-inset .ev.short::before { top: 2px; bottom: 2px; }
+.desk.bar-none .ev::before, .desk.bar-none .chip::before { display: none; }
+.desk.bar-none .ev, .desk.bar-none .chip { --fill: color-mix(in oklab, var(--cc) 34%, var(--bg)); padding-left: 7px; }
+.desk.paper.bar-none .ev, .desk.paper.bar-none .chip { --fill: color-mix(in oklab, var(--cc) 26%, var(--bg)); }
+.desk.bar-none .ev.st-none { background: var(--bg); }
+
+/* "All corners" scene */
+.sc { flex: 1; padding: 28px 32px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; align-content: start; background: var(--bg); overflow: hidden; }
+.sc .card { background: var(--side); border-radius: var(--r-surface); box-shadow: inset 0 0 0 1px var(--hair); padding: 16px; }
+.sc h3 { margin: 0 0 4px; font-size: 12px; font-weight: 600; }
+.sc .sub { font-size: 11px; color: var(--fg3); margin-bottom: 14px; }
+.sc .it { display: flex; align-items: center; gap: 12px; min-height: 34px; }
+.sc .it > .lbl { margin-left: auto; font-size: 11px; color: var(--fg3); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sc .it > .lbl b { color: var(--fg1); font-weight: 500; }
+.sc .menu { width: 200px; background: var(--raised); border-radius: var(--r-surface); padding: 6px; box-shadow: inset 0 0 0 1px var(--raised-edge), 0 8px 24px rgba(0,0,0,.35); }
+.sc .menu .row { height: 26px; }
+.sc .menu .row.is-sel { background: var(--raised-sel); }
+.sc .lane { position: relative; width: 150px; height: 300px; border-left: 1px solid var(--gridV); background-image: repeating-linear-gradient(to bottom, transparent 0 43px, var(--grid) 43px 44px); }
+.sc .lanes { display: flex; gap: 20px; }
+.sc .lane-l { font-size: 11px; color: var(--fg3); line-height: 1.5; }
+.sc .lane-l div { height: 44px; }
+</style>
+</head>
+<body>
+<div id="root"><div id="stage"><div class="desk" id="desk"></div></div><aside id="picker"></aside></div>
+<script>
+// ================= edit for each round =================
+const PRODUCT = 'Horion', VERSION = 'v17', ROUND = 1;
+const DESK = { w: 1560, h: 760 };
+const SCENES = [['week', 'Week, Dark'], ['paper', 'Week, Paper'], ['scale', 'All corners']];
+const HOWTO = ['Wednesday is busy on purpose: 15 and 30 min blocks, a cascade, a selected block, not answered, maybe and declined.', '"All corners" puts the event corner next to every other radius in the app (13 surfaces, 9 controls, 7 inner, 5, 4).', 'Hover an option to preview it. G shows alignment guides.'];
+const READ = 'Quiet neutral chrome; calendar colour leads. Dials: variance 2, motion 2, density 7. Events join the corner scale instead of sitting below it.';
+const LOCKED = {};
+const BEFORE = {};
+const FB = 'make an mockup of how the events could have more radius and radious that is consient with the rest ofh te app';
+const DECISIONS = [
+  { g: 'Round 1', id: 'evr', name: 'Event block corners', fb: FB, note: 'Look at Wednesday (short blocks, the cascade, the selected 1:1), then "All corners".', scene: 'week', hl: '.ev', opts: [
+    ['7', '7: the inner step, like rows and segments', 'A block sits 2 pt inside its day column the way a segment sits 2 pt inside its track, so it takes the same rule: control 9 minus 2 = 7 (Radius.inner). Rows, segments, icon buttons and the week band already use 7. Short 16 pt blocks stay rectangles with soft corners, not pills.'],
+    ['9', '9: same as buttons and fields', 'Radius.control. The roundest option that is still on the scale. 30 min blocks (20 pt) get close to a pill; the selected ring grows to 12.'],
+    ['h', 'Grows with height: a quarter of the block, 5 to 9', 'A 15 min block gets 5, 30 min 5, 1 h 9. Short blocks keep crisp corners, long ones look soft. Two values per view instead of one.'],
+    ['5', '5: as now', 'Radius.small, today\'s event and chip corner.'],
+  ] },
+  { g: 'Round 1', id: 'bar', name: 'Calendar colour bar on rounder corners', fb: FB, note: 'With more radius the flush bar is cut into a curve at its ends. Compare the bar at the corners of short and tall blocks.', scene: 'week', hl: '.ev, .chip', opts: [
+    ['inset', 'Inset bar: 3 pt, rounded, 3 pt from the edge', 'The bar becomes the same rounded 3 pt bar the right column\'s "Later today" rows use, inset by 3 pt so it never meets the corner. Text moves 2.5 pt right.'],
+    ['flush', 'Flush bar, cut by the corner (as now)', 'Full height on the left edge, clipped by the block\'s corner. At 7 and 9 the ends of the bar curve away.'],
+    ['none', 'No bar: a stronger fill', 'The fill carries the calendar colour on its own (34 % instead of 25 %). Not answered keeps its hue outline.'],
+  ] },
+  { g: 'Round 1', id: 'chip', name: 'All-day chips', fb: FB, note: 'The all-day lane above the grid.', scene: 'week', hl: '.chip', opts: [
+    ['same', 'Same corner as event blocks', 'One corner for every event shape, timed or all-day, and in the month view. With "Grows with height" chips (19 pt) get 5.'],
+    ['5', '5: as now', 'Chips keep Radius.small; only timed blocks change.'],
+    ['pill', 'Round ends', 'Chips become pills (radius 10 on 19 pt), like tags. They no longer look like a short block.'],
+  ] },
+];
+
+// ================= colour math and tokens (v16, locked: fitted, sidebars rail) =================
+// ================= colour math =================
+const hx = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255);
+const toHex = c => '#' + c.map(v => Math.round(Math.min(1, Math.max(0, v)) * 255).toString(16).padStart(2, '0')).join('').toUpperCase();
+const lin = v => v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4;
+const unlin = v => v <= .0031308 ? v * 12.92 : 1.055 * v ** (1 / 2.4) - .055;
+const Y = h => { const [r, g, b] = hx(h).map(lin); return .2126 * r + .7152 * g + .0722 * b; };
+const ratio = (a, b) => { const A = Y(a), B = Y(b); return (Math.max(A, B) + .05) / (Math.min(A, B) + .05); };
+function toLab(h) { const [r, g, b] = hx(h).map(lin);
+  const l = Math.cbrt(.4122214708 * r + .5363325363 * g + .0514459929 * b), m = Math.cbrt(.2119034982 * r + .6806995451 * g + .1073969566 * b), s = Math.cbrt(.0883024619 * r + .2817188376 * g + .6299787005 * b);
+  return [.2104542553 * l + .793617785 * m - .0040720468 * s, 1.9779984951 * l - 2.428592205 * m + .4505937099 * s, .0259040371 * l + .7827717662 * m - .808675766 * s]; }
+function fromLab([L, a, b]) { const l = (L + .3963377774 * a + .2158037573 * b) ** 3, m = (L - .1055613458 * a - .0638541728 * b) ** 3, s = (L - .0894841775 * a - 1.291485548 * b) ** 3;
+  return toHex([4.0767416621 * l - 3.3077115913 * m + .2309699292 * s, -1.2684380046 * l + 2.6097574011 * m - .3413193965 * s, -.0041960863 * l - .7034186147 * m + 1.707614701 * s].map(unlin)); }
+const withL = (h, dL) => { const [L, a, b] = toLab(h); return fromLab([Math.min(1, Math.max(0, L + dL)), a, b]); };
+// The grey on `bg` that reaches `target` contrast, moving toward the text colour.
+function fitGrey(bg, target, dark) { const c = hx(bg); let lo = dark ? Math.max(...c) : 0, hi = dark ? 1 : Math.min(...c);
+  for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2, g = toHex([mid, mid, mid]), ok = ratio(bg, g) >= target; if (dark) ok ? hi = mid : lo = mid; else ok ? lo = mid : hi = mid; }
+  const v = dark ? hi : lo; return toHex([v, v, v]); }
+// APCA Lc and the soft-surface text floors of foundations.md (same as the app's Contrast.textFloors).
+function apca(t, b) { const Yp = h => { const v = hx(h).map(x => x ** 2.4); return .2126729 * v[0] + .7151522 * v[1] + .072175 * v[2]; };
+  const cl = y => y > .022 ? y : y + (.022 - y) ** 1.414; const T = cl(Yp(t)), B = cl(Yp(b)); if (Math.abs(B - T) < .0005) return 0;
+  if (B > T) { const q = (B ** .56 - T ** .57) * 1.14; return q < .1 ? 0 : (q - .027) * 100; } const q = (B ** .65 - T ** .62) * 1.14; return q > -.1 ? 0 : (q + .027) * 100; }
+const FLOORS = { dark: [[12, 85], [7, 63], [5.5, 45]], paper: [[12, 88], [7, 75], [5, 65]] };
+const mix = (a, b, t) => toHex(hx(a).map((v, i) => v + (hx(b)[i] - v) * t));
+
+// ================= tokens =================
+const BASE = {
+  dark: { rail: '#070708', bg: '#0B0B0C', surface: '#151516', raised: '#1D1D1E', fg1: '#EBEBED', fg2: '#CCCCCE', fg3: '#A8A8AA' },
+  paper: { rail: '#F4F4F5', bg: '#FBFBFB', surface: '#F1F1F2', raised: '#FFFFFF', fg1: '#1D1D20', fg2: '#4A4A50', fg3: '#606067' },
+};
+const NOW = { dark: { hoverRail: '#121213', hover: '#161617', selected: '#1E1E1F', segRing: '#6B6B6C', today: '#131314' }, paper: { hoverRail: '#EAEAEB', hover: '#F1F1F1', selected: '#EAEAEB', segRing: '#878789', today: '#F3F3F3' } };
+const TGT = { hover: 1.15, sel: 1.45, edge: 3, fg3: 5, fg2: 7, fg1: 12, step: .045 };
+const CU = () => (S.custom = S.custom || {});
+const tgt = k => CU()['t.' + k] ?? TGT[k];
+const base = (m, k) => CU()[m + '.' + k] || BASE[m][k];
+const SURF = [['side', 'Sidebars'], ['bg', 'Canvas'], ['surface', 'Surface (track, search)'], ['raised', 'Raised (buttons)']];
+// What sits on a background: hover, selected (bands, selected rows), edge (outlines, rings).
+function on(m, x, sys) {
+  const dark = m === 'dark', fg = base(m, 'fg1');
+  if (sys === 'fit') { const r = selCap(m); return { hover: fitGrey(x, Math.min(tgt('hover'), Math.sqrt(r)), dark), sel: fitGrey(x, r, dark), edge: fitGrey(x, tgt('edge'), dark) }; }
+  if (sys === 'steps') { const s = tgt('step') * (dark ? 1 : -1); return { hover: withL(x, s), sel: withL(x, 3 * s), edge: withL(base(m, 'bg'), dark ? .38 : -.36) }; }
+  if (sys === 'alpha') return { hover: mix(x, fg, .05), sel: mix(x, fg, .12), edge: mix(x, fg, .35) };
+  const n = NOW[m]; return { hover: x === base(m, 'rail') ? n.hoverRail : n.hover, sel: x === base(m, 'rail') ? n.hoverRail : n.selected, edge: n.segRing };
+}
+// The strongest selected ratio (up to the target) on which fg1, fg2, fg3 still pass their floors on the sidebar rail.
+function selCap(m) { const dark = m === 'dark', rail = base(m, 'rail'), fl = FLOORS[m], fg = ['fg1', 'fg2', 'fg3'].map(k => base(m, k));
+  const okAt = r => { const f = fitGrey(rail, r, dark); return fg.every((c, i) => ratio(f, c) >= fl[i][0] + .05 && Math.abs(apca(c, f)) >= fl[i][1] + .6); };
+  let lo = 1, hi = tgt('sel'); if (okAt(hi)) return hi; for (let i = 0; i < 30; i++) { const mid = (lo + hi) / 2; okAt(mid) ? lo = mid : hi = mid; } return lo; }
+function tok(m) {
+  const sys = 'fit', side = base(m, 'rail' === 'rail' ? 'rail' : 'rail' === 'bg' ? 'bg' : 'surface');
+  const t = { side, bg: base(m, 'bg'), surface: base(m, 'surface'), raised: base(m, 'raised'), fg1: base(m, 'fg1'), fg2: base(m, 'fg2'), fg3: base(m, 'fg3') };
+  for (const k of ['side', 'bg', 'surface', 'raised']) { const o = on(m, t[k], sys); t[k + '-hover'] = o.hover; t[k + '-sel'] = o.sel; t[k + '-edge'] = o.edge; }
+  t.today = sys === 'now' ? NOW[m].today : (sys === 'fit' ? fitGrey(t.bg, 1.05, m === 'dark') : t['bg-hover']);
+  if (sys === 'now') t['raised-edge'] = 'transparent';
+  return t;
+}
+const vars = t => Object.entries(t).map(([k, v]) => `--${k}:${v}`).join(';');
+
+// ================= demo data =================
+function fresh() { return {}; }
+const CC = { blue: '#5B8DEF', purple: '#9B7BEA', orange: '#E8853D', green: '#4FB477', gold: '#D4A93A', grey: '#8A8A8C', red: '#E5675A' };
+const DAYS = [['Mon', 2], ['Tue', 3], ['Wed', 4], ['Thu', 5], ['Fri', 6], ['Sat', 7], ['Sun', 8]];
+const TODAY = 2, H0 = 7, HP = 44, NOWH = 11.75;
+const ALLDAY = { 0: [['Ship v1.2 beta', 'grey']], 2: [["Alex's birthday", 'blue'], ['Release day', 'purple']], 3: [['Launch prep', 'purple']], 4: [['Lea visiting', 'blue'], ['Ship day', 'purple']] };
+// [start, hours, title, colour, flags]. flags: over (cascaded on top of an earlier block), sel, st: none | maybe | declined
+const EVENTS = {
+  0: [[8, 1, 'Gym', 'orange'], [9, .25, 'Check-in', 'gold'], [13, 1.5, 'Roadmap review with the whole product team', 'purple'], [16, .5, 'Call the landlord', 'red']],
+  1: [[9.5, .5, 'Reply to support', 'grey'], [10, 2, 'Deep work', 'purple'], [10.5, 1, 'Hiring sync', 'gold', { over: 1 }], [14, 1, 'Dentist', 'red', { st: 'declined' }], [16, 1.25, 'Pairing: export flow', 'blue']],
+  2: [[8, 1, 'Gym', 'orange'], [9, .25, 'Standup', 'gold'], [9.5, 1.5, 'Design review', 'purple'], [10, 1, 'Pricing sync', 'blue', { over: 1, st: 'none' }], [11, 1, '1:1 with Jordan', 'purple', { sel: 1 }], [12.5, 1, 'Lunch with Maya', 'blue', { st: 'maybe' }], [14, 2, 'Pricing page copy', 'purple'], [16.5, .5, 'Invoice run', 'grey'], [17, 1, 'Investor update', 'purple']],
+  3: [[9, .25, 'Standup', 'gold'], [10, 2, 'Deep work', 'purple'], [12, .5, 'Quick sync', 'blue', { st: 'none' }], [15, 1, 'Interview: designer', 'gold']],
+  4: [[9, .25, 'Standup', 'gold'], [11, 1, 'Demo day dry run', 'purple', { st: 'maybe' }], [13, .75, 'Lunch', 'green'], [15.5, 1.5, 'Ship v1.2', 'purple']],
+  5: [[8.25, 1.75, 'Founders breakfast', 'blue'], [14, 2, 'Farmers market', 'green']],
+  6: [[10, 1.5, 'Long walk', 'blue'], [18, 1, 'Family dinner', 'red', { st: 'maybe' }]],
+};
+const CALS = [['Personal', 'blue'], ['Work', 'purple'], ['Family', 'red'], ['Holidays in Germany', 'green'], ['Sport', 'orange'], ['Team', 'gold']];
+
+// ================= the app =================
+const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+const fmt = h => `${String(Math.floor(h)).padStart(2, '0')}:${String(Math.round((h % 1) * 60)).padStart(2, '0')}`;
+const EVR = { '5': 5, '7': 7, '9': 9 };
+function deskClass() { return [S.scene === 'paper' ? 'paper' : '', 'ev-' + C('evr'), 'bar-' + C('bar'), 'chip-' + C('chip')].join(' '); }
+// The corner of one block. "By height" grows with the block: a quarter of its height, 5 to 9.
+const evRadius = h => C('evr') === 'h' ? `border-radius:${Math.max(5, Math.min(9, Math.round(h / 4)))}px;` : '';
+function block(s, d, tt, c, f = {}, i = 99, left) {
+  const h = Math.max(16, d * HP - 2), one = h < 34;
+  const cls = ['ev', one ? 'one' : '', h < 24 ? 'short' : '', f.over ? 'over' : '', f.sel ? 'sel' : '', f.st ? 'st-' + f.st : '', i < TODAY ? 'past' : ''].join(' ');
+  const pos = left != null ? `left:${left}px;right:auto;width:${f.w}px;` : '';
+  return `<div class="${cls}" style="--cc:${CC[c]};top:${(s - H0) * HP + 1}px;height:${h}px;${pos}${evRadius(h)}"><b>${esc(tt)}</b>${one ? `<span>${fmt(s)}</span>` : `<span>${fmt(s)}–${fmt(s + d)}</span>`}</div>`;
+}
+const chip = (tt, c) => `<div class="chip" style="--cc:${CC[c]}">${esc(tt)}</div>`;
+function app() { return `<style>#desk{${vars(tok(S.scene === 'paper' ? 'paper' : 'dark'))}}</style>` + (S.scene === 'scale' ? scaleScene() : week()); }
+function week() {
+  let mm = `<div class="mm-hd">November<span class="yr">2026</span><span class="nv"><button>‹</button><button>›</button></span></div><div class="mm-wd"><span></span>${'MTWTFSS'.split('').map(x => `<span>${x}</span>`).join('')}</div>`;
+  const start = new Date(2026, 9, 26);
+  for (let r = 0; r < 6; r++) {
+    const ws = new Date(start); ws.setDate(start.getDate() + r * 7); let cells = '';
+    for (let c = 0; c < 7; c++) { const d = new Date(ws); d.setDate(ws.getDate() + c); const inM = d.getMonth() === 10, td = inM && d.getDate() === 4;
+      cells += `<button class="mm-d ${inM ? '' : 'out'}"><b class="${td ? 'pill' : ''}">${d.getDate()}</b></button>`; }
+    mm += `<div class="mm-wk ${r === 1 ? 'vis' : ''}"><span class="mm-wn">${44 + r}</span>${cells}</div>`;
+  }
+  mm += `<div class="grp">Google</div>${CALS.map(([n, c]) => `<button class="row" style="--cc:${CC[c]}"><i></i>${n}</button>`).join('')}`;
+  const seg = ['Day', 'Week', 'Month'].map(v => `<button class="${v === 'Week' ? 'pill' : ''}">${v}</button>`).join('');
+  let grid = `<div></div>` + DAYS.map(([w, n], i) => `<div class="dh ${i < TODAY ? 'past' : ''} ${i === TODAY ? 'today tcol' : ''}">${w}<span class="n ${i === TODAY ? 'pill' : ''}">${n}</span></div>`).join('');
+  grid += `<div class="ad-l">all-day</div>` + DAYS.map((_, i) => `<div class="ad ${i === TODAY ? 'tcol' : ''}">${(ALLDAY[i] || []).map(([tt, c]) => chip(tt, c)).join('')}</div>`).join('');
+  const HRS = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
+  grid += `<div class="hl">${HRS.map(h => `<div>${String(h).padStart(2, '0')}:00</div>`).join('')}<div style="position:relative;height:0"><span class="nowpill" style="top:${(NOWH - H0 - HRS.length) * HP}px">11:45</span></div></div>`;
+  grid += DAYS.map((_, i) => `<div class="col ${i === TODAY ? 'today tcol' : ''}">${(EVENTS[i] || []).map(([s, d, tt, c, f]) => block(s, d, tt, c, f, i)).join('')}<div class="now" style="top:${(NOWH - H0) * HP}px"></div></div>`).join('');
+  const later = [[12.5, 'Lunch with Maya', 'blue'], [14, 'Pricing page copy', 'purple'], [16.5, 'Invoice run', 'grey'], [17, 'Investor update', 'purple']];
+  const rc = `<div class="search">Search events<span class="hint">/</span></div>
+    <div class="lead"><div class="lb">Now<b>15 min left</b></div><div class="t">1:1 with Jordan</div><div class="m">11:00–12:00 · 2 guests</div><button class="join">Join Google Meet <span class="kc">⌘J</span></button></div>
+    <div class="grp" style="margin-top:6px">Later today</div>${later.map(([h, n, c], i) => `<button class="row ${i === 1 ? 'is-sel' : ''}" style="--cc:${CC[c]}"><span class="tm">${fmt(h)}</span><span class="bar"></span>${n}</button>`).join('')}`;
+  return `<div class="side" data-area="sidebar">${mm}</div><div class="main" data-area="main"><div class="tb"><h1>November <span>2026</span></h1><div class="sp"></div><div class="seg">${seg}</div><button class="ib">‹</button><button class="todaybtn">Today</button><button class="ib">›</button></div><div class="wk">${grid}</div></div><div class="rc" data-area="panel">${rc}</div>`;
+}
+// Every corner in the app next to each other, so the event radius can be judged against the scale.
+function scaleScene() {
+  const ev = C('evr') === 'h' ? 'by height, 5 to 9' : C('evr');
+  const chipR = C('chip') === 'same' ? (C('evr') === 'h' ? '5' : C('evr')) : C('chip') === 'pill' ? 'round' : '5';
+  const it = (el, name, r) => `<div class="it">${el}<span class="lbl">${name} · <b>${r}</b></span></div>`;
+  const lane = (items, label) => `<div><div class="lane-l" style="margin-bottom:6px">${label}</div><div class="lane">${items}</div></div>`;
+  const L = [[7, .25, 'Standup', 'gold'], [7.5, .5, 'Quick sync', 'blue', { st: 'none' }], [8.25, 1, 'Design review', 'purple'], [9.5, 2, 'Pricing page copy', 'purple', { sel: 1 }]];
+  const R = [[7, 1.5, 'Deep work', 'purple'], [7.5, 1, 'Hiring sync', 'gold', { over: 1 }], [9, .75, 'Lunch with Maya', 'blue', { st: 'maybe' }], [10, 1, 'Dentist', 'red', { st: 'declined' }]];
+  return `<div class="sc" data-area="main">
+    <div class="card"><h3>Surfaces · 13</h3><div class="sub">Menus, dialogs, cards. Rows inside a 6 pt padded menu: 7.</div>
+      <div class="menu"><button class="row" style="--cc:${CC.blue}"><i></i>Personal</button><button class="row is-sel" style="--cc:${CC.purple}"><i></i>Work</button><button class="row" style="--cc:${CC.red}"><i></i>Family</button></div>
+      <div style="height:16px"></div>
+      ${it('<div class="search" style="width:180px;margin:0">Search events</div>', 'field', '9')}
+      ${it('<button class="todaybtn">Today</button>', 'button', '9')}
+      ${it('<div class="seg" style="margin:0"><button>Day</button><button class="pill">Week</button></div>', 'track 9, segment', '7')}
+      ${it('<button class="ib" style="background:var(--bg-hover);color:var(--fg1)">‹</button>', 'icon button', '7')}
+      ${it('<span class="dh today" style="padding:0"><span class="n pill">4</span></span>', 'today mark', '5')}
+      ${it('<span class="nowpill" style="position:static;transform:none">11:45</span>', 'mark', '4')}
+    </div>
+    <div class="card"><h3>Event blocks · ${ev}</h3><div class="sub">15 min, 30 min, 1 h, 2 h; selected; not answered; cascaded; maybe; declined.</div>
+      <div class="lanes">${lane(L.map(e => block(...e)).join(''), 'Short to long')}${lane(R.map(e => block(...e)).join(''), 'Overlap and replies')}</div>
+    </div>
+    <div class="card"><h3>All-day chips · ${chipR}</h3><div class="sub">19 pt high, in the all-day lane and in the month view.</div>
+      <div style="display:flex;flex-direction:column;gap:3px;width:180px">${chip("Alex's birthday", 'blue')}${chip('Release day', 'purple')}${chip('Holidays in Germany', 'green')}</div>
+      <div style="height:18px"></div><h3>Next to each other</h3><div class="sub">A row in the right column, a chip, a block.</div>
+      <div style="width:220px;display:flex;flex-direction:column;gap:6px">
+        <button class="row is-sel" style="--cc:${CC.purple}"><span class="tm">14:00</span><span class="bar"></span>Pricing page copy</button>
+        ${chip('Release day', 'purple')}
+        <div style="position:relative;height:44px">${block(H0, 1, 'Pricing page copy', 'purple', {}, 99)}</div>
+      </div>
+    </div>
+  </div>`;
+}
+function appClick() { return false; }
+function customText() { return ''; }
+
+// ================= picker machinery: keep =================
+const KEY = `designr-${PRODUCT}-${VERSION}`;
+let S = null;
+try { S = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
+S = S || { c: {}, scene: SCENES[0][0], hover: true };
+DECISIONS.forEach(d => { if (!(d.id in S.c)) S.c[d.id] = d.lock ? LOCKED[d.id] : d.opts[0][0]; });
+let A = fresh(), PV = null;
+const C = id => (S.before && id in BEFORE ? BEFORE[id] : S.c[id]);
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(PV ? { ...S, c: { ...S.c, [PV.id]: PV.orig } } : S)); } catch (e) {} };
+const desk = document.getElementById('desk'), picker = document.getElementById('picker');
+const shot = location.hash.includes('&shot');
+if (shot) document.body.classList.add('shot');
+
+function fit() {
+  const st = document.getElementById('stage').getBoundingClientRect();
+  // Scale so the real window fits, then grow the app to fill the stage: no empty space.
+  // Shots (#scene&shot) keep the exact DESK size.
+  const k = shot ? 1 : Math.min(st.width / DESK.w, st.height / DESK.h, 1);
+  desk.style.width = (shot ? DESK.w : st.width / k) + 'px'; desk.style.height = (shot ? DESK.h : st.height / k) + 'px';
+  desk.style.transform = `scale(${k})`;
+}
+// fade: the old frame stays on top and fades out in 140 ms (hover previews only).
+function render(fade) {
+  if (fade && !shot) {
+    const g = desk.cloneNode(true); g.removeAttribute('id'); g.classList.add('ghost'); g.querySelector('#guides')?.remove();
+    desk.after(g); requestAnimationFrame(() => requestAnimationFrame(() => { g.style.opacity = 0; })); setTimeout(() => g.remove(), 200);
+  }
+  desk.className = 'desk ' + deskClass();
+  desk.innerHTML = app();
+  markPreview(); audit(); drawGuides();
+}
+function preset(id) { S.scene = id; A.sel = null; save(); renderPicker(); }
+
+const optLabel = d => (d.opts.find(o => o[0] === C(d.id)) || [0, C(d.id)])[1];
+function renderPicker() {
+  const open = DECISIONS.filter(d => !d.lock), locked = DECISIONS.filter(d => d.lock);
+  const radios = d => d.opts.map(([v, l, help], i) => {
+    const tag = d.lock ? (LOCKED[d.id] === v ? '<span class="lk">locked</span>' : '') : i === 0 ? '<span class="rec">recommended</span>' : '';
+    return `<button class="pk-opt ${C(d.id) === v ? 'on' : ''}" data-d="${d.id}" data-v="${v}"><span class="r"></span>${esc(l)}<span class="end">${tag}${help ? `<span class="hq" data-help="${esc(help)}">?</span>` : ''}</span></button>`;
+  }).join('');
+  let h = `<h1>${PRODUCT} ${VERSION} · round ${ROUND}</h1><p class="lede">${open.length} open. Hover an option to see it. ? explains it.</p>${READ ? `<p class="read">${esc(READ)}</p>` : ''}`;
+  if (Object.keys(BEFORE).length) h += `<div class="pk-ba"><button class="pk-btn ${S.before ? 'on' : ''}" data-a="before">Before</button><button class="pk-btn ${S.before ? '' : 'on'}" data-a="after">After</button><span>B</span></div>`;
+  h += `<div class="pk-notes"><ul>${HOWTO.map(n => `<li>${n}</li>`).join('')}</ul></div>`;
+  h += `<h2>Jump to</h2><div class="pk-scenes">${SCENES.map(([id, n]) => `<button class="pk-btn ${S.scene === id ? 'on' : ''}" data-scene="${id}">${n}</button>`).join('')}</div>`;
+  h += `<button class="pk-tog ${S.hover !== false ? 'on' : ''}" data-a="hover"><i></i>Preview on hover</button><button class="pk-tog ${S.guides ? 'on' : ''}" data-a="guides"><i></i>Alignment guides (G)</button><button class="pk-tog ${S.agt !== false ? 'on' : ''}" data-a="agt"><i></i>Notes on elements (Agentation)</button><div class="pk-audit" id="agt-state">${esc(AGT_MSG)}</div><div class="pk-audit" id="audit"></div>`;
+  h += `<h2>Open</h2>${open.length ? '' : '<p class="lede">Nothing open.</p>'}`;
+  open.forEach(d => { h += `<div class="pk-dec"><b>${esc(d.name)}</b>${d.fb ? `<div class="pk-new">You said: <q>${esc(d.fb)}</q></div>` : ''}${d.note ? `<p>${esc(d.note)}</p>` : ''}${radios(d)}</div>`; });
+  h += `<h2>Locked (${locked.length})</h2>`;
+  if (!S.unlock) {
+    h += locked.map(d => `<div class="pk-lock"><b>${esc(d.name)}</b><span>${esc(optLabel(d))}${C(d.id) !== LOCKED[d.id] ? ' · changed' : ''}</span></div>`).join('');
+    if (locked.length) h += `<button class="pk-btn" style="margin-top:8px" data-a="unlock">Unlock to compare</button>`;
+  } else {
+    h += `<button class="pk-btn" data-a="unlock">Hide the locked options</button>`;
+    locked.forEach(d => { h += `${d.g ? `<h2>${esc(d.g)}</h2>` : ''}<div class="pk-dec"><b>${esc(d.name)}</b>${radios(d)}</div>`; });
+  }
+  h += `<div class="pk-foot"><button class="pk-btn" data-a="copy">Copy my picks</button><button class="pk-btn" data-a="reset">Back to locked picks</button><button class="pk-btn" data-a="demo">Reset demo data</button></div><textarea id="picks" readonly></textarea>`;
+  const top = picker.scrollTop; picker.innerHTML = h; picker.scrollTop = top;
+  document.getElementById('picks').value = picksText();
+  render();
+}
+function picksText() {
+  const line = d => `- ${d.name}: ${optLabel(d)}${d.lock ? (C(d.id) !== LOCKED[d.id] ? ' (changed from the locked pick)' : '') : C(d.id) === d.opts[0][0] ? '' : ' (not the recommendation)'}`;
+  const scene = id => (SCENES.find(x => x[0] === id) || [0, id])[1];
+  const notes = (S.notes || []).map(n => `- ${scene(n.scene)} · \`${n.path}\`${n.text ? ` ("${n.text}")` : ''}: ${n.comment}`).join('\n');
+  return `# ${PRODUCT} ${VERSION} round ${ROUND} picks\n## Open\n${DECISIONS.filter(d => !d.lock).map(line).join('\n') || '- Nothing open'}\n## Locked\n${DECISIONS.filter(d => d.lock).map(line).join('\n')}${notes ? `\n## Notes on elements\n${notes}` : ''}${customText()}\n## Notes\n- `;
+}
+// Agentation state line in the picker. The module script at the end sets it.
+let AGT_MSG = '';
+function agtMsg(m) { AGT_MSG = m; const el = document.getElementById('agt-state'); if (el) el.textContent = m; }
+// Notes from Agentation (the module script at the end). They go into the picks text.
+const NOTES = {
+  set(a) { const old = (S.notes || []).find(n => n.id === a.id); S.notes = (S.notes || []).filter(n => n.id !== a.id).concat({ id: a.id, scene: old ? old.scene : S.scene, path: a.elementPath, text: NOTES.text(a), comment: a.comment }); NOTES.done(); },
+  text(a) { let el = null; try { el = document.querySelector(a.elementPath); } catch (e) {} while (el && el !== desk && !el.innerText.trim()) el = el.parentElement; return (a.selectedText || el?.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 60); },
+  del(a) { S.notes = (S.notes || []).filter(n => n.id !== a.id); NOTES.done(); },
+  clear() { S.notes = []; NOTES.done(); },
+  done() { save(); const p = document.getElementById('picks'); if (p) p.value = picksText(); },
+};
+// Hover preview: the option applies while hovered, its scene opens, and the hl elements glow once.
+// Leaving goes back to the pick and to the scene you were on. A click keeps the option and the scene.
+// Only the app renders again, never the picker, so the picker does not move.
+function previewOn(id, v) {
+  if (S.hover === false) return;
+  const d = DECISIONS.find(x => x.id === id); if (!d) return;
+  if (PV && PV.id !== id) previewOff(true);
+  if (!PV) PV = { id, orig: S.c[id], scene: S.scene };
+  if (PV.v === v) return;
+  PV.v = v; S.c[id] = v;
+  if (d.scene && S.scene !== d.scene) S.scene = d.scene;
+  render(true);
+}
+function previewOff(silent) { if (!PV) return; S.c[PV.id] = PV.orig; S.scene = PV.scene; PV = null; save(); if (!silent) render(true); }
+function markPreview() {
+  const d = PV && DECISIONS.find(x => x.id === PV.id);
+  if (d && d.hl) desk.querySelectorAll(d.hl).forEach(el => el.classList.add('pvhl'));
+}
+// Counter: text sizes, colours and weights in view.
+function audit() {
+  const box = document.getElementById('audit'); if (!box) return;
+  const sz = new Set(), co = new Set(), wt = new Set(), n = {};
+  for (const el of desk.querySelectorAll('*')) {
+    if (el.closest('#guides, [data-os]')) continue;
+    const own = [...el.childNodes].some(x => x.nodeType === 3 && x.textContent.trim()) || (el.matches('input, textarea') && el.value);
+    if (!own) continue;
+    const r = el.getBoundingClientRect(); if (!r.width || !r.height) continue;
+    const cs = getComputedStyle(el); if (cs.visibility === 'hidden' || +cs.opacity === 0) continue;
+    const f = parseFloat(cs.fontSize); sz.add(f); n[f] = (n[f] || 0) + 1; co.add(cs.color); wt.add(cs.fontWeight);
+  }
+  box.innerHTML = `In view: <b>${sz.size}</b> sizes · <b>${co.size}</b> text colours · <b>${wt.size}</b> weights<br>${[...sz].sort((a, b) => b - a).map(f => `${f} px ×${n[f]}`).join(' · ')}`;
+}
+// Alignment guides (G). Areas: [data-area]. Centred items: [data-centred] or .btn.
+// Green: a left edge that 3 or more items share. Blue: a shared right edge. Red: 1 to 5 px off a line.
+const CENTRED = '[data-centred], .btn';
+function drawGuides() {
+  desk.querySelector('#guides')?.remove(); window.__guides = null;
+  if (!S.guides) return;
+  const k = desk.getBoundingClientRect().width / desk.offsetWidth, dr = desk.getBoundingClientRect();
+  const X = x => (x - dr.left) / k, Y = y => (y - dr.top) / k;
+  let out = '', misses = [], cols = 0;
+  desk.querySelectorAll('[data-area]').forEach(area => {
+    const ar = area.getBoundingClientRect(), L = [], R = [];
+    const vis = r => r.width > 0 && r.height > 0 && r.bottom > ar.top && r.top < ar.bottom;
+    const push = (arr, x, r, what) => arr.push({ x: Math.round(X(x) * 2) / 2, t: Y(r.top), b: Y(r.bottom), l: X(r.left), w: r.width / k, what });
+    const tw = document.createTreeWalker(area, NodeFilter.SHOW_TEXT, { acceptNode: x => x.textContent.trim() ? 1 : 2 });
+    for (let t; (t = tw.nextNode());) {
+      const el = t.parentElement; if (!el || el.closest(CENTRED)) continue;
+      const cs = getComputedStyle(el); if (cs.textAlign === 'center' || cs.textAlign === 'right' || cs.marginLeft === 'auto') continue;
+      const rg = document.createRange(); rg.selectNodeContents(t); const r = rg.getClientRects()[0];
+      if (r && vis(r)) push(L, r.left, r, t.textContent.trim().slice(0, 24));
+    }
+    area.querySelectorAll('input, textarea').forEach(el => {
+      const r = el.getBoundingClientRect(); if (!vis(r) || el.closest(CENTRED)) return;
+      const cs = getComputedStyle(el); push(L, r.left + parseFloat(cs.paddingLeft) + parseFloat(cs.borderLeftWidth), r, (el.value || el.placeholder || '').slice(0, 24));
+    });
+    area.querySelectorAll('.ic, svg').forEach(el => {
+      const r = el.getBoundingClientRect(); if (!vis(r) || el.closest(CENTRED)) return;
+      if (!el.previousElementSibling) push(L, r.left, r, 'icon');
+      if (!el.nextElementSibling && !el.nextSibling?.textContent?.trim()) push(R, r.right, r, 'icon');
+    });
+    const group = arr => { const g = []; arr.sort((a, b) => a.x - b.x).forEach(e => { const last = g[g.length - 1]; if (last && e.x - last.x0 <= .75) last.items.push(e); else g.push({ x0: e.x, items: [e] }); }); g.forEach(c => { c.x = c.items.reduce((a, b) => a + b.x, 0) / c.items.length; }); return g; };
+    const lines = (arr, cls) => {
+      const g = group(arr), strong = g.filter(c => c.items.length >= 3);
+      strong.forEach(c => { cols++; out += `<div class="gv ${cls}" style="left:${c.x}px;top:${Y(ar.top)}px;height:${ar.height / k}px"><span>${Math.round(c.x - X(ar.left))}</span></div>`; });
+      g.filter(c => c.items.length < 3).forEach(c => {
+        const near = strong.find(s2 => Math.abs(s2.x - c.x) >= 1 && Math.abs(s2.x - c.x) <= 5); if (!near) return;
+        c.items.forEach(it => { const d = (it.x - near.x).toFixed(1); misses.push({ area: area.dataset.area, what: it.what, x: it.x, off: +d }); out += `<div class="bx" style="left:${it.l}px;top:${it.t}px;width:${Math.max(it.w, 2)}px;height:${it.b - it.t}px"><span>${d > 0 ? '+' : ''}${d}</span></div>`; });
+      });
+    };
+    lines(L, ''); lines(R, 'r');
+    out += `<div class="ol" style="left:${X(ar.left)}px;top:${Y(ar.top)}px;width:${ar.width / k}px;height:${ar.height / k}px"></div>`;
+  });
+  window.__guides = misses;
+  desk.insertAdjacentHTML('beforeend', `<div id="guides">${out}<div class="legend"><b>Alignment guides</b> · G to hide<br>green: shared left edge (3+) · blue: shared right edge<br>red: ${misses.length} item${misses.length === 1 ? '' : 's'} 1 to 5 px off a line · ${cols} lines</div></div>`);
+}
+
+picker.addEventListener('click', ev => {
+  const t = ev.target.closest('button'); if (!t) return;
+  const a = t.dataset.a;
+  if (t.dataset.scene) return preset(t.dataset.scene);
+  if (t.dataset.d) { clearTimeout(PT); PV = null; S.c[t.dataset.d] = t.dataset.v; S.before = false; }
+  else if (a === 'before' || a === 'after') S.before = a === 'before';
+  else if (a === 'hover') S.hover = S.hover === false;
+  else if (a === 'guides') S.guides = !S.guides;
+  else if (a === 'agt') { S.agt = S.agt === false; save(); window.AGT?.set(S.agt, true); }
+  else if (a === 'unlock') S.unlock = !S.unlock;
+  else if (a === 'copy') { navigator.clipboard?.writeText(picksText()); t.textContent = 'Copied'; return; }
+  else if (a === 'reset') { DECISIONS.forEach(d => { S.c[d.id] = d.lock ? LOCKED[d.id] : d.opts[0][0]; }); S.before = false; }
+  else if (a === 'demo') A = fresh();
+  else return;
+  save(); renderPicker();
+});
+// Hover intent: show an option after 90 ms. The gaps inside one decision keep the preview, so nothing flickers.
+let PT = null;
+picker.addEventListener('mouseover', ev => {
+  const o = ev.target.closest('.pk-opt[data-d]'), blk = ev.target.closest('.pk-dec');
+  clearTimeout(PT);
+  if (o) PT = setTimeout(() => previewOn(o.dataset.d, o.dataset.v), 90);
+  else if (PV && blk && blk.querySelector(`[data-d="${PV.id}"]`)) return;
+  else if (PV) PT = setTimeout(() => previewOff(), 140);
+});
+picker.addEventListener('mouseleave', () => { clearTimeout(PT); previewOff(); });
+desk.addEventListener('click', ev => { const t = ev.target.closest('button'); if (t && appClick(t)) { save(); renderPicker(); } });
+document.addEventListener('keydown', ev => {
+  if (ev.target.closest?.('input, textarea') || ev.metaKey || ev.ctrlKey) return;
+  if (ev.key === 'g' || ev.key === 'G') { S.guides = !S.guides; save(); renderPicker(); }
+  else if ((ev.key === 'b' || ev.key === 'B') && Object.keys(BEFORE).length) { S.before = !S.before; save(); renderPicker(); }
+});
+window.addEventListener('resize', () => { fit(); drawGuides(); });
+window.addEventListener('hashchange', () => { const id = location.hash.slice(1).split('&')[0]; if (id) preset(id); });
+fit();
+const scene0 = location.hash.slice(1).split('&')[0];
+if (scene0 && SCENES.some(s => s[0] === scene0)) preset(scene0); else renderPicker();
+document.fonts?.ready.then(() => { fit(); drawGuides(); });
+</script>
+<div id="agentation"></div>
+<script type="module">
+// Agentation (agentation.com): click any element, write a note. The picker toggle turns it on and off.
+// It loads from esm.sh, so it needs the network. The mockup works without it. Its notes go into "Copy my picks".
+const deps = '?deps=react@18.3.1,react-dom@18.3.1';
+let lib = null, root = null;
+async function set(on, open) {
+  if (!on) { root?.unmount(); root = null; agtMsg('Off.'); return; }
+  if (root) return;
+  agtMsg('Loading from esm.sh …');
+  try {
+    lib = lib || await Promise.all([import('https://esm.sh/react@18.3.1'), import('https://esm.sh/react-dom@18.3.1/client' + deps), import('https://esm.sh/agentation@3.1.2' + deps)]);
+    const [React, { createRoot }, { Agentation }] = lib;
+    root = createRoot(document.getElementById('agentation'));
+    root.render(React.createElement(Agentation, {
+      appName: `${PRODUCT} ${VERSION} round ${ROUND}`, className: 'agt-host',
+      identifyingAttributes: ['data-area', 'data-k', 'data-d', 'data-v', 'data-go', 'data-open'],
+      onAnnotationAdd: NOTES.set, onAnnotationUpdate: NOTES.set, onAnnotationDelete: NOTES.del, onAnnotationsClear: NOTES.clear,
+    }));
+    agtMsg('On. ⌘⇧F or the button at the bottom right of the app opens it. Then click an element and write.');
+    // After a click on the toggle, open the toolbar at once.
+    if (open) setTimeout(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'F', code: 'KeyF', metaKey: true, shiftKey: true, bubbles: true })), 250);
+  } catch (e) { root = null; agtMsg('Did not load (no network?). The mockup works without it.'); console.info('Agentation did not load.', e); }
+}
+window.AGT = { set };
+if (!shot) set(S.agt !== false); else agtMsg('');
+</script>
+</body>
+</html>
