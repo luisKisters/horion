@@ -17,7 +17,7 @@ struct MenuBarItemFixTests {
 
     @Test func itemTitleHasADotAndNoRed() {
         let s = MenuBarController.itemTitle(title: "Clean the flat", countdown: "2 h 3 min left")
-        #expect(s.string == " Clean the flat  \u{00B7}  2 h 3 min left")
+        #expect(s.string == " Clean the flat   \u{2022}   2 h 3 min left")
         s.enumerateAttribute(.foregroundColor, in: NSRange(location: 0, length: s.length)) { v, _, _ in
             if let c = v as? NSColor { #expect(c != MenuBarArt.soon) }
         }
