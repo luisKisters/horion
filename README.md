@@ -16,6 +16,8 @@ Download `Horion.dmg` from the [latest release](https://github.com/luisKisters/h
 scripts/build-app.sh && open build/Horion.app                # real calendars (asks for calendar access)
 open build/Horion.app --args --demo                          # demo data, clock pinned to Sun Oct 4 2026 15:10
 open build/Horion.app --args --demo --now "2026-09-30T16:00" # demo data with another pinned time
+scripts/install.sh                                           # build this checkout, replace /Applications/Horion.app, restart it
+scripts/install.sh main                                      # the same with the latest origin/main
 ```
 
 `scripts/build-app.sh` builds release, assembles `build/Horion.app` (bundle id `com.luiskisters.horion`, calendar usage descriptions) and ad-hoc signs it (`codesign -s -`).
