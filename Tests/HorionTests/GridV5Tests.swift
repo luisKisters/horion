@@ -18,14 +18,14 @@ struct GridV5Tests {
         let m = model()
         let wed = m.layout.timed[2]
         func p(_ t: String) -> Placement { wed.first { $0.event.title == t }!.placement }
-        // Founder meetup 17:00 is the base; Idea session 17:15 starts within one title line, so it takes the right half.
-        #expect(p("Founder meetup").indent == 0 && !p("Founder meetup").over && p("Founder meetup").width == 0.5)
+        // Founder meetup 17:00 is the base; Idea session 17:15, as long, starts within one title line: they share the width.
+        #expect(p("Founder meetup").left == 0 && !p("Founder meetup").over && p("Founder meetup").width == 0.5)
         #expect(p("Idea session").left == 0.5 && p("Idea session").over)
-        // Flat cleaning 18:00 runs over both: one more cascade step.
-        #expect(p("Flat cleaning").indent == 2 * OverlapV11.indentStep && p("Flat cleaning").over)
-        // Idea session sits beside Founder meetup, so it does not cover it (mockup-v14); Flat cleaning at 18:00 does, an hour in,
-        // so Founder meetup plans its text on that hour.
-        #expect(!p("Founder meetup").covered && p("Founder meetup").visibleMinutes == 60)
+        // Flat cleaning 18:00 sits on Idea session, a step in (smaller in this narrow column), inside its half.
+        let f = p("Flat cleaning")
+        #expect(f.left > 0.5 && abs(f.left + f.width - 1) < 1e-9 && f.over)
+        // Nothing is drawn over Founder meetup's title (mockup-v14): it plans its text on the whole block.
+        #expect(!p("Founder meetup").covered && p("Founder meetup").visibleMinutes == nil)
     }
 
     @Test func allDayHidesAllButTwoLanesPerDay() {
@@ -72,7 +72,8 @@ struct GridV5Tests {
         let previewWalk = r.events.first { $0.id == walkID }!.placement
         let ghost = r.preview!.placement
         // 60 minutes, not a zero-length short item: the walk 30 minutes later cascades over it (a short ghost would sit beside it).
-        #expect(ghost.drawEndMinute == 22 * 60 && ghost.width == 1 && previewWalk.indent == OverlapV11.indentStep)
+        #expect(ghost.drawEndMinute == 22 * 60 && ghost.width == 1
+                && abs(previewWalk.left * g.blockWidth - OverlapV11.indentStep) < 1e-9)
         m.gridMouseUp(b)
         let saved = m.layout.timed[0].first { $0.event.id == m.draftEventID }!.placement
         let walk = m.layout.timed[0].first { $0.id == walkID }!.placement

@@ -164,11 +164,11 @@ extension WalkthroughV4 {
         }
         if let idea = Walkthrough.placed(m, "Idea session", day: 2), let flat = Walkthrough.placed(m, "Flat cleaning", day: 2),
            let founder = Walkthrough.placed(m, "Founder meetup", day: 2) {
-            d.say("Within a title line: the right half. Later: one indent step")
-            d.check(idea.placement.left == 0.5 && flat.placement.indent == 2 * OverlapV11.indentStep && flat.placement.over,
-                    "Idea session takes the right half; Flat cleaning cascades two steps")
-            d.check(!founder.placement.covered && founder.placement.visibleMinutes == 60 && plan(m, founder).time != .none,
-                    "Idea session beside it does not cover Founder meetup; its text uses the hour above Flat cleaning, time shown")
+            d.say("Within a title line: share the width. Later: a step in")
+            d.check(idea.placement.left == 0.5 && flat.placement.left > idea.placement.left && flat.placement.over,
+                    "Idea session shares the width; Flat cleaning sits a step in on it")
+            d.check(!founder.placement.covered && founder.placement.visibleMinutes == nil && plan(m, founder).time != .none,
+                    "Nothing covers Founder meetup's title; its text uses the whole block, time shown")
             d.hold(1.2)
         }
         unhover(m)

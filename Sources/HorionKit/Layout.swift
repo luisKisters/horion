@@ -242,11 +242,12 @@ public enum RangeLayoutBuilder {
 
     /// Lays out one day with `OverlapV11` (the v11 cascade; crowded spots side by side) and sorts it into paint order.
     /// Every event shows: nothing is folded into "+N" (removed in mockup-v14).
-    public static func packDay(_ day: [PlacedEvent]) -> [PlacedEvent] {
+    /// `width`: the day column in points (inside its create strip).
+    public static func packDay(_ day: [PlacedEvent], width: Double = OverlapV11.defaultWidth) -> [PlacedEvent] {
         var placed = day
-        let placements = OverlapV11.layout(placed.indices.map { item(placed[$0], id: String($0)) })
+        let placements = OverlapV11.layout(placed.indices.map { item(placed[$0], id: String($0)) }, width: width)
         for (k, p) in placements.enumerated() { if let i = Int(p.id) { placed[i].placement = Placement(v5: p, order: k) } }
-        markCovered(&placed)
+        markCovered(&placed, width: width)
         // Sort small integer keys, not the (large) PlacedEvent values.
         let keys = placed.map { $0.placement.z }
         let order = (0..<placed.count).sorted { keys[$0] != keys[$1] ? keys[$0] < keys[$1] : $0 < $1 }
@@ -259,7 +260,9 @@ public enum RangeLayoutBuilder {
     /// Sets `placement.covered` and `visibleMinutes` on the visible blocks: in start order (the longer first), the first later block
     /// that starts before this one ends and is drawn over it (their columns overlap) covers it from its start (mockup-v11 app.js
     /// `cascade`, the `cut` pass; mockup-v14 adds the column check, so a block beside it does not count).
-    static func markCovered(_ placed: inout [PlacedEvent]) {
+    /// Only a block over its title counts: one tucked in on the right of it (`OverlapV11` rule 3) leaves the title and time readable.
+    static func markCovered(_ placed: inout [PlacedEvent], width: Double = OverlapV11.defaultWidth) {
+        let title = (OverlapV11.titleWidth(max(width, 1)) + OverlapV11.gap) / max(width, 1)
         let vis = Array(placed.indices)
         func end(_ i: Int) -> Int { max(placed[i].endMinute, placed[i].placement.drawEndMinute ?? 0) }
         let order = vis.sorted {
@@ -270,7 +273,7 @@ public enum RangeLayoutBuilder {
         }
         func across(_ a: Int, _ b: Int) -> Bool {
             let pa = placed[a].placement, pb = placed[b].placement
-            return pb.left < pa.left + pa.width - 0.001 && pa.left < pb.left + pb.width - 0.001
+            return pb.left < pa.left + min(pa.width, title) - 0.001 && pa.left < pb.left + pb.width - 0.001
         }
         for (k, i) in order.enumerated() {
             placed[i].placement.covered = false
@@ -286,7 +289,8 @@ public enum RangeLayoutBuilder {
     /// A timed event at least 24 h long. It goes to the all-day lane.
     public static func isMultiDay(_ e: CalendarEvent) -> Bool { !e.isAllDay && e.end.timeIntervalSince(e.start) >= 86_400 }
 
-    public static func build(events: [CalendarEvent], days: [Date], math: CalendarMath, pointsPerHour: Double = 56) -> RangeLayout {
+    public static func build(events: [CalendarEvent], days: [Date], math: CalendarMath, pointsPerHour: Double = 56,
+                             columnWidth: Double = OverlapV11.defaultWidth) -> RangeLayout {
         let dayCount = days.count
         guard dayCount > 0 else { return .empty }
         let rangeEnd = math.addDays(days[dayCount - 1], 1)
@@ -344,7 +348,7 @@ public enum RangeLayoutBuilder {
                 PlacedEvent(id: "\(sp.event.id)|\(d)", event: sp.event, dayIndex: d, startMinute: sp.s, endMinute: sp.e,
                             placement: Placement(id: "", column: 0, columns: 1), continuesFromPrevious: sp.from, continuesToNext: sp.to)
             }
-            timed.append(packDay(placed))
+            timed.append(packDay(placed, width: columnWidth))
         }
         return RangeLayout(days: days, timed: timed, allDay: AllDayPacker.pack(allDayItems, dayCount: dayCount), allDayEvents: allDayMap,
                            pointsPerHour: pointsPerHour)

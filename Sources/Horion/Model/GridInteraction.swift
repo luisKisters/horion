@@ -25,6 +25,8 @@ struct GridGeometry: Equatable {
     /// Empty strip kept on the right of every day column so there is always room to press and drag out a new event
     /// next to existing ones: 10% of the column, between 10 and 20 pt.
     static func createStrip(_ inner: Double) -> Double { min(20, max(10, inner * 0.1)) }
+    /// The part of a day column blocks are laid out in (points): inside its divider and create strip.
+    var blockWidth: Double { dayWidth - 1 - Self.createStrip(dayWidth - 1) }
 
     /// A block inside its day column (mockup-v11 `evBlock`): `left` and `width` are fractions of the column inside its 1 pt day
     /// divider, `indent` points of cascade. `top: s/60·H + 1`, `height: max(span/60·H - 2, 16)`, `left: calc(left + 2px + px)`,
@@ -226,7 +228,7 @@ extension AppModel {
             guard touched.contains(d) else { out += layout.timed[d]; continue }
             var day = layout.timed[d].filter { $0.event.id != moving }
             if d == pv.dayIndex { day.append(ghost) }
-            for p in RangeLayoutBuilder.packDay(day) {
+            for p in RangeLayoutBuilder.packDay(day, width: gridGeometry.blockWidth) {
                 if p.id == ghost.id { preview = p } else { out.append(p) }
             }
         }

@@ -130,7 +130,10 @@ final class AppModel {
     // MARK: Interaction
     var dragPreview: DragPreview?
     var undoStack = UndoStack()
-    var gridGeometry = GridGeometry(dayWidth: 180, hourHeight: 48, dayCount: 7)
+    var gridGeometry = GridGeometry(dayWidth: 180, hourHeight: 48, dayCount: 7) {
+        // The overlap layout works in points: lay the days out again when the columns change width.
+        didSet { if abs(gridGeometry.blockWidth - oldValue.blockWidth) >= 1 { reload() } }
+    }
     /// Frame of the scrolling grid in window coordinates (top-left origin) and its scroll offset. Published by the view; used by the walkthrough to aim real mouse events.
     var gridViewport = CGRect.zero
     var gridScrollY: CGFloat = 0
@@ -351,14 +354,15 @@ final class AppModel {
         } else {
             var shown = visibleIdx.map { windowEvents[$0] }
             if let d = draft { shown.append(d) }
-            layout = gridLayout(RangeLayoutBuilder.build(events: shown, days: visibleDays, math: math))
+            layout = gridLayout(RangeLayoutBuilder.build(events: shown, days: visibleDays, math: math, columnWidth: gridGeometry.blockWidth))
         }
 
         var teamEvents: [CalendarEvent] = []
         for t in shownTeammates {
             for var e in store.teammateEvents(t.email, in: q) { e.ownerEmail = t.email; teamEvents.append(e); eventsByID[e.id] = e }
         }
-        overlayLayout = viewMode == .month ? .empty : RangeLayoutBuilder.build(events: teamEvents, days: visibleDays, math: math)
+        overlayLayout = viewMode == .month ? .empty : RangeLayoutBuilder.build(events: teamEvents, days: visibleDays, math: math,
+                                                                                         columnWidth: gridGeometry.blockWidth)
         flatTimed = layout.timed.flatMap { $0 }
         flatOverlay = overlayLayout.timed.flatMap { $0 }
         layoutGeneration += 1
