@@ -4,7 +4,7 @@ Each spec uses the tokens in `foundations.md`. Sizes are in points.
 ## Event block (week and day grid)
 | Part | Spec |
 |---|---|
-| Box | Fill and text from the event recipe. Radius 4.5. Padding 3 at the top, 6 at the right, 0 at the bottom. At the left the padding is 6 after the 3.5 bar. |
+| Box | Fill and text from the event recipe. Radius 7 (`Radius.event` = `Radius.inner`, v17). Padding 3 at the top, 6 at the right, 0 at the bottom. At the left the padding is 6 after the 3.5 bar. |
 | Bar | 3.5 wide, flush left, full height, clipped by the radius |
 | Text | Title `event` 12 / 500. The time is `small` 11 in the time colour, tabular, with 1 pt above it. |
 | Two lines | Only when 3 + 15.5 + 14 + 2 ≤ height. The title clamps to as many lines as fit, at most 2. |

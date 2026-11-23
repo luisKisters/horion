@@ -282,7 +282,8 @@ enum Radius {
     /// Squares and labels 10 to 16 pt high: 4, so they stay squares, not circles.
     static let mark: CGFloat = 4
     static let row: CGFloat = control
-    static let event: CGFloat = small
+    /// Event blocks and all-day chips (v17): 2 pt inside their column, like a segment in its track.
+    static let event: CGFloat = inner
     static let card: CGFloat = surface
     /// The 3 pt calendar colour bar.
     static let bar: CGFloat = 1.5
