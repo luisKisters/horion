@@ -99,6 +99,12 @@ private struct HourGutter: View {
         let nowY: Double? = nowMinute.map { g.yPos($0) }
         let nowText = fmt.time(model.now)
         let hover = model.gridState.pointer.minute
+        // Drag to create: the anchored end gets a pill too, so both ends of the new event read off the gutter.
+        let anchor: Int? = model.dragPreview.flatMap { d in
+            guard d.kind == .create, let h = hover else { return nil }
+            let a = h == d.startMinute ? d.endMinute : d.startMinute
+            return abs(g.yPos(a) - g.yPos(h)) >= 16 ? a : nil
+        }
         Canvas { ctx, size in
             let ink = EventPainter.Ink.of(dark)
             let right = size.width
@@ -117,6 +123,7 @@ private struct HourGutter: View {
                 }
                 cg.restoreGState()
                 if let ny = nowY { pill(cg, nowText, .hourBold, y: ny, right: right - 4, fill: ink.live, color: ink.onLive) }
+                if let m = anchor { pill(cg, TextCache.time(fmt, minutes: m), .hour, y: g.yPos(m), right: right - 4, fill: ink.bg3, color: ink.fg) }
                 if let m = hover { pill(cg, TextCache.time(fmt, minutes: m), .hour, y: g.yPos(m), right: right - 4, fill: ink.bg3, color: ink.fg) }
             }
         }
