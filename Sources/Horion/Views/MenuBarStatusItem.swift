@@ -74,18 +74,21 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             button.attributedTitle = NSAttributedString()
             return
         }
-        button.image = MenuBarArt.bar(color: MenuBarArt.calendar(model.calendarColorHex(of: f.event)), second: nil, height: 13, tentative: false)
+        // a template bar: white on a dark menu bar, black on a light one, like the text beside it
+        let bar = MenuBarArt.bar(color: .black, second: nil, height: 13, tentative: false)
+        bar.isTemplate = true
+        button.image = bar
         button.imagePosition = .imageLeading
         button.attributedTitle = Self.itemTitle(title: model.settings.menuBarDisplay == .titleAndCountdown ? m.itemTitle : nil, countdown: f.text)
     }
 
-    /// "Title · 2 h 3 min left": the dot at 45 %, the time at 72 %, so the title reads first. Nothing is red.
+    /// "Title  •  2 h 3 min left": a full-strength dot with room around it, the time at 72 %. Nothing is red.
     static func itemTitle(title: String?, countdown: String) -> NSAttributedString {
         let font = NSFont.systemFont(ofSize: 13, weight: .medium)
         let s = NSMutableAttributedString(string: " ", attributes: [.font: font])
         if let title {
             s.append(NSAttributedString(string: title, attributes: [.font: font, .foregroundColor: NSColor.labelColor]))
-            s.append(NSAttributedString(string: "  \u{00B7}  ", attributes: [.font: font, .foregroundColor: NSColor.labelColor.withAlphaComponent(0.45)]))
+            s.append(NSAttributedString(string: "   \u{2022}   ", attributes: [.font: NSFont.systemFont(ofSize: 10, weight: .bold), .foregroundColor: NSColor.labelColor, .baselineOffset: 1]))
         }
         s.append(NSAttributedString(string: countdown, attributes: [
             .font: NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .medium),
