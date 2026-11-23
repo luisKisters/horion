@@ -130,6 +130,17 @@ struct RangeLayoutTests {
         #expect(l.timed[2].isEmpty)
         #expect(l.timed[1][0].endMinute == 1440)
     }
+    @Test func timedEventOfADayOrMoreGoesToAllDayLane() {
+        let ev = CalendarEvent(calendarID: "c", title: "Visit", start: d(2026, 9, 29, 8), end: d(2026, 10, 1, 9))
+        let l = RangeLayoutBuilder.build(events: [ev], days: berlin.days(from: d(2026, 9, 28), count: 7), math: berlin)
+        #expect(l.timedCount == 0)
+        #expect(l.allDay.placements.count == 1 && l.allDay.placements[0].firstDay == 1 && l.allDay.placements[0].lastDay == 3)
+    }
+    @Test func multiDayEventEndingAtMidnightEndsTheDayBefore() {
+        let ev = CalendarEvent(calendarID: "c", title: "Stay", start: d(2026, 9, 29, 10), end: d(2026, 10, 1, 0))
+        let l = RangeLayoutBuilder.build(events: [ev], days: berlin.days(from: d(2026, 9, 28), count: 7), math: berlin)
+        #expect(l.allDay.placements[0].firstDay == 1 && l.allDay.placements[0].lastDay == 2)
+    }
     @Test func allDayEndIsExclusive() {
         let ev = CalendarEvent(calendarID: "c", title: "Trip", start: d(2026, 10, 2), end: d(2026, 10, 5), isAllDay: true)
         let l = RangeLayoutBuilder.build(events: [ev], days: berlin.days(from: d(2026, 9, 28), count: 7), math: berlin)

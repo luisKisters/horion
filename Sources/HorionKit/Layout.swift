@@ -283,6 +283,9 @@ public enum RangeLayoutBuilder {
         }
     }
 
+    /// A timed event at least 24 h long. It goes to the all-day lane.
+    public static func isMultiDay(_ e: CalendarEvent) -> Bool { !e.isAllDay && e.end.timeIntervalSince(e.start) >= 86_400 }
+
     public static func build(events: [CalendarEvent], days: [Date], math: CalendarMath, pointsPerHour: Double = 56) -> RangeLayout {
         let dayCount = days.count
         guard dayCount > 0 else { return .empty }
@@ -311,6 +314,16 @@ public enum RangeLayoutBuilder {
                 continue
             }
             let endInstant = ev.end > ev.start ? ev.end.addingTimeInterval(-1) : ev.end
+            // A timed event of 24 h or more is a multi-day span: it shows in the all-day lane, not as columns in the grid.
+            // Shorter overnight events stay in the grid, split at midnight.
+            if isMultiDay(ev) {
+                let a = math.daysBetween(days[0], ev.start)
+                let b = math.daysBetween(days[0], endInstant)
+                guard b >= 0, a < dayCount else { continue }
+                allDayItems.append(AllDayItem(id: ev.id, firstDay: a, lastDay: b))
+                allDayMap[ev.id] = ev
+                continue
+            }
             let first = ev.start < days[0] ? -1 : dayIndex(ev.start, starts: days)
             let last = endInstant < days[0] ? -1 : (endInstant >= rangeEnd ? dayCount : dayIndex(endInstant, starts: days))
             guard last >= 0, first < dayCount else { continue }
