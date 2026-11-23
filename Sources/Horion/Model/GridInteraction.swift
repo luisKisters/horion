@@ -22,12 +22,15 @@ struct GridGeometry: Equatable {
     static let gapLeft = 2.0, gapRight = 4.0, gapBelow = 2.0
     /// Every block is at least this tall (`Math.max(..., 16)`).
     static let minBlock = 16.0
+    /// Empty strip kept on the right of every day column so there is always room to press and drag out a new event
+    /// next to existing ones: 10% of the column, between 10 and 20 pt.
+    static func createStrip(_ inner: Double) -> Double { min(20, max(10, inner * 0.1)) }
 
     /// A block inside its day column (mockup-v11 `evBlock`): `left` and `width` are fractions of the column inside its 1 pt day
     /// divider, `indent` points of cascade. `top: s/60·H + 1`, `height: max(span/60·H - 2, 16)`, `left: calc(left + 2px + px)`,
     /// `width: calc(width - 4px - px)`.
     func rect(day: Int, start: Int, end: Int, left: Double = 0, width: Double = 1, indent: Double = 0) -> CGRect {
-        let inner = dayWidth - 1
+        let inner = dayWidth - 1 - Self.createStrip(dayWidth - 1)
         let y0 = yPos(start), h = max(yPos(end) - y0 - Self.gapBelow, Self.minBlock)
         return CGRect(x: Double(day) * dayWidth + 1 + Self.gapLeft + left * inner + indent, y: y0 + 1,
                       width: max(4, width * inner - Self.gapRight - indent), height: h)
