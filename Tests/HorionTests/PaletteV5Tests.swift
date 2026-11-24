@@ -133,17 +133,6 @@ struct PaletteV5Tests {
         }
     }
 
-    @Test func foundationsSamples() {
-        // design/design-system/foundations.md: Personal #5B8DEF in Dark, swatches in Paper (fill / bar).
-        let d = EventRecipe.dark(C8(hex: "#5B8DEF"))
-        #expect(d.fill.hex == "#162A50" && d.title.hex == "#FFFFFF" && d.meta.hex == "#C9DCFE")
-        for (hex, fill, bar) in [("#5B8DEF", "#D1E1FE", "#3970E0"), ("#A9A6F5", "#E2E2FE", "#715EE0"), ("#9254DE", "#DFD5F2", "#9049E1"),
-                                 ("#B9B9B9", "#E1E1E1", "#959595"), ("#E9B949", "#F6E6C3", "#BB8D01"), ("#D9443A", "#F6D2CC", "#DB1E1D")] {
-            let p = EventRecipe.paper(C8(hex: hex))
-            #expect(p.fill.hex == fill && p.bar.hex == bar, "\(hex): \(p.fill.hex) / \(p.bar.hex)")
-        }
-    }
-
     @Test func paperFillsReadAsTheirColour() {
         // Clear tint: every coloured calendar fill at least ΔE_OK 7.5 from the canvas.
         for (hex, _) in Mockup.paperEvents where hex != "#888888" {

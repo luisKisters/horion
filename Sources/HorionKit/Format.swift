@@ -53,41 +53,6 @@ public struct Fmt: Sendable {
     /// "Mon, Oct 12, 2026"
     public func fullDate(_ d: Date) -> String { "\(weekdayShort(d)), \(monthShort(d)) \(math.day(d)), \(math.year(d))" }
 
-    /// "GMT+2"
-    public func gmtLabel(_ d: Date = Date()) -> String {
-        let secs = math.timeZone.secondsFromGMT(for: d)
-        let sign = secs < 0 ? "-" : "+"
-        let a = abs(secs)
-        let h = a / 3600, m = (a % 3600) / 60
-        return m == 0 ? "GMT\(sign)\(h)" : "GMT\(sign)\(h):\(pad(m))"
-    }
-
-    /// "Berlin" from "Europe/Berlin".
-    public func timeZoneCity() -> String {
-        let id = math.timeZone.identifier
-        return (id.split(separator: "/").last.map(String.init) ?? id).replacingOccurrences(of: "_", with: " ")
-    }
-}
-
-public enum DurationText {
-    /// "1h 40min", "45min", "2h", "1d".
-    public static func minutes(_ total: Int) -> String {
-        let t = max(0, total)
-        if t >= 1440 && t % 1440 == 0 { return "\(t / 1440)d" }
-        let h = t / 60, m = t % 60
-        if h == 0 { return "\(m)min" }
-        if m == 0 { return "\(h)h" }
-        return "\(h)h \(m)min"
-    }
-
-    /// Menu bar label form: "4h 58m", "12m", "2d 3h".
-    public static func short(_ total: Int) -> String {
-        let t = max(0, total)
-        if t >= 1440 { let d = t / 1440, h = (t % 1440) / 60; return h == 0 ? "\(d)d" : "\(d)d \(h)h" }
-        let h = t / 60, m = t % 60
-        if h == 0 { return "\(m)m" }
-        return "\(h)h \(m)m"
-    }
 }
 
 public struct RecurrenceText: Equatable, Sendable {

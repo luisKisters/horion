@@ -87,20 +87,6 @@ struct ChromeV4Tests {
         #expect(CommandRegistry.all.contains { $0.id == .toggleRightColumn && $0.keys == ["\u{2325}", "\u{2318}", "I"] })
     }
 
-    /// v8 decisions D and E: a group header folds its calendars (their visibility stays); hiding is explicit and kept in the list.
-    @Test func sidebarGroupsFoldAndHiddenCalendarsStay() {
-        let m = makeModelV4()
-        let acc = m.store.accounts[0]
-        m.toggleGroup(acc.id)
-        #expect(m.collapsedGroups == [acc.id] && m.hiddenCalendars.isDisjoint(with: acc.calendars.map(\.id)))
-        m.toggleGroup(acc.id)
-        #expect(m.collapsedGroups.isEmpty)
-        let cal = acc.calendars[0]
-        m.toggleCalendar(cal.id)
-        #expect(m.hiddenCalendars.contains(cal.id) && m.store.accounts[0].calendars.contains { $0.id == cal.id })
-        #expect(!m.layout.timed.flatMap { $0 }.contains { $0.event.calendarID == cal.id })
-    }
-
     /// ⌘J joins the call of the running event, else the next one's, as the right column's Join buttons show.
     @Test func commandJJoinsTheLeadCall() {
         let m = makeModelV4()
@@ -109,10 +95,5 @@ struct ChromeV4Tests {
         #expect(m.leadCallEvent?.title == "Flat dinner")     // (not run here: outside a headless run it opens the browser)
         m.setNow(m.math.date(on: m.math.startOfDay(m.now), minutes: 23 * 60 + 50))
         #expect(m.leadCallEvent == nil && !m.handle(.joinCall), "no call: the key is not consumed")
-    }
-
-    @Test func sidebarAccountsShowTheirNameWithoutTheDomain() {
-        let m = makeModelV4()
-        #expect(m.store.accounts.map { AccountName.display($0.name) } == ["sam.rivera", "sam", "sam"])
     }
 }

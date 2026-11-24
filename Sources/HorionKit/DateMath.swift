@@ -91,10 +91,6 @@ public struct CalendarMath: Sendable {
     public func month(_ d: Date) -> Int { calendar.component(.month, from: d) }
     public func year(_ d: Date) -> Int { calendar.component(.year, from: d) }
 
-    public static func snap(_ minutes: Int, to step: Int = 15) -> Int {
-        Int((Double(minutes) / Double(step)).rounded()) * step
-    }
-
     /// Six rows of seven days starting on the week start of the week containing the 1st (mini calendar and month view).
     public func monthGrid(for d: Date) -> [[Date]] {
         let first = startOfWeek(startOfMonth(d))
@@ -131,12 +127,5 @@ public struct CalendarMath: Sendable {
             let s = startOfDay(start)
             return DateInterval(start: s, end: addDays(s, mode.dayCount))
         }
-    }
-
-    /// The next free half hour slot at or after `now` (used by the `C` shortcut).
-    public func nextHalfHour(after now: Date) -> Date {
-        let mins = minutesSinceMidnight(now)
-        let next = (mins / 30 + 1) * 30
-        return date(on: now, minutes: next)
     }
 }

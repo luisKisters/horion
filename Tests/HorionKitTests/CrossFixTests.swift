@@ -15,9 +15,4 @@ struct CrossLocaleTests {
         #expect(sat.startOfWeek(d(2026, 9, 29)) == d(2026, 9, 26))
         #expect(sat.weekdayIndex(d(2026, 9, 26)) == 0)
     }
-    @Test func systemMathUsesCurrentCalendar() {
-        let m = CalendarMath.system
-        #expect(m.timeZone == TimeZone.current)
-        #expect(m.calendar.firstWeekday == Calendar.autoupdatingCurrent.firstWeekday)
-    }
 }

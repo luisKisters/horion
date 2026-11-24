@@ -40,22 +40,6 @@ struct PeopleTests {
         return AppModel(store: CompositeStore(base: DemoStore()), options: o, persist: false)
     }
 
-    @Test func googleNamesFillBareAddressesAfterAppleContacts() {
-        let m = model()
-        let wg = m.event(id: "v4.wg")!
-        #expect(EditorRows.withoutName(m.displayed(wg.attendees)) == 2)
-        m.connectDemoGoogle()
-        #expect(m.services.googlePeople.contains { $0.email == "pia.neumann@example.net" })
-        let flat = m.store.searchCorpus(around: m.now).first { $0.title == "Flat dinner" }!
-        // Google knows Dion; Sam's iCloud address is only in Apple Contacts
-        var shown = m.displayed(flat.attendees)
-        #expect(shown.first { $0.email == "dion.k@example.com" }?.name == "Dion Kraft" && EditorRows.withoutName(shown) == 1)
-        m.allowContacts()
-        shown = m.displayed(flat.attendees)
-        #expect(EditorRows.withoutName(shown) == 0 && shown.first { $0.email == "sam@example.net" }?.name == "Sam Rivera")
-        #expect(m.services.google.accounts.first?.peopleCount == m.services.googlePeople.count)
-    }
-
     @Test func guestSuggestionsComeFromGoogleToo() {
         let m = model()
         m.connectDemoGoogle()

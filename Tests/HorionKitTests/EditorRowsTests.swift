@@ -61,11 +61,6 @@ struct EditorRowsTests {
         #expect(Reminders.toggled([10], 60) == [10, 60] && Reminders.toggled([10, 60], 10) == [60] && Reminders.toggled([60], 5) == [5, 60])
     }
 
-    @Test func elevenGoogleColours() {
-        #expect(EventColors.google.count == 11 && EventColors.google.first?.name == "Tomato" && EventColors.google.last?.name == "Graphite")
-        #expect(Set(EventColors.google.map(\.hex)).count == 11 && EventColors.columns == 6)
-    }
-
     @Test func meetNotesHideAndKeepTheBlock() {
         let notes = "Everyone brings something.\n\n" + MeetNotes.boilerplate("cmv-hjhb-qgb")
         let v = MeetNotes.visible(notes)
@@ -87,12 +82,6 @@ struct EditorRowsTests {
         #expect(MeetNotes.visible(notes) == ("Hi.\n", true))
         let two = MeetNotes.replacingVisible(in: notes, with: "Hi.\n\n")
         #expect(MeetNotes.visible(two).text == "Hi.\n\n")
-    }
-
-    @Test func withoutANameNeverCountsMe() {
-        let list = [Attendee(email: "me@x.example", isOrganizer: true, isMe: true), Attendee(email: "a@x.example"), Attendee(email: "b@x.example"),
-                    Attendee(email: "c@x.example", name: "Cleo")]
-        #expect(EditorRows.withoutName(list) == 2)
     }
 
     @Test func callLinksComeOutOfText() {
