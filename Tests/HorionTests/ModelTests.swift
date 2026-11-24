@@ -166,17 +166,52 @@ struct ModelBehaviourTests {
         try! m.store.create(next)
         m.select(eventID: ev.id)
         m.requestDeleteSelected()
-        #expect(m.deleteChoice == .this)
-        m.moveDeleteChoice(ev.id, by: 1, wrap: false)       // → stops at the end
-        #expect(m.deleteChoice == .this)
-        m.moveDeleteChoice(ev.id, by: 1, wrap: true)        // Tab wraps to Cancel
-        #expect(m.deleteChoice == .cancel)
-        m.moveDeleteChoice(ev.id, by: -1, wrap: true)       // ⇧Tab back
-        #expect(m.deleteChoice == .this)
-        m.moveDeleteChoice(ev.id, by: -1, wrap: false)      // first occurrence: no "This and following"
-        #expect(m.deleteChoice == .all)
-        m.chooseDelete(ev.id, m.deleteChoice)
+        #expect(m.spanChoice == .this)
+        m.moveSpanChoice(ev.id, by: 1, wrap: false)       // → stops at the end
+        #expect(m.spanChoice == .this)
+        m.moveSpanChoice(ev.id, by: 1, wrap: true)        // Tab wraps to Cancel
+        #expect(m.spanChoice == .cancel)
+        m.moveSpanChoice(ev.id, by: -1, wrap: true)       // ⇧Tab back
+        #expect(m.spanChoice == .this)
+        m.moveSpanChoice(ev.id, by: -1, wrap: false)      // first occurrence: no "This and following"
+        #expect(m.spanChoice == .all)
+        m.chooseDelete(ev.id, m.spanChoice)
         #expect(m.store.series(of: ev).isEmpty)
+    }
+    @Test func movingARepeatingEventAsksWhichOccurrences() {
+        let m = makeModel()
+        let ev = m.layout.timed[6].first { $0.event.title == "Long run" }!.event
+        var prev = ev; prev.id = "v4.g1.prev"; prev.start = m.math.addDays(ev.start, -7); prev.end = m.math.addDays(ev.end, -7)
+        var next = ev; next.id = "v4.g1.next"; next.start = m.math.addDays(ev.start, 7); next.end = m.math.addDays(ev.end, 7)
+        try! m.store.create(prev); try! m.store.create(next)
+        m.storeChanged()
+        m.select(eventID: ev.id)
+        m.nudgeSelected(dx: 0, dy: 4)                       // an hour later: held, the dialog asks
+        #expect(m.overlay == .editRecurring(ev.id) && m.spanChoice == .this)
+        #expect(m.event(id: ev.id)?.start == ev.start.addingTimeInterval(3600))
+        #expect(m.store.series(of: ev).first { $0.id == ev.id }?.start == ev.start)
+        #expect(m.spanChoices(ev.id) == [.cancel, .all, .future, .this])
+        m.closeOverlay()                                    // Esc: back where it was
+        #expect(m.recurringEdit == nil && m.event(id: ev.id)?.start == ev.start)
+        m.nudgeSelected(dx: 0, dy: 4)
+        m.chooseEdit(ev.id, .future)
+        let starts = Dictionary(uniqueKeysWithValues: m.store.series(of: ev).map { ($0.id, $0.start) })
+        #expect(starts[prev.id] == prev.start)
+        #expect(starts[ev.id] == ev.start.addingTimeInterval(3600) && starts[next.id] == next.start.addingTimeInterval(3600))
+        #expect(m.overlay == nil && m.recurringEdit == nil)
+    }
+    @Test func movingOneOccurrenceKeepsUndo() {
+        let m = makeModel()
+        let ev = m.layout.timed[6].first { $0.event.title == "Long run" }!.event
+        var next = ev; next.id = "v4.g1.next"; next.start = m.math.addDays(ev.start, 7); next.end = m.math.addDays(ev.end, 7)
+        try! m.store.create(next)
+        m.storeChanged()
+        m.select(eventID: ev.id)
+        m.nudgeSelected(dx: 0, dy: 4)
+        m.chooseEdit(ev.id, m.spanChoice)                   // Return: "This event"
+        #expect(m.event(id: ev.id)?.start == ev.start.addingTimeInterval(3600) && m.event(id: next.id)?.start == next.start)
+        m.undo()
+        #expect(m.event(id: ev.id)?.start == ev.start)
     }
     @Test func untitledDraftIsDiscardedOnDeselect() {
         let m = makeModel()

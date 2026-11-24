@@ -47,18 +47,23 @@ final class KeyRouter {
         // ⌘↩ sends the held update, or saves (and invites) the event being created.
         if input.command && !input.option && !input.control && input.keyCode == ShortcutResolver.keyReturn && model.overlay == nil && model.sendShortcut() { return true }
 
-        // The recurring-delete dialog: ←/→ or A/D move between its buttons, Tab and ⇧Tab too (wrapping), Return takes the
-        // focused one (the safe "This event" until moved).
-        if case .deleteRecurring(let id)? = model.overlay, !input.command, !input.control, !input.option {
+        // The recurring-delete and recurring-edit dialogs: ←/→ or A/D move between the buttons, Tab and ⇧Tab too (wrapping),
+        // Return takes the focused one (the safe "This event" until moved).
+        let spanDialog: (id: String, choose: (String, SpanChoice) -> Void)? = switch model.overlay {
+        case .deleteRecurring(let id)?: (id, model.chooseDelete)
+        case .editRecurring(let id)?: (id, model.chooseEdit)
+        default: nil
+        }
+        if let (id, choose) = spanDialog, !input.command, !input.control, !input.option {
             let ch = input.characters.lowercased()
             switch input.keyCode {
-            case ShortcutResolver.keyReturn, ShortcutResolver.keyEnter: model.chooseDelete(id, model.deleteChoice); return true
-            case ShortcutResolver.keyTab: model.moveDeleteChoice(id, by: input.shift ? -1 : 1, wrap: true); return true
-            case ShortcutResolver.keyLeft: model.moveDeleteChoice(id, by: -1, wrap: false); return true
-            case ShortcutResolver.keyRight: model.moveDeleteChoice(id, by: 1, wrap: false); return true
+            case ShortcutResolver.keyReturn, ShortcutResolver.keyEnter: choose(id, model.spanChoice); return true
+            case ShortcutResolver.keyTab: model.moveSpanChoice(id, by: input.shift ? -1 : 1, wrap: true); return true
+            case ShortcutResolver.keyLeft: model.moveSpanChoice(id, by: -1, wrap: false); return true
+            case ShortcutResolver.keyRight: model.moveSpanChoice(id, by: 1, wrap: false); return true
             default:
-                if !input.shift && ch == "a" { model.moveDeleteChoice(id, by: -1, wrap: false); return true }
-                if !input.shift && ch == "d" { model.moveDeleteChoice(id, by: 1, wrap: false); return true }
+                if !input.shift && ch == "a" { model.moveSpanChoice(id, by: -1, wrap: false); return true }
+                if !input.shift && ch == "d" { model.moveSpanChoice(id, by: 1, wrap: false); return true }
             }
         }
 
@@ -77,7 +82,7 @@ final class KeyRouter {
         case .settings?:
             if action == .settings { model.overlay = nil; return true }
             if action != .escape && action != .commandMenu && action != .showShortcuts { return true }
-        case .deleteRecurring?, .deleteWithGuests?:
+        case .deleteRecurring?, .editRecurring?, .deleteWithGuests?:
             if action != .escape { return true }
         case nil: break
         }
@@ -99,6 +104,6 @@ final class KeyRouter {
     }
 
     private func isSheet(_ o: Overlay?) -> Bool {
-        switch o { case .shortcuts?, .settings?, .deleteRecurring?, .deleteWithGuests?: true; default: false }
+        switch o { case .shortcuts?, .settings?, .deleteRecurring?, .editRecurring?, .deleteWithGuests?: true; default: false }
     }
 }

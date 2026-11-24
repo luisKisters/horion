@@ -199,7 +199,7 @@ extension AppModel {
             if e.start != old.start || e.end != old.end {
                 // an event with guests (Google): the new time waits with the editor's other unsent changes
                 if holdUnsent(before: old, after: e) { return }
-                commit(e, span: .this, old: old)
+                commitMove(e, old: old)
             }
         }
     }
