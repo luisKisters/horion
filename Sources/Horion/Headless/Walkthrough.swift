@@ -37,7 +37,8 @@ enum Walkthrough {
         case "v4-e-3": WalkthroughV4.e3(d, model)
         case "v4-e-4": WalkthroughV4.e4(d, model)
         case "tab": tabTour(d, model)
-        case let t?: print("unknown tour \(t) (tours: e2e (the default), v4-a, v4-b, v4-c-1 ... v4-c-4, v4-d-1 ... v4-d-6, v4-e-1 ... v4-e-4, tab)"); return 2
+        case "all-day-drag": WalkthroughAllDay.run(d, model)
+        case let t?: print("unknown tour \(t) (tours: e2e (the default), v4-a, v4-b, v4-c-1 ... v4-c-4, v4-d-1 ... v4-d-6, v4-e-1 ... v4-e-4, tab, all-day-drag)"); return 2
         }
         rec?.finish()
         if let path = o.record { d.writeTelemetry(to: path) }

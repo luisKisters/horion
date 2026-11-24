@@ -19,6 +19,7 @@ struct DayHeaderView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.colorScheme) private var scheme
     @State private var hover: Int?
+    @State private var dragAnchor: Int?
 
     var body: some View {
         let days = model.visibleDays
@@ -62,11 +63,20 @@ struct DayHeaderView: View {
             .onContinuousHover { phase in
                 if case .active(let p) = phase, p.x >= gw { hover = min(days.count - 1, Int((p.x - gw) / colW)) } else { hover = nil }
             }
-            .onTapGesture(coordinateSpace: .local) { p in
+            .gesture(DragGesture(minimumDistance: 4).onChanged { v in
+                // Dragging across the dates makes one all-day event over those days, like a drag in the all-day lane.
+                guard v.startLocation.x >= gw else { return }
+                let a = min(days.count - 1, Int((v.startLocation.x - gw) / colW))
+                let b = Int((max(gw, v.location.x) - gw) / colW)
+                model.dragAllDay(anchor: a, to: b, begin: dragAnchor == nil)
+                dragAnchor = a
+            }.onEnded { _ in dragAnchor = nil }
+            .exclusively(before: SpatialTapGesture(count: 1).onEnded { v in
+                let p = v.location
                 guard p.x >= gw else { return }
                 let i = min(days.count - 1, Int((p.x - gw) / colW))
                 model.createAllDay(on: days[i])
-            }
+            }))
             .help(hover.map { "New all-day event on \(fmt.inspectorDate(days[min($0, days.count - 1)]))" } ?? "")
         }
         .frame(height: Self.height)
@@ -99,6 +109,8 @@ struct AllDayView: View {
     @Environment(\.colorScheme) private var scheme
     @State private var hoverToggle = false
     @State private var scroll = ScrollPosition(y: 0)
+    /// The day a drag-create started on, while it runs.
+    @State private var dragAnchor: Int?
 
     /// Height of `rows` grid rows (the content, without scrolling).
     static func contentHeight(rows: Int) -> CGFloat { rows == 0 ? 0 : topPad + CGFloat(rows) * row - 3 + bottomPad }
@@ -178,7 +190,19 @@ struct AllDayView: View {
                     }
                     if over != model.gridState.pointer.hoveredAllDayMore { model.gridState.pointer.hoveredAllDayMore = over }
                 }
-                .gesture(SpatialTapGesture(count: 1).onEnded { v in
+                .gesture(DragGesture(minimumDistance: 4).onChanged { v in
+                    // A drag from a free spot across days makes one multi-day all-day event (mockup-v19 round 1 build notes).
+                    let s = v.startLocation
+                    let a = Int(s.x / dw)
+                    guard model.visibleDays.indices.contains(a) else { return }
+                    if dragAnchor == nil {
+                        if chips.contains(where: { Self.chipRect($0, dw).contains(s) }) { return }
+                        if let f = fold, hidden.indices.contains(a), hidden[a] > 0, Self.moreRect(a, f, dw).contains(s) { return }
+                    }
+                    model.dragAllDay(anchor: a, to: Int(max(0, v.location.x) / dw), begin: dragAnchor == nil)
+                    dragAnchor = a
+                }.onEnded { _ in dragAnchor = nil }
+                .exclusively(before: SpatialTapGesture(count: 1).onEnded { v in
                     let p = v.location
                     if let c = chips.last(where: { Self.chipRect($0, dw).contains(p) }), let e = model.layout.allDayEvents[c.id] {
                         model.select(eventID: e.id, focusTitle: NSApp.currentEvent?.clickCount == 2)
@@ -187,7 +211,7 @@ struct AllDayView: View {
                     } else if model.visibleDays.indices.contains(Int(p.x / dw)) {
                         model.createAllDay(on: model.visibleDays[Int(p.x / dw)])
                     }
-                })
+                }))
                 Group {
                     if expanded {
                         ScrollView(.vertical, showsIndicators: true) { canvas }.scrollPosition($scroll)
