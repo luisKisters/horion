@@ -30,8 +30,13 @@ final class KeyRouter {
         let input = KeyInput(characters: event.charactersIgnoringModifiers ?? "", keyCode: event.keyCode,
                              command: mods.contains(.command), option: mods.contains(.option),
                              control: mods.contains(.control), shift: mods.contains(.shift))
-        let typing = textFocused(in: event.window ?? NSApp.keyWindow)
+        let window = event.window ?? NSApp.keyWindow
+        return handle(input, typing: textFocused(in: window), window: window, model: model)
+    }
 
+    /// The routing itself, from a key press already read off the event: `typing` says a text field has the keyboard, `window`
+    /// is the one it went to (unit tests drive this without an application object).
+    func handle(_ input: KeyInput, typing: Bool, window: NSWindow?, model: AppModel) -> Bool {
         if model.overlay == .command, !input.command {
             switch input.keyCode {
             case ShortcutResolver.keyDown: model.movePaletteSelection(1); return true
@@ -86,7 +91,7 @@ final class KeyRouter {
             if action != .escape { return true }
         case nil: break
         }
-        if action == .escape, typing, model.overlay == nil, let w = event.window ?? NSApp.keyWindow {
+        if action == .escape, typing, model.overlay == nil, let w = window {
             // Esc in a field of the event being created discards it at once; anywhere else the first Esc only leaves
             // the field and the next one peels the layer.
             // Esc in the right column's search field only leaves the field (and clears it next): the draft stays.
