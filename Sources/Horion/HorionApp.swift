@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 import HorionKit
+import Sparkle
 
 /// Process-wide singletons for the real app (the model is shared by the main window and the menu bar item).
 @MainActor
@@ -38,7 +39,7 @@ struct HorionApp: App {
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 1440, height: 900)
-        .commands { AppCommands(model: model) }
+        .commands { AppCommands(model: model, updater: AppUpdater.controller) }
     }
 }
 
@@ -89,7 +90,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 struct AppCommands: Commands {
     let model: AppModel
+    let updater: SPUStandardUpdaterController?
     var body: some Commands {
+        CommandGroup(after: .appInfo) {
+            if let updater { CheckForUpdatesView(updater: updater.updater) }
+        }
         CommandGroup(replacing: .appSettings) {
             Button("Settings\u{2026}") { model.handle(.settings) }.keyboardShortcut(",")
         }

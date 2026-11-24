@@ -10,6 +10,31 @@ Motion follows one curve and four durations (120 / 180 / 260 / 300 ms) and colla
 
 Download `Horion.dmg` from the [latest release](https://github.com/luisKisters/horion/releases/latest), open it and drag Horion onto Applications. Starting with 1.1.1, releases are Developer ID signed and notarized by Apple. Open Horion normally; macOS can ask you to confirm the first launch of an app downloaded from the internet. Horion then asks for calendar access; without it you see an empty state with a shortcut to System Settings > Privacy & Security > Calendars. Browsers can still set `com.apple.quarantine` on signed downloads. You do not need to remove it.
 
+## Updates
+
+Horion updates itself with [Sparkle 2](https://sparkle-project.org). Every hour it reads `appcast.xml` from the newest GitHub release (`SUFeedURL`). A newer build is downloaded in the background and installed when Horion quits; if Horion stays open for about a week, it asks instead. Horion > Check for Updates… (under About) checks at once. The first Sparkle build cannot update an older copy by itself: install it once by hand, then updates arrive without a click.
+
+**Publish a build.** Merge to `main`, then on the Mac that holds the signing key, from a clean `origin/main` checkout with a Developer ID certificate and a `notarytool` profile:
+
+```sh
+git switch main && git pull --ff-only
+scripts/release.sh --dry-run        # builds, signs and checks everything; publishes nothing
+SIGNING_IDENTITY='Developer ID Application: Your Name (TEAMID)' \
+NOTARY_PROFILE='your-notarization-profile' scripts/release.sh
+```
+
+The build number is the commit count, so it grows with every merge. A release is tagged `build-<n>`, holds `Horion.dmg` and `appcast.xml`, and becomes the latest release. The version is in `VERSION`. `release.sh` downloads the pinned Sparkle tools into `build/tools/`.
+
+**The signing key.** Sparkle's EdDSA private key lives in the login keychain of the Mac that publishes releases (account `ed25519`, service `https://sparkle-project.org`). Its public half is `SUPublicEDKey` in `scripts/build-app.sh`. Keep a backup of the private key: without it, no further build can be signed for copies that are already installed.
+
+**Move the key to another Mac.** Export on the old Mac, import on the new one, then store the export in a password manager and `trash` the file:
+
+```sh
+build/tools/Sparkle-2.10.1/bin/generate_keys -x ~/Desktop/horion-sparkle-key   # old Mac: the file holds the private key
+build/tools/Sparkle-2.10.1/bin/generate_keys -f ~/Desktop/horion-sparkle-key   # new Mac
+trash ~/Desktop/horion-sparkle-key
+```
+
 ## Run it
 
 ```sh

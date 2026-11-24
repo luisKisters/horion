@@ -7,12 +7,14 @@ export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Develope
 FAST=0; [ "${1:-}" = "--fast" ] && FAST=1
 step() { printf '\n\033[1m== %s\033[0m\n' "$1"; }
 
-step "grep gates (animations only through the Motion tokens, no third-party packages, colours, type and radii only through tokens)"
+step "grep gates (animations only through the Motion tokens, Sparkle the only package, colours, type and radii only through tokens)"
 # v2 animates, but every curve comes from `Motion` (one curve, four durations, Reduce Motion aware): no raw .easeIn/.linear/.default literals.
 if grep -rnE "\.animation\(\s*\.|withAnimation\(\s*\.|NSAnimationContext\.runAnimationGroup|\.transaction \{ *\$0\.animation = nil" Sources | grep -v "^Sources/Horion/Headless"; then
   echo "raw animation curve found in app sources (use Motion.fast/base/slow/sheet/spring)"; exit 1
 fi
-if grep -q "\.package(" Package.swift; then echo "Package.swift has dependencies"; exit 1; fi
+# Sparkle is the one allowed package (the update framework, used by the app target only); any other .package( fails.
+OTHER_PKGS="$(grep -n "\.package(" Package.swift | grep -v 'url: "https://github.com/sparkle-project/Sparkle"' || true)"
+if [ -n "$OTHER_PKGS" ]; then echo "Package.swift has a package other than Sparkle:"; echo "$OTHER_PKGS"; exit 1; fi
 # Design tokens (v5): colours only from Theme.swift (the menu bar art may keep its own), type only from Typeface.swift, radii only from Radius.
 if grep -rnE '"#[0-9A-Fa-f]{3,8}"' Sources/Horion/Views | grep -v -e "^Sources/Horion/Views/Theme.swift" -e "^Sources/Horion/Views/MenuBarViews.swift"; then
   echo "hex colour literal in Views/ (add a token to Theme.swift)"; exit 1
