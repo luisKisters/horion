@@ -14,7 +14,7 @@ struct ChromeV4KitTests {
         #expect(r(KeyInput(characters: "k", command: true)) == .commandMenu)
         #expect(r(KeyInput(characters: "f")) == .meetWith)
         #expect(r(KeyInput(characters: "c")) == .createEvent)
-        #expect(r(KeyInput(characters: "k", command: true, control: true)) == .menuBarCalendar)
+        #expect(r(KeyInput(characters: "k", command: true, control: true)) == nil)
         #expect(r(KeyInput(characters: "`")) == .toggleSidebar)
         #expect(r(KeyInput(characters: "?", shift: true)) == .showShortcuts)
     }

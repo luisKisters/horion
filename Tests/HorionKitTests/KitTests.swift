@@ -373,7 +373,7 @@ struct ShortcutTests {
     }
     @Test func modifiedVariants() {
         #expect(r("t", opt: true) == nil)
-        #expect(r("k", cmd: true, ctrl: true) == .menuBarCalendar)
+        #expect(r("k", cmd: true, ctrl: true) == nil); #expect(r("b", cmd: true) == .toggleSidebar)
         #expect(r(",", cmd: true) == .settings)
         #expect(r("1", cmd: true) == .mainWindow)
         #expect(r("z", cmd: true) == .undo)

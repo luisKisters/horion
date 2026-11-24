@@ -62,9 +62,10 @@ Single keys only fire when no text field is focused.
 | `K` or `Left` | Previous period | `/` or `Cmd F` | Search events (the field on top of the right column) |
 | `.` | Go to date ("oct 12", "12.10.", "next friday", "2026-12-24") | `?` | All keyboard shortcuts |
 | `D` `W` `M` | Day / Week / Month | `Delete` | Delete selected event (recurring: this / all) |
-| `` ` `` or `Cmd \` | Toggle sidebar | `Esc` | Leave the field / deselect / close |
+| `Cmd B` or `` ` `` | Toggle sidebar | `Esc` | Leave the field / deselect / close |
 | `Cmd K` | Command menu | `Cmd Z` | Undo create / move / resize / delete |
-| `Ctrl Cmd K` | Open the menu bar menu | `Cmd R` | Refresh calendars |
+| `Opt Cmd C` | Open or close the menu bar menu, from any app | `Cmd R` | Refresh calendars |
+| `Opt Cmd H` | Show or hide Horion, from any app | | |
 | `Cmd 1` | Main window | `Cmd ,` | Settings |
 
 Search lives at the top of the right column: while it has text, the matches replace Today, grouped by day; Return opens the first one, Esc leaves the field, a second Esc (with nothing selected) clears it. The column lists no shortcuts: they stay behind ? (every shortcut) and ⌘K (the command menu).

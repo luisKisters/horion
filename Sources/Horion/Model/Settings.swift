@@ -28,6 +28,9 @@ struct AppSettings: Codable, Equatable {
     var menuBarDisplay: MenuBarDisplay = .titleAndCountdown
     /// Points per hour set by zooming the hour gutter; nil fits the period's events into the grid.
     var hourHeight: Double?
+    /// From any app: open or close the menu bar menu, and show or hide the window.
+    var menuShortcut = GlobalShortcut.menuDefault
+    var appShortcut = GlobalShortcut.appDefault
 
     static let durationChoices = [30, 45, 60]
 
@@ -45,6 +48,8 @@ struct AppSettings: Codable, Equatable {
         showWeekNumbers = try c.decodeIfPresent(Bool.self, forKey: .showWeekNumbers) ?? d.showWeekNumbers
         menuBarDisplay = (try? c.decodeIfPresent(MenuBarDisplay.self, forKey: .menuBarDisplay)) ?? d.menuBarDisplay
         hourHeight = try c.decodeIfPresent(Double.self, forKey: .hourHeight)
+        menuShortcut = (try? c.decodeIfPresent(GlobalShortcut.self, forKey: .menuShortcut)) ?? d.menuShortcut
+        appShortcut = (try? c.decodeIfPresent(GlobalShortcut.self, forKey: .appShortcut)) ?? d.appShortcut
     }
 
     static let key = "horion.settings.v2"

@@ -34,7 +34,7 @@ struct SidebarView: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 0) {
                 Spacer(minLength: 0)
-                ChromeIconButton(icon: .side, small: true, rail: true, probe: "hideSidebar", help: "Hide sidebar  `") { model.toggleSidebar() }
+                ChromeIconButton(icon: .side, small: true, rail: true, probe: "hideSidebar", help: "Hide sidebar  \u{2318}B") { model.toggleSidebar() }
             }
             .frame(height: SidebarDim.topRow)
             .padding(.bottom, Space.m)
