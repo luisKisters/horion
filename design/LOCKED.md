@@ -73,6 +73,11 @@ The same event in two calendars is one row with a two-colour bar. The countdown 
 Keys: Down and Up start at the first and last event, and Return opens the highlighted event.
 Already done in the app: the "Start transcription" button is removed from the menu bar popover.
 
+## All-day lane: locked in design/mockup-v19 (24 Nov 2026)
+- One click on empty all-day space (a gap or the create strip) or on a day's date starts an all-day event on that day. The date no longer opens day view.
+- All-day chips end before the grid's create strip on their last day, like timed blocks. Free space has no hover state.
+- A week with no all-day events keeps one empty 30 pt row with the "all-day" label.
+
 ## Not designed in v3
 
 The no-calendar-access empty state and recurrence editing are unchanged from v2.
