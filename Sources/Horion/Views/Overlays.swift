@@ -343,17 +343,24 @@ struct DeleteRecurringDialog: View {
     @Environment(AppModel.self) private var model
     let eventID: String
     var body: some View {
-        let guests = model.event(id: eventID).map { model.deleteNeedsGuestDialog($0) } ?? false
-        SheetFrame(title: "Delete recurring event", width: 400, closable: false, bottom: 20) {
+        let event = model.event(id: eventID)
+        let guests = event.map { model.deleteNeedsGuestDialog($0) } ?? false
+        let following = model.deleteChoices(eventID).contains(.future)
+        SheetFrame(title: "Delete recurring event", width: following ? 480 : 400, closable: false, bottom: 20) {
             Text("This event repeats. Which events should be deleted?").font(.text).foregroundStyle(Theme.fg2).padding(.top, 12)
             if guests {
                 PanelSwitch(label: "Send the guests a cancellation email", isOn: model.deleteNotify) { model.deleteNotify.toggle() }.padding(.top, 10)
             }
             HStack(spacing: 8) {
                 Spacer()
-                SecondaryButton(title: "Cancel") { model.closeOverlay() }
-                SecondaryButton(title: "All events") { model.deleteRecurring(eventID, span: .all, notify: model.deleteNotify) }
-                PrimaryButton(title: "This event", keys: ["↩"]) { model.deleteRecurring(eventID, span: .this, notify: model.deleteNotify) }
+                // The focused button is the filled one and carries ↩ (arrows, A/D, Tab move it; no keycaps for those).
+                ForEach(model.deleteChoices(eventID), id: \.title) { c in
+                    if c == model.deleteChoice {
+                        PrimaryButton(title: c.title, keys: ["↩"]) { model.chooseDelete(eventID, c) }
+                    } else {
+                        SecondaryButton(title: c.title) { model.chooseDelete(eventID, c) }
+                    }
+                }
             }
             .padding(.top, 16)
         }

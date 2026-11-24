@@ -200,6 +200,38 @@ extension AppModel {
         if delete(e, span: .this, notify: notify) { panelState.unsent[id] = nil }
     }
 
+    /// "This and following" only where it differs from the other two: the series has an occurrence before this one (else it
+    /// is "All events") and one after it (else it is "This event").
+    func deleteOffersFollowing(_ e: CalendarEvent) -> Bool {
+        guard e.isRecurring else { return false }
+        let series = store.series(of: e)
+        return series.contains { $0.start < e.start } && series.contains { $0.start > e.start }
+    }
+
+    /// The recurring-delete dialog's buttons, left to right ("This and following" only where it is offered).
+    func deleteChoices(_ id: String) -> [DeleteChoice] {
+        let following = event(id: id).map(deleteOffersFollowing) ?? false
+        return following ? [.cancel, .all, .future, .this] : [.cancel, .all, .this]
+    }
+
+    /// ←/→ and A/D move the focus and stop at the ends; Tab and ⇧Tab move it and wrap around.
+    func moveDeleteChoice(_ id: String, by step: Int, wrap: Bool) {
+        let all = deleteChoices(id)
+        let i = all.firstIndex(of: deleteChoice) ?? all.count - 1
+        let j = wrap ? (i + step + all.count) % all.count : min(max(i + step, 0), all.count - 1)
+        deleteChoice = all[j]
+    }
+
+    /// Return (or a click) on one of the recurring-delete dialog's buttons.
+    func chooseDelete(_ id: String, _ choice: DeleteChoice) {
+        switch choice {
+        case .cancel: closeOverlay()
+        case .all: deleteRecurring(id, span: .all, notify: deleteNotify)
+        case .future: deleteRecurring(id, span: .future, notify: deleteNotify)
+        case .this: deleteRecurring(id, span: .this, notify: deleteNotify)
+        }
+    }
+
     /// The recurring-delete dialog of an event with guests: `notify` says whether guests get the cancellation email.
     func deleteRecurring(_ id: String, span: EditSpan, notify: Bool) {
         guard let e = event(id: id) else { overlay = nil; return }
@@ -430,5 +462,13 @@ extension PanelText {
         case .declined: "Declined"
         case .needsAction: "Awaiting"
         }
+    }
+}
+
+/// A button of the recurring-delete dialog.
+enum DeleteChoice: Equatable {
+    case cancel, all, future, this
+    var title: String {
+        switch self { case .cancel: "Cancel"; case .all: "All events"; case .future: "This and following"; case .this: "This event" }
     }
 }

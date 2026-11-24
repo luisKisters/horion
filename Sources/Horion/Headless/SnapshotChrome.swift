@@ -7,7 +7,7 @@ enum SnapshotChrome {
     /// States of this area. "v4-search": the right column's field with "walk", results grouped by day.
     static let v4States = ["v4-search"]
     /// The other chrome states: Meet with, go to date, an empty search, the shortcuts sheet, the undo pill, no calendar access.
-    static let states = ["teammate-picker", "meet-with", "teammate-overlay", "go-to-date", "search-empty", "shortcuts-sheet", "toast", "empty-access"]
+    static let states = ["teammate-picker", "meet-with", "teammate-overlay", "go-to-date", "search-empty", "shortcuts-sheet", "delete-recurring", "toast", "empty-access"]
 
     /// Puts the model into the named state. Returns false for names this area does not define.
     static func apply(_ state: String, _ m: AppModel) -> Bool {
@@ -21,6 +21,19 @@ enum SnapshotChrome {
         case "go-to-date": m.openPalette(.goTo); m.setPaletteQuery("next fri"); SnapshotV4.scroll(m, to: SnapshotV4.defaultScroll)
         case "search-empty": m.openPalette(.search); m.setPaletteQuery("Quokka"); SnapshotV4.scroll(m, to: SnapshotV4.defaultScroll)
         case "shortcuts-sheet": m.overlay = .shortcuts; SnapshotV4.scroll(m, to: SnapshotV4.defaultScroll)
+        case "delete-recurring":
+            // Club committee as the middle of a weekly series: the dialog offers "This and following".
+            if let e = SnapshotStates.find(m, "Club committee", day: 3) {
+                var series = e; series.seriesID = series.seriesID ?? "snap.series"
+                _ = try? m.store.update(series, span: .this)
+                for (i, d) in [-7, 7].enumerated() {
+                    var o = series; o.id = "snap.series.\(i)"; o.start = m.math.addDays(e.start, d); o.end = m.math.addDays(e.end, d)
+                    _ = try? m.store.create(o)
+                }
+                m.storeChanged()
+                m.overlay = .deleteRecurring(e.id)
+            }
+            SnapshotV4.scroll(m, to: SnapshotV4.defaultScroll)
         case "toast":
             // The undo pill after moving Club committee an hour later.
             if let e = SnapshotStates.find(m, "Club committee", day: 3) {

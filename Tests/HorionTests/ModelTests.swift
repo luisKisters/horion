@@ -145,6 +145,39 @@ struct ModelBehaviourTests {
         m.next()
         #expect(m.layout.timed.flatMap { $0 }.allSatisfy { $0.event.seriesID != ev.seriesID })
     }
+    @Test func thisAndFollowingOnlyInTheMiddleOfASeries() {
+        let m = makeModel()
+        let ev = m.layout.timed[6].first { $0.event.title == "Long run" }!.event
+        var next = ev; next.id = "v4.g1.next"; next.start = m.math.addDays(ev.start, 7); next.end = m.math.addDays(ev.end, 7)
+        try! m.store.create(next)
+        // First occurrence: "This and following" would be "All events"; last: it would be "This event".
+        #expect(!m.deleteOffersFollowing(ev))
+        #expect(!m.deleteOffersFollowing(next))
+        var third = ev; third.id = "v4.g1.third"; third.start = m.math.addDays(ev.start, 14); third.end = m.math.addDays(ev.end, 14)
+        try! m.store.create(third)
+        #expect(m.deleteOffersFollowing(next))
+        m.delete(next, span: .future)
+        #expect(m.store.series(of: ev).map(\.id) == [ev.id])
+    }
+    @Test func deleteDialogFocusMoves() {
+        let m = makeModel()
+        let ev = m.layout.timed[6].first { $0.event.title == "Long run" }!.event
+        var next = ev; next.id = "v4.g1.next"; next.start = m.math.addDays(ev.start, 7); next.end = m.math.addDays(ev.end, 7)
+        try! m.store.create(next)
+        m.select(eventID: ev.id)
+        m.requestDeleteSelected()
+        #expect(m.deleteChoice == .this)
+        m.moveDeleteChoice(ev.id, by: 1, wrap: false)       // → stops at the end
+        #expect(m.deleteChoice == .this)
+        m.moveDeleteChoice(ev.id, by: 1, wrap: true)        // Tab wraps to Cancel
+        #expect(m.deleteChoice == .cancel)
+        m.moveDeleteChoice(ev.id, by: -1, wrap: true)       // ⇧Tab back
+        #expect(m.deleteChoice == .this)
+        m.moveDeleteChoice(ev.id, by: -1, wrap: false)      // first occurrence: no "This and following"
+        #expect(m.deleteChoice == .all)
+        m.chooseDelete(ev.id, m.deleteChoice)
+        #expect(m.store.series(of: ev).isEmpty)
+    }
     @Test func untitledDraftIsDiscardedOnDeselect() {
         let m = makeModel()
         let s = m.math.date(year: 2026, month: 10, day: 3, hour: 12)
