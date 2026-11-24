@@ -241,6 +241,22 @@ extension AppModel {
         createEvent(start: d, end: math.addDays(d, 1), allDay: true)
         gridState.draftMadeAt = ProcessInfo.processInfo.systemUptime
     }
+
+    /// Week and day view: a drag across the all-day lane (or the day header) makes one all-day event over the days from `anchor`
+    /// to `day` (either direction). `begin` makes the draft; later calls stretch that draft as the pointer moves.
+    func dragAllDay(anchor: Int, to day: Int, begin: Bool) {
+        guard visibleDays.indices.contains(anchor) else { return }
+        let d = max(0, min(visibleDays.count - 1, day))
+        let start = math.startOfDay(visibleDays[min(anchor, d)])
+        let end = math.addDays(math.startOfDay(visibleDays[max(anchor, d)]), 1)
+        if begin || draft == nil || draft?.isAllDay != true || draftEventID != selectedEventID {
+            gridState.dayList = nil
+            createEvent(start: start, end: end, allDay: true)
+            gridState.draftMadeAt = ProcessInfo.processInfo.systemUptime
+        } else if draft?.start != start || draft?.end != end {
+            updateSelected { $0.start = start; $0.end = end }
+        }
+    }
 }
 
 extension GridHit {

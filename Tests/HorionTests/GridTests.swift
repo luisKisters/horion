@@ -139,4 +139,18 @@ struct GridTests {
         let e = m.selectedEvent!
         #expect(e.isAllDay && m.draftEventID == e.id)
     }
+
+    @Test func dragInAllDayLaneMakesOneMultiDayDraft() {
+        let m = model()
+        m.setMode(.week)
+        let days = m.visibleDays
+        m.dragAllDay(anchor: 3, to: 3, begin: true)
+        let id = m.draftEventID
+        m.dragAllDay(anchor: 3, to: 5, begin: false)
+        m.dragAllDay(anchor: 3, to: 1, begin: false)   // back past the anchor: the range flips
+        let e = m.selectedEvent!
+        #expect(e.isAllDay && m.draftEventID == id && e.id == id)
+        #expect(e.start == m.math.startOfDay(days[1]) && e.end == m.math.addDays(m.math.startOfDay(days[3]), 1))
+        #expect(m.store.events(in: DateInterval(start: days[0], end: m.math.addDays(days[6], 1))).filter { $0.id == id }.count <= 1)
+    }
 }
