@@ -16,7 +16,7 @@ Horion is a macOS calendar app in Swift. Luis builds it with agents and does not
 **Fix.** A bug, or a small UI change with one clear answer. Build it, check it, open the PR with a picture before and after. No mockup and no questions.
 
 **Visual change.** You can see it, and there is more than one good answer.
-- Use the designr skill.
+- Use the designr skill. It is installed once per Mac, not in this repo. If you cannot load it, say so and stop.
 - Start from how the app looks today, not from an old mockup.
 - First show 2 or 3 different approaches and how other calendars do it. Then show options per element.
 - When Luis sends the picks, lock them and build. Do not ask again.
