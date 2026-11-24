@@ -1,0 +1,39 @@
+name: CI
+
+# Checks every pull request, and every push to main, by running the same
+# fast check the developer runs on their Mac: scripts/verify.sh --fast.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# A new push to a pull request cancels the older run for that pull request.
+# Runs on main are never cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  verify:
+    name: Verify (fast)
+    # The newest macOS image GitHub offers (macOS 27, label xcode-27).
+    # Xcode 27.2 is the newest Xcode installed on that image.
+    runs-on: xcode-27
+    timeout-minutes: 45
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.2.app/Contents/Developer
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v7
+
+      - name: Show the toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Run scripts/verify.sh --fast
+        run: scripts/verify.sh --fast
