@@ -15,4 +15,6 @@
 ## How it works
 <!-- Only for a feature or a change of structure: which parts of the app changed and how they talk to each other. -->
 
+- [ ] If this changes a locked design value, `design/LOCKED.md` is updated.
+
 Closes #

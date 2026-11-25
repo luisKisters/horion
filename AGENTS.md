@@ -17,7 +17,8 @@ Horion is a macOS calendar app in Swift. Luis builds it with agents and does not
 
 **Visual change.** You can see it, and there is more than one good answer.
 - Use the designr skill.
-- Start from how the app looks today, not from an old mockup.
+- Start from how the app looks today: build main and take fresh screenshots. Never start from an old mockup.
+- A PR that changes a locked value also updates `design/LOCKED.md`.
 - First show 2 or 3 different approaches and how other calendars do it. Then show options per element.
 - When Luis sends the picks, lock them and build. Do not ask again.
 
