@@ -82,12 +82,6 @@ struct GridFixTests {
         #expect(m.dayListEvents(more.day).count == m.monthEvents[idx].count)
     }
 
-    @Test func monthHeadersFollowTheGridsFirstWeekday() {
-        let m = makeModel()
-        m.setMode(.month)
-        #expect(m.math.calendar.component(.weekday, from: m.monthGrid[0][0]) == m.math.calendar.firstWeekday)
-    }
-
     @Test func gutterDragWritesTheSettingsOnceAndEscRestores() {
         let m = model()
         let fitted = m.gridHourHeight

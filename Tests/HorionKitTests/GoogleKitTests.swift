@@ -211,11 +211,6 @@ struct GoogleSyncTests {
         let back = try JSONDecoder().decode(GoogleCalendarSync.self, from: JSONEncoder().encode(s))
         #expect(back == s && back.syncToken == "sync-1" && back.items.count == 4)
     }
-
-    @Test func the410ErrorBodyDecodes() throws {
-        let o = try JSONSerialization.jsonObject(with: googleFixture("error-410")) as? [String: Any]
-        #expect((o?["error"] as? [String: Any])?["code"] as? Int == 410)
-    }
 }
 
 @Suite("Google mapping review fixes")

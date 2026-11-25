@@ -142,9 +142,6 @@ public enum EventKitMapping {
     public static func reminders(alarmOffsetSeconds: [Double]) -> [Int] {
         reminders(alarms: alarmOffsetSeconds.map { RawAlarm(relativeOffset: $0) })
     }
-    /// The smallest reminder, or nil.
-    public static func reminderMinutes(alarmOffsetSeconds: [Double]) -> Int? { reminders(alarmOffsetSeconds: alarmOffsetSeconds).first }
-    public static func alarmOffsetSeconds(minutes: Int?) -> Double? { minutes.map { -Double($0) * 60 } }
     /// One alarm offset per reminder.
     public static func alarmOffsets(reminders: [Int]) -> [Double] { reminders.map { -Double($0) * 60 } }
 
@@ -156,14 +153,5 @@ public enum EventKitMapping {
         if reminders(alarms: existing) == want { return nil }
         let remove = existing.indices.filter { isReminder(existing[$0]) }
         return (remove, alarmOffsets(reminders: want))
-    }
-
-    /// Participants shown as "Name <email>" or just the email/name. The organizer/self entry is dropped.
-    public static func participantLabel(name: String?, email: String?) -> String? {
-        let n = name?.trimmingCharacters(in: .whitespaces) ?? ""
-        let e = email?.trimmingCharacters(in: .whitespaces) ?? ""
-        if !e.isEmpty && (n.isEmpty || n == e) { return e }
-        if !e.isEmpty { return "\(n) <\(e)>" }
-        return n.isEmpty ? nil : n
     }
 }

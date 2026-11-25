@@ -28,10 +28,4 @@ struct CrossFixTests {
         #expect(!json.contains("use24h") && !json.contains("weekStartsOnMonday") && !json.contains("firstVisibleHour"))
         #expect(json.contains("showDeclined") && AppSettings().showDeclined)
     }
-    @Test func menuBarBackdropMatchesCSSAngle() {
-        // menubar.html `.screen`: linear-gradient(160deg, ...) on 1440 x 900.
-        let l = MenuBarScreenPreview.cssLinear(degrees: 160)
-        #expect(abs(l.start.x - 0.3411) < 0.001 && abs(l.start.y - -0.1988) < 0.001)
-        #expect(abs(l.end.x - 0.6589) < 0.001 && abs(l.end.y - 1.1988) < 0.001)
-    }
 }

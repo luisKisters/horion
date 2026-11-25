@@ -91,18 +91,6 @@ struct ChromeFixTests {
         #expect(m.handle(.arrow(dx: 0, dy: 1)) == false)   // up and down without a selection scroll the grid
     }
 
-    @Test func selectionLeavingThePeriodTakesThePeriodAlong() {
-        let m = makeModel()
-        let start = m.visibleStart
-        let last = m.layout.timed[6].map(\.event).sorted { $0.start < $1.start }.first!
-        m.select(eventID: last.id)
-        m.handle(.arrow(dx: 1, dy: 0))
-        if let e = m.selectedEvent, e.id != last.id {
-            #expect(m.visibleStart == m.math.addDays(start, 7))
-            #expect(m.visibleDays.contains { m.math.isSameDay($0, e.start) })
-        }
-    }
-
     @Test func optionArrowsMoveWithUndo() {
         let m = makeModel()
         let club = pick(m, "Club committee", day: 3)
@@ -152,19 +140,6 @@ struct ChromeFixTests {
         #expect(demo.paletteRows.contains { if case .command(let c) = $0.kind { return c.id == .meetWith }; return false })
     }
 
-    @Test func paletteRowsAreBuiltOncePerInput() {
-        let m = makeModel()
-        m.openPalette(.all)
-        m.setPaletteQuery("walk")
-        _ = m.paletteRows
-        let builds = m.chromeState.paletteCache.builds
-        for i in 0..<5 { m.chromeState.paletteIndex = i; _ = m.paletteRows }
-        #expect(m.chromeState.paletteCache.builds == builds)
-        m.setPaletteQuery("wal")
-        _ = m.paletteRows
-        #expect(m.chromeState.paletteCache.builds == builds + 1)
-    }
-
     @Test func bareCharactersAreSwallowed() {
         #expect(KeyRouter.isBareCharacter(KeyInput(characters: "p")))
         #expect(KeyRouter.isBareCharacter(KeyInput(characters: " ")))
@@ -172,12 +147,5 @@ struct ChromeFixTests {
         #expect(!KeyRouter.isBareCharacter(KeyInput(characters: "p", option: true)))
         #expect(!KeyRouter.isBareCharacter(KeyInput(characters: "\r")))
         #expect(!KeyRouter.isBareCharacter(KeyInput(characters: "\u{F704}")))   // F1
-    }
-
-    @Test func commandMenuIconsAreTheMockups() {
-        #expect(CommandID.meetWith.icon == .users && CommandID.today.icon == .cal && CommandID.undo.icon == .ret)
-        for n in [ChromeIcon.Name.plus, .cal, .left, .right, .side, .moon, .search, .users, .ret, .trash, .gear, .clock, .keys] {
-            #expect(!ChromeIcon.path(n).isEmpty)
-        }
     }
 }

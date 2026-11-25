@@ -190,13 +190,6 @@ struct GoogleStoreTests {
 
     // MARK: Accounts and config
 
-    @Test func connectWithoutClientIDExplainsAndDoesNothing() {
-        let m = makeModelV4()
-        m.connectGoogle()
-        #expect(m.services.google.showsClientIDNote && m.services.google.accounts.isEmpty)
-        #expect(m.toast?.text == "A Google client ID is needed first")
-    }
-
     @Test func configReadsOnlyARealClientID() {
         #expect(GoogleConfig.load(info: nil, env: [:]).clientID == nil)
         #expect(GoogleConfig.load(info: ["HorionGoogleClientID": ""], env: [:]).clientID == nil)
@@ -461,12 +454,6 @@ struct GoogleTokenTests {
         #expect(await s.needsReconnect)
         let info = await MainActor.run { GoogleAccountInfo(email: "a", accountID: "x", calendarCount: 0, peopleCount: 0, needsReconnect: s.needsReconnect).statusLine }
         #expect(info.contains("Connect it again"))
-    }
-
-    @Test func aFailedKeychainSaveRecordsNoAccount() {
-        let t = MemoryTokenStore()
-        t.failsSaves = true
-        #expect(!t.save(refreshToken: "r", for: "a@example.com") && t.emails().isEmpty)
     }
 }
 

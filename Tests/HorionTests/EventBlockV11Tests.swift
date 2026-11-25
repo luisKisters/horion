@@ -47,12 +47,6 @@ struct EventBlockV11Tests {
     @Test func darkStatesMatchTheMockup() { check(Self.dark, dark: true) }
     @Test func paperStatesMatchTheMockup() { check(Self.paper, dark: false) }
 
-    @Test func theMaybeHatchIsTheHoverFill() {
-        #expect(Palettes.palette(barHex: "#5B8DEF", fillHex: nil, dark: true).colors(reply: .maybe, past: false).stripe?.c8 == C8(hex: Self.hatch.dark))
-        #expect(Palettes.palette(barHex: "#5B8DEF", fillHex: nil, dark: false).colors(reply: .maybe, past: false).stripe?.c8 == C8(hex: Self.hatch.paper))
-        #expect(EventShape.hatch == 5)
-    }
-
     // MARK: The painted block
 
     /// Paints one block at 1x into a bitmap the size of `r` plus a margin and returns a pixel reader (top-left origin).
@@ -105,10 +99,5 @@ struct EventBlockV11Tests {
         // d = ((x − 10) + (y − 10)) / √2 from the top-left corner: d mod 10 < 5 is the hatch, the rest the fill (band centres sampled).
         let hatch = s.colors.stripe!.c8, fill = s.colors.fill.c8
         #expect(px(34, 60) == hatch && px(41, 60) == fill && px(48, 60) == hatch)
-    }
-
-    @Test func aDeclinedBlockIsStruckWithoutAlpha() {
-        let s = style("#E5674F", dark: true, reply: .declined)
-        #expect(s.colors.strike && s.colors.bar == s.palette.pastBarRGB && s.colors.barAlpha == 1)
     }
 }

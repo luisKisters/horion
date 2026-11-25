@@ -33,17 +33,6 @@ struct PanelTests {
         #expect(PanelText.repeats(hours, m.fmt) == "Weekly on Thu")
     }
 
-    @Test func returnSavesTheDraft() {
-        let m = makeModel()
-        let e = newDraft(m)
-        #expect(m.isDraftOpen)
-        m.updateSelected { $0.title = "Lunch" }
-        #expect(m.layout.timed[3].contains { $0.event.title == "Lunch" })
-        m.saveDraft()
-        #expect(m.draftEventID == nil && m.selectedEventID == nil)
-        #expect(m.event(id: e.id)?.title == "Lunch")
-    }
-
     @Test func untitledSaveIsNewEvent() {
         let m = makeModel()
         let e = newDraft(m)

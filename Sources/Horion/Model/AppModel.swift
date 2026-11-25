@@ -430,12 +430,6 @@ final class AppModel {
     func goTo(day d: Date) { settleDraft(); let day = math.startOfDay(d); setDirection(to: day); anchor = day; leftAligned = false; reload() }
     func goToToday() { settleDraft(); setDirection(to: math.startOfDay(now)); anchor = math.startOfDay(now); leftAligned = false; reload(); scrollToHourTick += 1 }
     private func setDirection(to d: Date) { navDirection = d > anchor ? 1 : (d < anchor ? -1 : 0) }
-    func leftAlignToday() {
-        settleDraft()
-        anchor = math.startOfDay(now); leftAligned = true
-        if viewMode == .month { viewMode = .week }
-        reload()
-    }
     /// Navigation settles the draft, except when the draft itself moves to another day (`settling: false`).
     func go(to date: Date, settling: Bool = true) {
         if settling { settleDraft() }

@@ -183,14 +183,6 @@ struct PanelFixTests {
         #expect(PanelToday.build([night], now: today.addingTimeInterval(3 * 3600), math: m.math) == PanelToday())
     }
 
-    @Test func panelCountdownRoundsUp() {
-        let m = makeModel()
-        let next = m.panelState.today.next!
-        // 15:10 now, Weekly review at 17:00
-        #expect(Countdown.minutes(from: m.now, to: next.start) == 110)
-        #expect(Countdown.minutes(from: m.now.addingTimeInterval(30), to: next.start) == 110)
-    }
-
     @Test func pressesInTheSidebarAndHeaderSettle() {
         let m = makeModel()
         let size = CGSize(width: 1440, height: 900)

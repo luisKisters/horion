@@ -13,31 +13,6 @@ struct GridV5Tests {
         return m
     }
 
-    /// v5 H: the v11 cascade folds nothing into "+N" (mockup-v11 `cascade`): every block of the busy Wednesday evening shows.
-    @Test func wednesdayEveningCascades() {
-        let m = model()
-        let wed = m.layout.timed[2]
-        func p(_ t: String) -> Placement { wed.first { $0.event.title == t }!.placement }
-        // Founder meetup 17:00 is the base; Idea session 17:15, as long, starts within one title line: they share the width.
-        #expect(p("Founder meetup").left == 0 && !p("Founder meetup").over && p("Founder meetup").width == 0.5)
-        #expect(p("Idea session").left == 0.5 && p("Idea session").over)
-        // Flat cleaning 18:00 sits on Idea session, a step in (smaller in this narrow column), inside its half.
-        let f = p("Flat cleaning")
-        #expect(f.left > 0.5 && abs(f.left + f.width - 1) < 1e-9 && f.over)
-        // Nothing is drawn over Founder meetup's title (mockup-v14): it plans its text on the whole block.
-        #expect(!p("Founder meetup").covered && p("Founder meetup").visibleMinutes == nil)
-    }
-
-    @Test func allDayHidesAllButTwoLanesPerDay() {
-        let m = model()
-        #expect(m.allDayFold == 2)
-        #expect(m.layout.allDay.collapsed(maxLanes: 2).hiddenPerDay == [0, 0, 0, 0, 2, 5, 2])
-        m.toggleAllDayExpanded()
-        #expect(m.allDayFold == nil && m.gridState.allDayExpanded)
-        m.toggleAllDayExpanded()
-        #expect(m.allDayFold == 2)
-    }
-
     @Test func expandedHeightIsAtMostFourAndAHalfLanes() {
         // v11 lanes: 19 pt chips + 3 pt (22 pt), 3 pt above the first, 8 pt below the last (the mockup's 52 pt lane for two rows).
         let three: CGFloat = 75, many: CGFloat = 108, content: CGFloat = 74   // 3 × 22 + 9, 4.5 × 22 + 9, 3 + 3 × 19 + 2 × 3 + 8

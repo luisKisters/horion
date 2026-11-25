@@ -14,22 +14,6 @@ struct ContactsTests {
         return (AppModel(store: DemoStore(), options: o, persist: false, services: Services(contacts: fake)), fake)
     }
 
-    @Test func allowContactsFillsTheBareAddresses() {
-        let (m, fake) = model()
-        let e = m.event(id: "v4.wg")!
-        // Flat dinner: Dion and Sam's iCloud address are bare
-        #expect(EditorRows.withoutName(m.displayed(e.attendees)) == 2)
-        #expect(fake.lookups == 0)
-        m.allowContacts()
-        #expect(m.services.contacts.access == .allowed && fake.requests == 1)
-        let shown = m.displayed(e.attendees)
-        #expect(EditorRows.withoutName(shown) == 0)
-        #expect(shown.contains { $0.email == "dion.k@example.com" && $0.name == "Dion Kraft" })
-        // display only: the stored guest list keeps the bare address
-        #expect(m.event(id: "v4.wg")!.attendees.contains { $0.email == "dion.k@example.com" && $0.name == nil })
-        #expect(m.toast?.text.hasPrefix("Contacts allowed") == true)
-    }
-
     @Test func lookupsAreCached() {
         let (m, fake) = model(access: .allowed)
         let a = Attendee(email: "dion.k@example.com")

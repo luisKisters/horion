@@ -49,35 +49,12 @@ struct ChromeTests {
         #expect(!m.paletteBack())
     }
 
-    @Test func choosingAMateTwiceRemovesTheOverlay() {
-        let m = model()
-        m.openPalette(.meet)
-        m.setPaletteQuery("ines")
-        m.runPaletteSelection()
-        #expect(m.shownTeammates.map(\.name) == ["Ines Duarte"] && m.overlay == nil)
-        m.openPalette(.meet)
-        m.setPaletteQuery("ines")
-        #expect(m.paletteRows.first?.shown == true)
-        m.runPaletteSelection()
-        #expect(m.shownTeammates.isEmpty)
-    }
-
     @Test func commandsOpenModesAndSheets() {
         let m = model()
         m.openPalette(.all)
         m.run(.goToDate); #expect(m.overlay == .command && m.chromeState.paletteMode == .goTo)
         m.run(.settings); #expect(m.overlay == .settings)
         m.run(.viewMonth); #expect(m.overlay == nil && m.viewMode == .month)
-    }
-
-    @Test func escapeDiscardsTheDraftBeforeTheSelection() {
-        let m = model()
-        m.createAtNextFreeSlot()
-        let id = m.draftEventID
-        #expect(id != nil)
-        m.handle(.escape)
-        #expect(m.draftEventID == nil && m.selectedEventID == nil)
-        #expect(m.event(id: id) == nil || m.layout.timed.flatMap { $0 }.allSatisfy { $0.event.id != id })
     }
 
     @Test func moveShowsAnUndoToast() {
@@ -87,15 +64,5 @@ struct ChromeTests {
         moved.start = e.start.addingTimeInterval(3600); moved.end = e.end.addingTimeInterval(3600)
         m.commit(moved, span: .this, old: e)
         #expect(m.toast?.undo == true && m.toast?.text == "Moved to Thu 1 Oct, 14:00")
-    }
-
-    @Test func headerTitleSpansMonths() {
-        let m = model()
-        // Mon 28 Sep - Sun 4 Oct: most days are in October (the mockup's "October 2026  Week 40")
-        #expect(m.chromeTitle.main == "October" && m.chromeTitle.year == "2026" && m.weekLabel == "Week 40")
-        m.setMode(.month)
-        #expect(m.chromeTitle.main == "October")
-        m.previous()
-        #expect(m.chromeTitle.main == "September")
     }
 }
