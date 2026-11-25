@@ -303,7 +303,7 @@ struct ShortcutsSheet: View {
     /// One string per row: alternatives separated by two spaces, each a whole shortcut (one cap).
     static let all: [(String, [(String, String)])] = [
         ("Move around", [("T", "Today"), ("J  \u{2192}", "Next period"), ("K  \u{2190}", "Previous period"), ("D  W  M", "Day, week, month"),
-                         (".", "Go to date"), ("`", "Sidebar")]),
+                         (".", "Go to date"), ("\u{2318}B  `", "Sidebar")]),
         ("Events", [("C", "New event at the next free slot"), ("\u{21E5}  \u{21E7}\u{21E5}", "Select next, previous event"),
                     ("\u{2191}  \u{2193}  \u{2190}  \u{2192}", "Move the selection"), ("\u{21A9}", "Edit the title"), ("\u{2325}\u{2191}  \u{2325}\u{2193}", "Move by 15 minutes"),
                     ("\u{2325}\u{2190}  \u{2325}\u{2192}", "Move by a day"), ("\u{232B}", "Delete"), ("\u{2318}Z", "Undo")]),

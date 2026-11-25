@@ -405,6 +405,7 @@ final class AppModel {
 
     private func settingsChanged(old: AppSettings) {
         if old.reduceMotion != settings.reduceMotion { Motion.override = settings.reduceMotion }
+        if old.menuShortcut != settings.menuShortcut || old.appShortcut != settings.appShortcut { MenuBarHotKey.update(settings) }
         if persist { settings.save() }
         if old.showDeclined != settings.showDeclined {
             windowRange = DateInterval(start: .distantPast, end: .distantPast)

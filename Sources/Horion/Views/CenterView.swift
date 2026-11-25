@@ -43,7 +43,7 @@ struct ToolbarView: View {
         let right = model.rightColumnVisible
         HStack(spacing: 10) {
             if !model.sidebarVisible {
-                ChromeIconButton(icon: .side, probe: "showSidebar", help: "Show sidebar  `") { model.toggleSidebar() }
+                ChromeIconButton(icon: .side, probe: "showSidebar", help: "Show sidebar  \u{2318}B") { model.toggleSidebar() }
             }
             HeaderTitle()
             ForEach(model.shownTeammates) { MateChip(mate: $0).fixedSize() }

@@ -48,7 +48,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             KeyRouter.shared.install(model: AppContext.model)
             let bar = MenuBarController(model: AppContext.model)
             MenuBarController.shared = bar
-            MenuBarHotKey.register()
+            MenuBarHotKey.register(AppContext.model.settings)
             if CommandLine.arguments.contains("--dump-menubar") {
                 print(bar.dump())
                 fflush(stdout)

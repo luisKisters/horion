@@ -9,7 +9,7 @@ enum SnapshotMenuBar {
     static func apply(_ state: String, _ m: AppModel) -> Bool { false }
 
     /// The menu bar screens: "v4-menubar", the open menu at the fixture's clock; "menubar-empty", the same at 23:30 with nothing left.
-    static let screens = ["v4-menubar", "menubar-empty"]
+    static let screens = ["v4-menubar", "menubar-empty", "menubar-rowmenu"]
 
     /// Renders a menu bar screen (`MenuBarScreenPreview`) instead of the window. Nil for every other state.
     static func run(_ state: String, _ m: AppModel, _ o: LaunchOptions, out: String) -> Int32? {
@@ -25,7 +25,7 @@ enum SnapshotMenuBar {
         let f = m.fmt
         let clock = "\(f.weekdayShort(m.now)) \(m.math.day(m.now)) \(f.monthShort(m.now))  \(f.time(m.now))"
         let view = MenuBarScreenPreview(menu: menu, display: m.settings.menuBarDisplay, clock: clock, backdrop: backdrop,
-                                        highlight: highlight, submenu: nil)
+                                        highlight: highlight, submenu: state == "menubar-rowmenu" ? menu.rows.first.map { m.menuBarSubmenu(for: $0.event) } : nil)
         let w = OffscreenWindow(view, size: CGSize(width: 1440, height: 900), chrome: false)
         w.settle(6)
         let ok = w.writePNG(to: out, scale: o.scale)

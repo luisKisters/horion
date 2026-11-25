@@ -51,13 +51,14 @@ public enum ShortcutResolver {
     public static func resolve(_ k: KeyInput, textFocused: Bool) -> ShortcutAction? {
         let c = k.characters.lowercased()
         if k.command {
-            if k.control && !k.option { return c == "k" ? .menuBarCalendar : nil }
+            // ⌃⌘K is gone: the menu bar menu has its own global key (⌥⌘C by default, Settings → Shortcuts)
+            if k.control { return nil }
             if k.option { return c == "i" && !k.shift ? .toggleRightColumn : nil }
             switch c {
             case "k": return .commandMenu
             case ",": return .settings
             case "1": return .mainWindow
-            case "\\": return .toggleSidebar
+            case "b": return .toggleSidebar
             case "z": return k.shift ? nil : (textFocused ? nil : .undo)
             case "r": return .refresh
             case "j": return .joinCall

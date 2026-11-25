@@ -35,7 +35,7 @@ extension AppModel {
 }
 
 /// The real menu bar item: an NSStatusItem whose NSMenu is rebuilt from `MenuBarMenuModel` each time it opens.
-/// Event rows are custom views (`MenuBarRowView`): no submenu arrow, a small icon says what a row's menu has.
+/// Event rows are custom views (`MenuBarRowView`) with a submenu arrow; a small icon says what a row's menu has.
 @MainActor
 final class MenuBarController: NSObject, NSMenuDelegate {
     static var shared: MenuBarController?
@@ -51,7 +51,6 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.delegate = self
         menu.autoenablesItems = false
         item.menu = menu
-        item.button?.toolTip = "Horion  \u{2303}\u{2318}K"
         observe()
     }
 
@@ -67,6 +66,8 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     func updateItem() {
         guard let button = item.button else { return }
         _ = model.storeVersion
+        let sc = model.settings.menuShortcut
+        button.toolTip = sc.on ? "Horion  \(sc.display)" : "Horion"
         let m = model.menuBarMenu
         guard let f = m.focus, model.settings.menuBarDisplay != .icon else {
             button.image = MenuBarArt.glyph(soon: m.focus?.soon ?? false)
@@ -103,6 +104,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
     /// The menus open right now, the root first. Keys go to the deepest one with a highlight.
     private var open: [NSMenu] = []
+    var isOpen: Bool { !open.isEmpty }
     private var keys: Any?
 
     func menuWillOpen(_ menu: NSMenu) {
@@ -126,6 +128,10 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     /// Return or Enter on an event row opens it in Horion, even when the row has a menu.
     /// Returns true when the key was handled here.
     private func key(_ e: NSEvent) -> Bool {
+        // While the menu tracks, the global keys may not reach the hot key handler: run them here.
+        if model.settings.menuShortcut.matches(e) { MenuBarHotKey.fire(.menu); return true }
+        if model.settings.appShortcut.matches(e) { menu.cancelTracking(); MenuBarHotKey.fire(.app); return true }
+        if e.modifierFlags.intersection([.command, .option, .control, .shift]) == .command { return rowShortcut(e) }
         guard e.modifierFlags.intersection([.command, .option, .control, .shift]).isEmpty else { return false }
         let lit = open.reversed().lazy.compactMap(\.highlightedItem).first
         switch e.keyCode {
@@ -146,6 +152,21 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         default:
             return false
         }
+    }
+
+    /// ⌘J, ⌘E, ⌘C, ⌘O act on the highlighted row (or the row whose menu is open), never on the first row that has the key.
+    private func rowShortcut(_ e: NSEvent) -> Bool {
+        guard let ch = e.charactersIgnoringModifiers?.lowercased(), ["j", "e", "c", "o"].contains(ch) else { return false }
+        let sub = open.reversed().lazy.compactMap { m -> NSMenu? in
+            if m.items.contains(where: { $0.representedObject is MenuBarAction }) { return m }
+            if let it = m.highlightedItem, it.view is MenuBarRowView { return it.submenu }
+            return nil
+        }.first
+        if let it = sub?.items.first(where: { $0.isEnabled && $0.keyEquivalent == ch }) {
+            menu.cancelTracking()
+            runSub(it)
+        }
+        return true
     }
 
     /// Row views draw their own highlight: redraw the rows of the menu whose highlight moved.
@@ -172,7 +193,10 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             }
         }
         menu.addItem(.separator())
-        menu.addItem(command("Open Horion", key: "", #selector(openHorion)))
+        let app = model.settings.appShortcut
+        let openItem = command("Open Horion", key: app.on ? app.keyEquivalent : "", #selector(openHorion))
+        openItem.keyEquivalentModifierMask = app.flags
+        menu.addItem(openItem)
         menu.addItem(command("Settings\u{2026}", key: ",", #selector(openSettings)))
         menu.addItem(.separator())
         menu.addItem(command("Quit Horion", key: "q", #selector(quit)))
@@ -237,11 +261,22 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         case .separator: return .separator()
         case .header(let t): return header(t)
         default:
-            let it = NSMenuItem(title: s.title, action: #selector(runSub(_:)), keyEquivalent: "")
+            let it = NSMenuItem(title: s.title, action: #selector(runSub(_:)), keyEquivalent: Self.key(s))
             it.target = self
             it.representedObject = MenuBarAction(item: s, event: e)
             if case .respond(_, let checked) = s { it.state = checked ? .on : .off }
             return it
+        }
+    }
+
+    /// Row menu shortcuts: ⌘J Join, ⌘E Email, ⌘C Copy details, ⌘O Show in Horion.
+    static func key(_ s: MenuBarSubItem) -> String {
+        switch s {
+        case .join: "j"
+        case .email: "e"
+        case .copy: "c"
+        case .show: "o"
+        default: ""
         }
     }
 
@@ -367,7 +402,7 @@ final class MenuBarRowView: NSView {
     static func width(for lines: [MenuBarLine]) -> CGFloat {
         let widest = lines.map { l -> CGFloat in
             switch l {
-            case .row(let r): return min(width(r.title, font), maxTitle) + (r.join && r.call != nil ? 12 + pillWidth : r.hint == nil ? 0 : 6 + 15)
+            case .row(let r): return min(width(r.title, font), maxTitle) + (r.join && r.call != nil ? 12 + pillWidth : r.hint == nil ? 0 : 6 + 15) + chevronWidth + chevronGap
             case .fold(let t, let d, _): return width(t, font) - (timeWidth + 8) + (d.map { 24 + width($0, smallFont) } ?? 0) + 20
             default: return 0
             }
@@ -380,6 +415,15 @@ final class MenuBarRowView: NSView {
         if r.join, r.call != nil { return "join" }
         return r.hint.map { $0 == .call ? "call" : "guests" }
     }
+
+    /// The submenu arrow at the right edge, like a native item with a submenu. Returns its width.
+    private func drawChevron(_ c: NSColor, mid: CGFloat) -> CGFloat {
+        guard let chev = NSImage(systemSymbolName: "chevron.right", accessibilityDescription: nil)?
+            .withSymbolConfiguration(.init(pointSize: 10, weight: .semibold))?.tinted(c) else { return 0 }
+        chev.draw(in: NSRect(x: bounds.width - Self.trailing - chev.size.width, y: mid - chev.size.height / 2, width: chev.size.width, height: chev.size.height))
+        return chev.size.width
+    }
+    static let chevronWidth: CGFloat = 8, chevronGap: CGFloat = 10
 
     override var isFlipped: Bool { true }
     override func mouseUp(with event: NSEvent) {
@@ -410,10 +454,11 @@ final class MenuBarRowView: NSView {
             else { MenuBarArt.drawBar(in: bar, color: MenuBarArt.calendar(r.colorHex), second: r.secondColorHex.map(MenuBarArt.calendar), tentative: r.tentative) }
             _ = text(r.start, Self.timeFont, dim, x: Self.timeX)
             let joins = logo != nil
-            let room = bounds.width - Self.titleX - Self.trailing - (joins ? 12 + Self.pillWidth : r.hint == nil ? 0 : 21)
+            let right = bounds.width - Self.trailing - drawChevron(dim, mid: mid) - Self.chevronGap
+            let room = right - Self.titleX - (joins ? 12 + Self.pillWidth : r.hint == nil ? 0 : 21)
             let w = text(r.title, Self.font, fg, x: Self.titleX, maxWidth: min(Self.maxTitle, room))
             if let logo {
-                pill = NSRect(x: bounds.width - Self.trailing - Self.pillWidth + 4, y: mid - Self.pillHeight / 2, width: Self.pillWidth, height: Self.pillHeight)
+                pill = NSRect(x: right - Self.pillWidth, y: mid - Self.pillHeight / 2, width: Self.pillWidth, height: Self.pillHeight)
                 NSColor.white.withAlphaComponent(hl ? 1 : 0.92).setFill()
                 NSBezierPath(roundedRect: pill, xRadius: Radius.small, yRadius: Radius.small).fill()
                 logo.draw(in: NSRect(x: pill.minX + 7, y: mid - logo.size.height / 2, width: logo.size.width, height: logo.size.height))
@@ -427,11 +472,7 @@ final class MenuBarRowView: NSView {
             }
         case .fold(let title, let detail):
             _ = text(title, Self.font, detail == nil ? dim : fg, x: Self.timeX)
-            var x = bounds.width - Self.trailing
-            if let chev = NSImage(systemSymbolName: "chevron.right", accessibilityDescription: nil)?.withSymbolConfiguration(.init(pointSize: 10, weight: .semibold))?.tinted(dim) {
-                x -= chev.size.width
-                chev.draw(in: NSRect(x: x, y: mid - chev.size.height / 2, width: chev.size.width, height: chev.size.height))
-            }
+            let x = bounds.width - Self.trailing - drawChevron(dim, mid: mid)
             if let detail {
                 let w = Self.width(detail, Self.smallFont)
                 _ = text(detail, Self.smallFont, dim, x: x - 8 - w)

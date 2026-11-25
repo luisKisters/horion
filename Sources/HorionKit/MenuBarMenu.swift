@@ -26,7 +26,7 @@ public struct MenuBarMenuModel: Equatable, Sendable {
         public var secondColorHex: String?
         public var tentative: Bool { event.status == .tentative }
         /// Every row has a menu (at least Copy details and Show in Horion).
-        /// What the row's menu is about, drawn as a small icon after the title (there is no arrow).
+        /// What the row's menu is about, drawn as a small icon after the title (the arrow sits at the right edge).
         public var hint: Hint?
         /// The event's call (`CallLink`): Meet, Zoom, Teams or another known host. Nil for no link or a website.
         public var call: CallLink? = nil

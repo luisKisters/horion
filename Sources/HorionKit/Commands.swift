@@ -33,7 +33,7 @@ public enum CommandRegistry {
         Command(.viewDay, "Day view", group: "View", keys: ["D"]),
         Command(.viewWeek, "Week view", group: "View", keys: ["W"]),
         Command(.viewMonth, "Month view", group: "View", keys: ["M"]),
-        Command(.toggleSidebar, "Toggle sidebar", group: "View", keys: ["`"]),
+        Command(.toggleSidebar, "Toggle sidebar", group: "View", keys: ["command", "B"]),
         Command(.toggleRightColumn, "Toggle right column", group: "View", keys: ["\u{2325}", "\u{2318}", "I"]),
         Command(.switchAppearance, "Switch appearance", group: "View"),
         Command(.searchEvents, "Search events", group: "Find", keys: ["/"], more: true),
