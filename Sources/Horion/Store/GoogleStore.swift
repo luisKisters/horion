@@ -352,7 +352,20 @@ final class GoogleStore: CalendarStore {
         let meet = event.conferencing == GoogleMapping.newMeetLink && old.conferencing != event.conferencing
         guard var body = GoogleMapping.patch(old: old, new: event, zone: zone, meetRequestID: meet ? UUID().uuidString : nil, resources: resources) else { return event }
         if span == .this || old.seriesID == nil {
-            run({ try await api.patch(calendarID: cal, eventID: ref.gid, body, notify: notify, conference: meet) }, done: store, failed: restore)
+            let patch = body
+            run({ try await api.patch(calendarID: cal, eventID: ref.gid, patch, notify: notify, conference: meet) }, done: store, failed: restore)
+        } else if span == .future {
+            // this and following: a new series from this occurrence with the change, then the old one ends the second before it
+            let master = syncs[cal]?.items[ref.gid]?.recurringEventId ?? ref.gid
+            let (start, end) = GoogleMapping.times(event, zone: zone), until = old.start.addingTimeInterval(-1), change = body
+            run({
+                let m = try await api.get(calendarID: cal, eventID: master)
+                let made = GoogleMapping.following(m, change: change, start: start, end: end)
+                let g = try await api.insert(calendarID: cal, made, notify: notify, conference: made.conferenceData != nil)
+                _ = try await api.patch(calendarID: cal, eventID: master, GEvent(recurrence: RRule.ended(m.recurrence ?? [], until: until)), notify: false, conference: false)
+                return g
+            }, done: { _ in }, failed: restore)
+            scheduleResync()
         } else {
             // the whole series: the main event, with the time shifted by as much as this occurrence moved
             let master = syncs[cal]?.items[ref.gid]?.recurringEventId ?? ref.gid
@@ -404,11 +417,7 @@ final class GoogleStore: CalendarStore {
             let until = event.start.addingTimeInterval(-1)
             run({
                 let m = try await api.get(calendarID: cal, eventID: master)
-                let rules = (m.recurrence ?? []).map { line -> String in
-                    guard var r = RRule.parse(line) else { return line }
-                    r.until = until
-                    return RRule.format(r, zone: TimeZone(identifier: "UTC")!)
-                }
+                let rules = RRule.ended(m.recurrence ?? [], until: until)
                 return try await api.patch(calendarID: cal, eventID: master, GEvent(recurrence: rules), notify: notify, conference: false)
             }, done: { [weak self] _ in
                 guard let self else { return }

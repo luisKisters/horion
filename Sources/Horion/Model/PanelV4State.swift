@@ -144,10 +144,11 @@ extension AppModel {
         return true
     }
 
-    /// Send update (notify) or Save without sending: the held change goes to the store.
+    /// Send update (notify) or Save without sending: the held change goes to the store (a repeating event asks which occurrences first).
     func sendUnsent(notify: Bool) {
         guard let id = selectedEventID else { return }
         closePanelMenu()
+        if let u = panelState.unsent[id], askSpan(base: u.base, edited: u.edited, old: nil, notify: notify) { return }
         if sendUnsent(id, notify: notify) { showToast(notify ? "Update sent" : "Saved without sending") }
     }
 
@@ -198,6 +199,89 @@ extension AppModel {
         closePanelMenu()
         guard let e = event(id: id) else { overlay = nil; return }
         if delete(e, span: .this, notify: notify) { panelState.unsent[id] = nil }
+    }
+
+    /// "This and following" only where it differs from the other two: the series has an occurrence before this one (else it
+    /// is "All events") and one after it (else it is "This event").
+    func deleteOffersFollowing(_ e: CalendarEvent) -> Bool {
+        guard e.isRecurring else { return false }
+        let series = store.series(of: e)
+        return series.contains { $0.start < e.start } && series.contains { $0.start > e.start }
+    }
+
+    /// The recurring-delete and recurring-edit dialogs' buttons, left to right ("This and following" only where it is offered).
+    /// An edit asks about the occurrence where it was, not where the held change put it.
+    func spanChoices(_ id: String) -> [SpanChoice] {
+        let e = recurringEdit.flatMap { $0.base.id == id ? $0.base : nil } ?? event(id: id)
+        let following = e.map(deleteOffersFollowing) ?? false
+        return following ? [.cancel, .all, .future, .this] : [.cancel, .all, .this]
+    }
+
+    /// ←/→ and A/D move the focus and stop at the ends; Tab and ⇧Tab move it and wrap around.
+    func moveSpanChoice(_ id: String, by step: Int, wrap: Bool) {
+        let all = spanChoices(id)
+        let i = all.firstIndex(of: spanChoice) ?? all.count - 1
+        let j = wrap ? (i + step + all.count) % all.count : min(max(i + step, 0), all.count - 1)
+        spanChoice = all[j]
+    }
+
+    /// Return (or a click) on one of the recurring-delete dialog's buttons.
+    func chooseDelete(_ id: String, _ choice: SpanChoice) {
+        switch choice {
+        case .cancel: closeOverlay()
+        case .all: deleteRecurring(id, span: .all, notify: deleteNotify)
+        case .future: deleteRecurring(id, span: .future, notify: deleteNotify)
+        case .this: deleteRecurring(id, span: .this, notify: deleteNotify)
+        }
+    }
+
+    // MARK: Edit a repeating event
+
+    /// A move or resize from the grid or the keyboard: a repeating event asks which occurrences first.
+    func commitMove(_ e: CalendarEvent, old: CalendarEvent) {
+        if askSpan(base: old, edited: e, old: old, notify: nil) { return }
+        commit(e, span: .this, old: old)
+    }
+
+    /// A changed time of a repeating event (not the event being created) waits for the recurring-edit dialog. Returns false
+    /// when nothing is asked. `old`: undo goes back to it (this occurrence only). `notify`: the held change of an event with guests.
+    func askSpan(base: CalendarEvent, edited: CalendarEvent, old: CalendarEvent?, notify: Bool?) -> Bool {
+        guard draft?.id != edited.id, store.repeats(base) else { return false }
+        let timeChanged = base.start != edited.start || base.end != edited.end || base.isAllDay != edited.isAllDay
+        guard timeChanged || notify != nil else { return false }
+        flushPendingEdit()
+        recurringEdit = RecurringEdit(base: base, edited: edited, old: old, notify: notify)
+        spanChoice = .this
+        overlay = .editRecurring(edited.id)
+        reload()
+        return true
+    }
+
+    /// Return (or a click) on one of the recurring-edit dialog's buttons. Cancel puts the event back where it was (a held change
+    /// of an event with guests stays held).
+    func chooseEdit(_ id: String, _ choice: SpanChoice) {
+        guard let r = recurringEdit, r.edited.id == id else { overlay = nil; return }
+        if choice == .cancel { overlay = nil; return }   // the overlay's didSet drops the held change
+        recurringEdit = nil
+        overlay = nil
+        let span: EditSpan
+        switch choice {
+        case .cancel: return
+        case .all: span = .all
+        case .future: span = .future
+        case .this: span = .this
+        }
+        if let notify = r.notify {
+            do { try store.update(r.edited, span: span, notify: notify) } catch { showToast("Could not save event. Your changes are kept."); storeChanged(); return }
+            panelState.unsent[id] = nil
+            storeChanged()
+            showToast(notify ? "Update sent" : "Saved without sending")
+        } else if span == .this {
+            commit(r.edited, span: .this, old: r.old)
+        } else {
+            // undo moves one occurrence back: not offered for a change to several
+            do { _ = try store.update(r.edited, span: span); storeChanged(); selectedEventID = id } catch { showToast("Could not save event"); storeChanged() }
+        }
     }
 
     /// The recurring-delete dialog of an event with guests: `notify` says whether guests get the cancellation email.
@@ -430,5 +514,23 @@ extension PanelText {
         case .declined: "Declined"
         case .needsAction: "Awaiting"
         }
+    }
+}
+
+/// A change to a repeating event that waits for the recurring-edit dialog: `base` is what the store has, `edited` the change.
+struct RecurringEdit: Equatable {
+    var base: CalendarEvent
+    var edited: CalendarEvent
+    /// Undo goes back to it ("This event" only); nil for a change from the editor.
+    var old: CalendarEvent?
+    /// The held change of an event with guests: Send update (true) or Save without sending (false). Nil: no guests to tell.
+    var notify: Bool?
+}
+
+/// A button of the recurring-delete and recurring-edit dialogs.
+enum SpanChoice: Equatable {
+    case cancel, all, future, this
+    var title: String {
+        switch self { case .cancel: "Cancel"; case .all: "All events"; case .future: "This and following"; case .this: "This event" }
     }
 }

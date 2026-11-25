@@ -1,0 +1,734 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Horion v19 all-day create</title>
+<!-- designr starter. Replace the app part (tokens, demo data, app()). Keep the picker part. -->
+<style>
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; overflow: hidden; background: #08080a; color: #d8d8dc; font: 13px/1.4 -apple-system, system-ui, sans-serif; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; text-align: inherit; padding: 0; }
+input { font: inherit; color: inherit; background: none; border: 0; outline: 0; }
+#root { display: flex; height: 100%; }
+#stage { flex: 1; position: relative; overflow: hidden; }
+.shot #picker { display: none; }
+
+/* ---------- picker (outside the app) ---------- */
+#picker { width: 380px; flex: none; border-left: 1px solid #222; background: #111113; overflow-y: auto; padding: 18px 18px 84px; }
+#picker h1 { font-size: 15px; font-weight: 650; color: #f2f2f4; margin: 0; }
+#picker h2 { font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: #6c6c74; font-weight: 600; margin: 22px 0 8px; }
+#picker .lede { color: #8a8a92; font-size: 12px; margin: 4px 0 14px; }
+.pk-btn { padding: 5px 9px; border-radius: 7px; background: #1b1b1f; color: #b4b4bb; font-size: 12px; border: 1px solid #26262b; }
+.pk-btn:hover { background: #222227; color: #eee; }
+.pk-btn.on { background: #ececf0; color: #111; border-color: #ececf0; }
+.pk-scenes { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.pk-notes { padding: 10px 12px; border-radius: 9px; background: #17171a; border: 1px solid #222226; color: #a6a6ae; font-size: 12px; }
+.pk-notes ul { margin: 0; padding-left: 15px; }
+.pk-ba { display: flex; gap: 4px; align-items: center; margin-bottom: 10px; }
+.pk-ba span { color: #6c6c74; font-size: 11px; margin-left: 4px; }
+.pk-tog { display: flex; gap: 8px; align-items: center; color: #a6a6ae; font-size: 12px; margin-top: 6px; }
+.pk-tog i { width: 24px; height: 14px; border-radius: 7px; background: #2a2a30; position: relative; flex: none; }
+.pk-tog i::after { content: ""; position: absolute; left: 2px; top: 2px; width: 10px; height: 10px; border-radius: 50%; background: #8a8a92; transition: transform .15s; }
+.pk-tog.on i { background: #ececf0; } .pk-tog.on i::after { transform: translateX(10px); background: #111; }
+.pk-audit { margin-top: 8px; color: #8a8a92; font-size: 11.5px; }
+.pk-audit b { color: #eee; }
+.pk-dec { margin-bottom: 14px; }
+.pk-dec > b { color: #f2f2f4; font-size: 12.5px; }
+.pk-dec p { color: #8a8a92; font-size: 12px; margin: 3px 0 6px; }
+.pk-new { color: #a6a6ae; font-size: 12px; margin: 3px 0 6px; }
+.pk-new q { color: #e6e6ea; }
+.pk-opt { display: flex; align-items: center; gap: 8px; width: 100%; padding: 5px 8px; border-radius: 7px; color: #b4b4bb; font-size: 12px; }
+.pk-opt:hover { background: #1b1b1f; color: #eee; }
+.pk-opt.on { color: #f4f4f6; background: #1d1d22; }
+.pk-opt .r { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid #4a4a52; flex: none; }
+.pk-opt.on .r { border-color: #f4f4f6; background: radial-gradient(#f4f4f6 0 2.5px, transparent 3px); }
+.pk-opt .end { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+.pk-opt .rec, .pk-opt .lk { font-size: 10.5px; color: #6c6c74; }
+.pk-opt .hq { width: 16px; height: 16px; border-radius: 50%; border: 1px solid #3a3a42; color: #8a8a92; font-size: 10px; display: inline-grid; place-items: center; position: relative; }
+.pk-opt .hq:hover::after { content: attr(data-help); position: absolute; right: -4px; top: 22px; width: 270px; padding: 8px 10px; border-radius: 8px; background: #26262c; border: 1px solid #3a3a42; color: #e6e6ea; font-size: 11.5px; line-height: 1.45; white-space: normal; z-index: 10; }
+.pk-lock { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; padding: 3px 0; color: #8a8a92; }
+.pk-lock b { font-weight: 500; color: #c4c4cb; }
+.pk-foot { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 22px; }
+/* Agentation toolbar: bottom right of the app, not over the picker. */
+.agt-host { right: 396px !important; bottom: 16px !important; }
+#picker .read { color: #a6a6ae; font-size: 12px; margin: -6px 0 14px; padding-left: 10px; border-left: 2px solid #2a2a30; }
+#picks { margin-top: 10px; width: 100%; height: 150px; background: #141417; color: #bdbdc4; border: 1px solid #25252a; border-radius: 8px; padding: 8px; font: 11px/1.45 ui-monospace, Menlo, monospace; resize: vertical; }
+
+/* ---------- preview: crossfade, short glow, alignment guides ---------- */
+.ghost { pointer-events: none; z-index: 140; transition: opacity 140ms ease; }
+.pvhl { animation: pvpulse 900ms ease-out forwards; }
+@keyframes pvpulse { 0% { box-shadow: 0 0 0 0 rgba(90,160,255,.9), 0 0 0 1.5px rgba(90,160,255,.9); } 60% { box-shadow: 0 0 0 8px rgba(90,160,255,0), 0 0 0 1.5px rgba(90,160,255,.9); } 100% { box-shadow: 0 0 0 8px rgba(90,160,255,0), 0 0 0 1.5px transparent; } }
+#guides { position: absolute; inset: 0; pointer-events: none; z-index: 150; }
+#guides .gv { position: absolute; width: 0; border-left: 1px solid rgba(64, 214, 120, .55); }
+#guides .gv.r { border-left-color: rgba(90, 160, 255, .55); }
+#guides .gv span { position: absolute; top: 2px; left: 2px; font: 9px ui-monospace, Menlo, monospace; color: rgba(64, 214, 120, .95); background: rgba(0,0,0,.6); padding: 0 2px; }
+#guides .bx { position: absolute; outline: 1px solid rgba(255, 70, 90, .95); background: rgba(255, 70, 90, .12); }
+#guides .bx span { position: absolute; top: -12px; left: 0; font: 9px ui-monospace, Menlo, monospace; color: #fff; background: rgba(220, 40, 60, .9); padding: 0 3px; white-space: nowrap; }
+#guides .ol { position: absolute; outline: 1px dashed rgba(255, 255, 255, .14); }
+#guides .legend { position: absolute; left: 12px; bottom: 12px; padding: 8px 10px; border-radius: 8px; background: rgba(10,10,12,.88); border: 1px solid rgba(255,255,255,.12); font: 11px/1.5 -apple-system, system-ui; color: #ddd; }
+
+
+/* ================= the app: Horion week ================= */
+@font-face { font-family: "Geist"; src: url("../../Sources/Horion/Resources/Fonts/Geist%5Bwght%5D.ttf") format("truetype"); font-weight: 100 900; }
+/* Fixed tokens (foundations.md, Theme.swift Radius). Surfaces come from tok() (the locked v16 fitted colour system). */
+.desk { --gridV: #1B1B1C; --grid: #212123; --hairStrong: #2A2A2C; --hair: #1C1C1D; --live: #FF6B5F; --onLive: #0B0B0C;
+  --r-mark: 4px; --r-small: 5px; --r-inner: 7px; --r-control: 9px; --r-surface: 13px; --r-ev: 7px; --r-chip: 7px;
+  --font: "Geist", -apple-system, system-ui, sans-serif; }
+.desk.paper { --gridV: #EBEBEC; --grid: #E1E1E2; --hairStrong: #DCDCDC; --hair: #E8E8E8; --live: #C9372C; --onLive: #FFFFFF; }
+/* Options: event corners */
+.desk.ev-5 { --r-ev: 5px; } .desk.ev-7 { --r-ev: 7px; } .desk.ev-9 { --r-ev: 9px; }
+/* Options: all-day chips */
+.desk.chip-same { --r-chip: var(--r-ev); } .desk.chip-5 { --r-chip: 5px; } .desk.chip-pill { --r-chip: 10px; }
+.desk.ev-h.chip-same { --r-chip: 5px; }
+
+.desk { position: absolute; left: 0; top: 0; transform-origin: 0 0; overflow: hidden; background: var(--bg); color: var(--fg1); font: 12px/18px var(--font); display: flex; -webkit-font-smoothing: antialiased; letter-spacing: -.048px; }
+.side { width: 236px; flex: none; background: var(--side); border-right: 1px solid var(--hair); padding: 56px 12px 0; }
+.rc { width: 320px; flex: none; background: var(--side); border-left: 1px solid var(--hair); padding: 14px 12px; }
+.main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.pill { background: var(--fg1) !important; color: var(--bg) !important; font-weight: 600 !important; }
+
+/* mini month */
+.mm-hd { display: flex; align-items: center; height: 22px; padding-left: 8px; font-weight: 500; }
+.mm-hd .yr { color: var(--fg3); font-weight: 400; margin-left: 4px; }
+.mm-hd .nv { margin-left: auto; color: var(--fg3); display: flex; gap: 4px; }
+.mm-hd .nv button { width: 22px; height: 22px; display: grid; place-items: center; border-radius: var(--r-small); }
+.mm-hd .nv button:hover { background: var(--side-hover); color: var(--fg1); }
+.mm-wd, .mm-wk { display: grid; grid-template-columns: 20px repeat(7, 1fr); }
+.mm-wd { height: 24px; align-items: center; text-align: center; font-size: 11px; color: var(--fg3); font-weight: 500; margin-top: 4px; }
+.mm-wk { margin-top: 2px; border-radius: var(--r-inner); }
+.mm-wk.vis { background: var(--side-sel); }
+.mm-wn { font-size: 11px; color: var(--fg3); display: grid; place-items: center; font-weight: 500; }
+.mm-d { height: 24px; display: grid; place-items: center; }
+.mm-d b { font-weight: 400; font-size: 11px; font-variant-numeric: tabular-nums; min-width: 24px; height: 24px; border-radius: var(--r-small); display: grid; place-items: center; color: var(--fg2); }
+.mm-d.out b { color: var(--fg3); }
+.mm-wk.vis .mm-d b { color: var(--fg1); }
+.mm-d:hover b { background: var(--side-hover); }
+/* lists */
+.grp { margin-top: 18px; padding: 0 8px; height: 24px; line-height: 24px; color: var(--fg3); font-weight: 500; }
+.row { display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 8px; border-radius: var(--r-inner); width: 100%; }
+.row:hover { background: var(--side-hover); }
+.row.is-sel { background: var(--side-sel); }
+.row i { width: 12px; height: 12px; border-radius: var(--r-mark); background: var(--cc); flex: none; }
+.row .tm { width: 36px; text-align: right; color: var(--fg2); font-size: 11px; font-variant-numeric: tabular-nums; flex: none; }
+.row .bar { width: 3px; height: 14px; border-radius: 1.5px; background: var(--cc); flex: none; }
+.lead { padding: 4px 8px 12px; }
+.lead .lb { font-size: 11px; color: var(--fg3); font-weight: 500; } .lead .lb b { color: var(--live); font-weight: 500; margin-left: 6px; }
+.lead .t { font-weight: 600; margin-top: 6px; } .lead .m { font-size: 11px; color: var(--fg2); }
+.join { margin-top: 10px; height: 30px; width: 100%; border-radius: var(--r-control); background: var(--raised); box-shadow: inset 0 0 0 1px var(--raised-edge); display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 500; }
+.join:hover { background: var(--raised-hover); }
+.kc { font-size: 11px; color: var(--fg3); padding: 0 4px; border-radius: var(--r-mark); box-shadow: inset 0 0 0 1px var(--raised-edge); }
+.search { height: 30px; border-radius: var(--r-control); background: var(--surface); color: var(--fg3); display: flex; align-items: center; padding: 0 10px; margin-bottom: 12px; }
+.hint { margin-left: auto; color: var(--fg3); font-size: 11px; }
+
+/* toolbar */
+.tb { height: 48px; display: flex; align-items: center; padding: 0 12px 0 20px; gap: 4px; flex: none; }
+.tb h1 { font-size: 15px; line-height: 21px; font-weight: 600; margin: 0; letter-spacing: -.15px; }
+.tb h1 span { font-weight: 400; color: var(--fg3); }
+.tb .sp { flex: 1; }
+.seg { display: flex; padding: 2px; background: var(--surface); border-radius: var(--r-control); margin-right: 12px; }
+.seg button { height: 22px; padding: 0 10px; border-radius: var(--r-inner); color: var(--fg2); }
+.ib { width: 26px; height: 26px; border-radius: var(--r-inner); display: grid; place-items: center; color: var(--fg3); }
+.ib:hover { background: var(--bg-hover); color: var(--fg1); }
+.todaybtn { height: 26px; padding: 0 10px; border-radius: var(--r-control); background: var(--raised); box-shadow: inset 0 0 0 1px var(--raised-edge); }
+
+/* week */
+.wk { flex: 1; display: grid; grid-template-columns: 56px repeat(7, 1fr); grid-template-rows: 32px auto 1fr; position: relative; }
+.dh { display: flex; align-items: center; gap: 6px; padding-left: 8px; color: var(--fg3); font-weight: 500; }
+.dh .n { font-weight: 500; color: var(--fg1); font-variant-numeric: tabular-nums; }
+.dh.past .n { color: var(--fg2); }
+.dh.today { color: var(--fg1); }
+.dh.today .n { height: 18px; min-width: 20px; padding: 0 5px; border-radius: var(--r-small); display: inline-grid; place-items: center; }
+.ad-l { font-size: 11px; color: var(--fg3); text-align: right; padding: 4px 8px 0 0; line-height: 20px; border-bottom: 1px solid var(--hairStrong); }
+.ad { padding: 3px 3px 4px 2px; display: flex; flex-direction: column; gap: 3px; border-left: 1px solid var(--gridV); border-bottom: 1px solid var(--hairStrong); min-height: 30px; }
+.col { border-left: 1px solid var(--gridV); position: relative; background-image: repeating-linear-gradient(to bottom, transparent 0 43px, var(--grid) 43px 44px); }
+.hl { font-size: 11px; color: var(--fg2); text-align: right; padding-right: 8px; font-variant-numeric: tabular-nums; }
+.hl div { height: 44px; transform: translateY(-9px); }
+.now { position: absolute; left: 0; right: 0; height: 1px; background: color-mix(in srgb, var(--live) 30%, transparent); z-index: 5; }
+.col.today .now { height: 2px; background: var(--live); }
+.col.today .now::before { content: ""; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--live); box-shadow: 0 0 0 1.5px var(--bg); }
+.nowpill { position: absolute; right: 4px; transform: translateY(-50%); height: 16px; padding: 0 4px; border-radius: var(--r-mark); background: var(--live); color: var(--onLive); font-size: 11px; font-weight: 600; line-height: 16px; }
+.tcol { background-color: var(--today); }
+
+/* event blocks and all-day chips: fill, bar, reply state, rings */
+.ev, .chip { --fill: color-mix(in oklab, var(--cc) 25%, var(--bg)); background-color: var(--fill); position: relative; overflow: hidden; }
+.paper .ev, .paper .chip { --fill: color-mix(in oklab, var(--cc) 18%, var(--bg)); }
+/* Round 2: the grid's create strip (GridGeometry.createStrip: 10 % of the day, 10 to 20 pt) on the right of every day. */
+.ev { position: absolute; left: 2px; right: calc(2px + clamp(10px, 10%, 20px)); border-radius: var(--r-ev); padding: 3px 6px 2px 9.5px; }
+.chip { height: 19px; border-radius: var(--r-chip); display: flex; align-items: center; font-weight: 500; padding-left: 7.5px; white-space: nowrap; flex: none; }
+.ev::before, .chip::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3.5px; background: var(--cc); }
+.ev b { font-weight: 500; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .ev span { color: var(--fg2); font-size: 11px; font-variant-numeric: tabular-nums; }
+.ev.one { display: flex; gap: 6px; align-items: center; padding-top: 0; padding-bottom: 0; } .ev.one b { flex: 0 1 auto; }
+.ev.over { left: 14px; box-shadow: 0 0 0 1px var(--bg); z-index: 2; }
+.ev.sel { box-shadow: 0 0 0 1.5px var(--bg), 0 0 0 3px var(--cc), 0 4px 12px rgba(0,0,0,.35); z-index: 4; }
+.ev.st-none { background: var(--bg); box-shadow: inset 0 0 0 1px var(--cc); }
+.ev.st-none.over { box-shadow: inset 0 0 0 1px var(--cc); }
+.ev.st-maybe { background-image: repeating-linear-gradient(135deg, color-mix(in oklab, var(--cc) 22%, transparent) 0 5px, transparent 5px 10px); }
+.ev.st-declined { opacity: .5; } .ev.st-declined b { text-decoration: line-through; }
+.ev.past { opacity: .62; }
+/* Options: the colour bar */
+.desk.bar-inset .ev::before, .desk.bar-inset .chip::before { left: 3px; top: 3px; bottom: 3px; width: 3px; border-radius: 1.5px; }
+.desk.bar-inset .ev { padding-left: 12px; } .desk.bar-inset .chip { padding-left: 11px; }
+.desk.bar-inset .ev.short::before { top: 2px; bottom: 2px; }
+.desk.bar-none .ev::before, .desk.bar-none .chip::before { display: none; }
+.desk.bar-none .ev, .desk.bar-none .chip { --fill: color-mix(in oklab, var(--cc) 34%, var(--bg)); padding-left: 7px; }
+.desk.paper.bar-none .ev, .desk.paper.bar-none .chip { --fill: color-mix(in oklab, var(--cc) 26%, var(--bg)); }
+.desk.bar-none .ev.st-none { background: var(--bg); }
+
+
+/* ================= v19: the all-day lane as a place to create ================= */
+.desk.ev-7 { --r-ev: 7px; } .desk { --r-chip: 7px; }
+.wk { grid-template-columns: 56px repeat(var(--n), 1fr); }
+.dh { user-select: none; }
+.ad-l { grid-column: 1; overflow: hidden; transition: height 140ms ease; }
+.adw { grid-column: 2 / -1; position: relative; border-bottom: 1px solid var(--hairStrong); transition: height 140ms ease; user-select: none; overflow: hidden; }
+.adw.act { cursor: default; }
+.adw > .dv { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--gridV); }
+.adw > .tc { position: absolute; top: 0; bottom: 0; background: var(--today); }
+.adw .chip { position: absolute; z-index: 1; }
+.adw .chip.cl { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.adw .chip.cl::before { display: none; }
+.adw .chip.cr { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.adw .chip.sel { box-shadow: 0 0 0 1.5px var(--bg), 0 0 0 3px var(--cc); z-index: 3; }
+.adw .chip.draft { --fill: color-mix(in oklab, var(--cc) 14%, var(--bg)); outline: 1.5px dashed var(--cc); outline-offset: -1.5px; color: var(--fg1); z-index: 3; }
+.adw .chip.draft::before { display: none; }
+.adw .chip.draft.empty { color: var(--fg3); }
+.adh { position: absolute; height: 19px; border-radius: var(--r-chip); pointer-events: none; display: none; align-items: center; gap: 6px; padding-left: 8px; color: var(--fg3); font-size: 11px; white-space: nowrap; overflow: hidden; z-index: 2; }
+.adh.plus { background: var(--bg-hover); }
+.adh.plus::before { content: "+"; font-size: 14px; line-height: 19px; color: var(--fg3); }
+.adh.ghost { outline: 1px dashed var(--fg3); outline-offset: -1px; }
+.adw.empty-lbl::after { content: attr(data-empty); position: absolute; left: 10px; top: 4px; line-height: 20px; font-size: 11px; color: var(--fg3); opacity: 0; transition: opacity 140ms; pointer-events: none; }
+.adw.empty-lbl:hover::after { opacity: 1; }
+/* right column: new / selected all-day event */
+.np .lb { font-size: 11px; color: var(--fg3); font-weight: 500; padding: 0 8px; height: 20px; line-height: 20px; }
+.np input, .np .tt { display: block; width: 100%; height: 32px; line-height: 32px; font-size: 15px; font-weight: 600; padding: 0 8px; margin: 4px 0 8px; color: var(--fg1); letter-spacing: -.15px; }
+.np input::placeholder { color: var(--fg3); }
+.np .f { display: flex; align-items: center; gap: 10px; height: 28px; padding: 0 8px; color: var(--fg2); }
+.np .f .v { margin-left: auto; color: var(--fg1); font-variant-numeric: tabular-nums; }
+.np .f i { width: 12px; height: 12px; border-radius: var(--r-mark); background: var(--cc); flex: none; }
+.np .sw { margin-left: auto; width: 26px; height: 16px; border-radius: 8px; background: var(--fg1); position: relative; }
+.np .sw::after { content: ""; position: absolute; right: 2px; top: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--bg); }
+.np .ft { margin-top: 14px; padding: 0 8px; font-size: 11px; color: var(--fg3); }
+</style>
+</head>
+<body>
+<div id="root"><div id="stage"><div class="desk" id="desk"></div></div><aside id="picker"></aside></div>
+<script>
+// ================= edit for each round =================
+const PRODUCT = 'Horion', VERSION = 'v19', ROUND = 3;
+const DESK = { w: 1560, h: 760 };
+const SCENES = [['busy', 'Busy week'], ['empty', 'Week with no all-day'], ['day', 'Day view']];
+const HOWTO = ['Try it: make an all-day event in the lane above the grid, the way the picked option says. Drag across days for a multi-day one.', 'Round 2: every chip now ends before the create strip on the right of its day, like the timed blocks below. Friday is full, but its strip is free: double-click or drag there.', 'Return saves the new event, Esc throws it away. Click a chip to select it. "Reset demo data" brings the week back.', 'Hover an option to preview it. G shows alignment guides.'];
+const READ = 'Quiet neutral chrome; calendar colour leads. Dials: variance 2, motion 2, density 7. Creating all-day uses the grid\'s gestures; the lane only has to give the pointer a place to land.';
+const LOCKED = { strip: 'grid', hint: 'none', make: 'clickdate', room: 'strip', empty: 'slim' };
+const FB2 = 'i want that the events at the top are the same as in the the main editor events so i can at the side create an event there. also dont have this weird hover effect';
+const BEFORE = {};
+const FB = 'i cant click into daily events and stuff to create events there';
+const DECISIONS = [
+  { g: 'Round 1', id: 'make', lock: true, name: 'Making an all-day event in the week', fb: FB, note: 'In the app an empty click in the all-day lane only deselects. Try Thursday, and the free spot under "Release day" on Wednesday.', scene: 'busy', hl: '.adw', opts: [
+    ['clickdate', 'One click on a free spot or on the day\'s date', 'Round 3 pick: a single click on empty all-day space (a gap or the create strip) or on the date in the day header starts an all-day event on that day. The date no longer opens day view.'],
+    ['dbl', 'Double-click or drag in the all-day lane', 'The same gestures as the timed grid: double-click a free spot for a one-day event, drag across days for a multi-day one. A single click still deselects. The dashed chip appears, the right column opens New event with the title focused.'],
+    ['click', 'Single click on a free spot', 'One click makes the event. Faster, but a click meant to deselect something now makes an event (and Esc has to undo it).'],
+    ['header', 'Double-click the day\'s date', 'The day header becomes the target; the lane is only for showing events. Works even when the lane is full or hidden, but there is no drag across days.'],
+    ['none', 'As now: no way in the week', 'Today\'s app: only the month view (double-click a day) or a timed event switched to all-day.'],
+  ] },
+  { g: 'Round 2', id: 'strip', lock: true, name: 'All-day chips end like timed blocks', fb: FB2, note: 'Every chip stops before the create strip on the right of its last day, so the side of each day is free to click.', scene: 'busy', hl: '.adw .chip', opts: [
+    ['grid', 'The grid\'s create strip on the right of every day', 'Chips end 2 pt + the strip (10 % of the day, 10 to 20 pt) before their last day\'s edge, exactly like timed blocks (GridGeometry.createStrip). A multi-day chip runs on across the days and leaves the strip only at its end.'],
+    ['full', 'Full day width (round 1)', 'Chips end 4 pt before the edge. A full day has no free spot.'],
+  ] },
+  { g: 'Round 2', id: 'room', lock: true, name: 'Room to click when a day\'s lane is full', fb: FB2, note: 'Friday: "Ferien" and "Office closed" fill both rows; the strip on their right is still free. A new event made there goes into a new row.', scene: 'busy', hl: '.adw', opts: [
+    ['strip', 'The side strip is enough, no extra row', 'The lane stays as tall as its chips. On a full day you double-click or drag in the strip at the right; the new event opens a row below.'],
+    ['spare', 'Also one free row under the chips', 'The lane is one row (22 pt) taller than its chips. More room to aim, but the grid starts 22 pt lower in weeks with all-day events.'],
+    ['grow', 'A free row opens while the pointer is in the lane', 'No extra height at rest. Moving into the lane opens the free row in 140 ms; the grid below moves down while you are there.'],
+  ] },
+  { g: 'Round 1', id: 'empty', lock: true, name: 'The all-day lane in a week with none', fb: FB, note: 'Open "Week with no all-day". In the app the lane disappears and leaves a single line.', scene: 'empty', hl: '.adw', opts: [
+    ['slim', 'One empty row with the "all-day" label', 'The lane stays at one row (30 pt) in every week, so the place to make an all-day event never moves. Costs 30 pt of grid in quiet weeks.'],
+    ['hair', 'A 10 pt strip that opens on hover', 'The strip under the dates opens to one row when the pointer reaches it. Nearly free at rest, but harder to find.'],
+    ['hidden', 'Hidden, as now', 'The single line under the dates. Only the date double-click (if picked) makes an all-day event in such a week.'],
+  ] },
+  { g: 'Round 1', id: 'hint', lock: true, name: 'What a free spot shows on hover', fb: FB, note: 'Move the pointer over a free spot in the lane.', scene: 'busy', hl: '.adw', opts: [
+    ['plus', 'A soft fill with a +', 'The day\'s free slot gets the hover fill and a grey + where the title would start. Quiet, like a row hover.'],
+    ['ghost', 'A dashed chip: "New all-day event"', 'Says what will happen. Louder; it moves with the pointer across days.'],
+    ['none', 'Nothing', 'No hover state; the lane looks the same until you double-click.'],
+  ] },
+];
+
+// ================= colour math and tokens (v16, locked: fitted, sidebars rail) =================
+// ================= colour math =================
+const hx = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255);
+const toHex = c => '#' + c.map(v => Math.round(Math.min(1, Math.max(0, v)) * 255).toString(16).padStart(2, '0')).join('').toUpperCase();
+const lin = v => v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4;
+const unlin = v => v <= .0031308 ? v * 12.92 : 1.055 * v ** (1 / 2.4) - .055;
+const Y = h => { const [r, g, b] = hx(h).map(lin); return .2126 * r + .7152 * g + .0722 * b; };
+const ratio = (a, b) => { const A = Y(a), B = Y(b); return (Math.max(A, B) + .05) / (Math.min(A, B) + .05); };
+function toLab(h) { const [r, g, b] = hx(h).map(lin);
+  const l = Math.cbrt(.4122214708 * r + .5363325363 * g + .0514459929 * b), m = Math.cbrt(.2119034982 * r + .6806995451 * g + .1073969566 * b), s = Math.cbrt(.0883024619 * r + .2817188376 * g + .6299787005 * b);
+  return [.2104542553 * l + .793617785 * m - .0040720468 * s, 1.9779984951 * l - 2.428592205 * m + .4505937099 * s, .0259040371 * l + .7827717662 * m - .808675766 * s]; }
+function fromLab([L, a, b]) { const l = (L + .3963377774 * a + .2158037573 * b) ** 3, m = (L - .1055613458 * a - .0638541728 * b) ** 3, s = (L - .0894841775 * a - 1.291485548 * b) ** 3;
+  return toHex([4.0767416621 * l - 3.3077115913 * m + .2309699292 * s, -1.2684380046 * l + 2.6097574011 * m - .3413193965 * s, -.0041960863 * l - .7034186147 * m + 1.707614701 * s].map(unlin)); }
+const withL = (h, dL) => { const [L, a, b] = toLab(h); return fromLab([Math.min(1, Math.max(0, L + dL)), a, b]); };
+// The grey on `bg` that reaches `target` contrast, moving toward the text colour.
+function fitGrey(bg, target, dark) { const c = hx(bg); let lo = dark ? Math.max(...c) : 0, hi = dark ? 1 : Math.min(...c);
+  for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2, g = toHex([mid, mid, mid]), ok = ratio(bg, g) >= target; if (dark) ok ? hi = mid : lo = mid; else ok ? lo = mid : hi = mid; }
+  const v = dark ? hi : lo; return toHex([v, v, v]); }
+// APCA Lc and the soft-surface text floors of foundations.md (same as the app's Contrast.textFloors).
+function apca(t, b) { const Yp = h => { const v = hx(h).map(x => x ** 2.4); return .2126729 * v[0] + .7151522 * v[1] + .072175 * v[2]; };
+  const cl = y => y > .022 ? y : y + (.022 - y) ** 1.414; const T = cl(Yp(t)), B = cl(Yp(b)); if (Math.abs(B - T) < .0005) return 0;
+  if (B > T) { const q = (B ** .56 - T ** .57) * 1.14; return q < .1 ? 0 : (q - .027) * 100; } const q = (B ** .65 - T ** .62) * 1.14; return q > -.1 ? 0 : (q + .027) * 100; }
+const FLOORS = { dark: [[12, 85], [7, 63], [5.5, 45]], paper: [[12, 88], [7, 75], [5, 65]] };
+const mix = (a, b, t) => toHex(hx(a).map((v, i) => v + (hx(b)[i] - v) * t));
+
+// ================= tokens =================
+const BASE = {
+  dark: { rail: '#070708', bg: '#0B0B0C', surface: '#151516', raised: '#1D1D1E', fg1: '#EBEBED', fg2: '#CCCCCE', fg3: '#A8A8AA' },
+  paper: { rail: '#F4F4F5', bg: '#FBFBFB', surface: '#F1F1F2', raised: '#FFFFFF', fg1: '#1D1D20', fg2: '#4A4A50', fg3: '#606067' },
+};
+const NOW = { dark: { hoverRail: '#121213', hover: '#161617', selected: '#1E1E1F', segRing: '#6B6B6C', today: '#131314' }, paper: { hoverRail: '#EAEAEB', hover: '#F1F1F1', selected: '#EAEAEB', segRing: '#878789', today: '#F3F3F3' } };
+const TGT = { hover: 1.15, sel: 1.45, edge: 3, fg3: 5, fg2: 7, fg1: 12, step: .045 };
+const CU = () => (S.custom = S.custom || {});
+const tgt = k => CU()['t.' + k] ?? TGT[k];
+const base = (m, k) => CU()[m + '.' + k] || BASE[m][k];
+const SURF = [['side', 'Sidebars'], ['bg', 'Canvas'], ['surface', 'Surface (track, search)'], ['raised', 'Raised (buttons)']];
+// What sits on a background: hover, selected (bands, selected rows), edge (outlines, rings).
+function on(m, x, sys) {
+  const dark = m === 'dark', fg = base(m, 'fg1');
+  if (sys === 'fit') { const r = selCap(m); return { hover: fitGrey(x, Math.min(tgt('hover'), Math.sqrt(r)), dark), sel: fitGrey(x, r, dark), edge: fitGrey(x, tgt('edge'), dark) }; }
+  if (sys === 'steps') { const s = tgt('step') * (dark ? 1 : -1); return { hover: withL(x, s), sel: withL(x, 3 * s), edge: withL(base(m, 'bg'), dark ? .38 : -.36) }; }
+  if (sys === 'alpha') return { hover: mix(x, fg, .05), sel: mix(x, fg, .12), edge: mix(x, fg, .35) };
+  const n = NOW[m]; return { hover: x === base(m, 'rail') ? n.hoverRail : n.hover, sel: x === base(m, 'rail') ? n.hoverRail : n.selected, edge: n.segRing };
+}
+// The strongest selected ratio (up to the target) on which fg1, fg2, fg3 still pass their floors on the sidebar rail.
+function selCap(m) { const dark = m === 'dark', rail = base(m, 'rail'), fl = FLOORS[m], fg = ['fg1', 'fg2', 'fg3'].map(k => base(m, k));
+  const okAt = r => { const f = fitGrey(rail, r, dark); return fg.every((c, i) => ratio(f, c) >= fl[i][0] + .05 && Math.abs(apca(c, f)) >= fl[i][1] + .6); };
+  let lo = 1, hi = tgt('sel'); if (okAt(hi)) return hi; for (let i = 0; i < 30; i++) { const mid = (lo + hi) / 2; okAt(mid) ? lo = mid : hi = mid; } return lo; }
+function tok(m) {
+  const sys = 'fit', side = base(m, 'rail' === 'rail' ? 'rail' : 'rail' === 'bg' ? 'bg' : 'surface');
+  const t = { side, bg: base(m, 'bg'), surface: base(m, 'surface'), raised: base(m, 'raised'), fg1: base(m, 'fg1'), fg2: base(m, 'fg2'), fg3: base(m, 'fg3') };
+  for (const k of ['side', 'bg', 'surface', 'raised']) { const o = on(m, t[k], sys); t[k + '-hover'] = o.hover; t[k + '-sel'] = o.sel; t[k + '-edge'] = o.edge; }
+  t.today = sys === 'now' ? NOW[m].today : (sys === 'fit' ? fitGrey(t.bg, 1.05, m === 'dark') : t['bg-hover']);
+  if (sys === 'now') t['raised-edge'] = 'transparent';
+  return t;
+}
+const vars = t => Object.entries(t).map(([k, v]) => `--${k}:${v}`).join(';');
+
+
+// ================= demo data =================
+const CC = { blue: '#5B8DEF', purple: '#9B7BEA', orange: '#E8853D', green: '#4FB477', gold: '#D4A93A', grey: '#8A8A8C', red: '#E5675A' };
+const DAYS = [['Mon', 14], ['Tue', 15], ['Wed', 16], ['Thu', 17], ['Fri', 18], ['Sat', 19], ['Sun', 20]];
+const LONG = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const TODAY = 2, H0 = 7, HP = 44, NOWH = 11.75, ROW = 22, PAD = 3;
+function fresh() {
+  return { sel: null, draft: null, panel: 'today', hot: false, focus: false, empty: [], week: [
+    { id: 1, t: 'Conference: Berlin', c: 'purple', d0: 0, d1: 2 },
+    { id: 2, t: 'Release day', c: 'blue', d0: 1, d1: 1 },
+    { id: 3, t: 'Ferien', c: 'blue', d0: 4, d1: 6, openR: 1 },
+    { id: 4, t: 'Office closed', c: 'grey', d0: 4, d1: 4 },
+    { id: 5, t: 'Happy birthday, Mila', c: 'red', d0: 5, d1: 5 },
+  ] };
+}
+const EVENTS = {
+  0: [[8, 1, 'Gym', 'orange'], [9, .25, 'Check-in', 'gold'], [13, 1.5, 'Roadmap review', 'purple'], [16, .5, 'Call the landlord', 'red']],
+  1: [[9.5, .5, 'Reply to support', 'grey'], [10, 2, 'Deep work', 'purple'], [14, 1, 'Dentist', 'red'], [16, 1.25, 'Pairing: export flow', 'blue']],
+  2: [[8, 1, 'Gym', 'orange'], [9, .25, 'Standup', 'gold'], [9.5, 1.5, 'Design review', 'purple'], [11, 1, '1:1 with Jordan', 'purple'], [12.5, 1, 'Lunch with Maya', 'blue'], [14, 2, 'Pricing page copy', 'purple'], [17, 1, 'Investor update', 'purple']],
+  3: [[9, .25, 'Standup', 'gold'], [10, 2, 'Deep work', 'purple'], [15, 1, 'Interview: designer', 'gold']],
+  4: [[10, 1.5, 'Packing', 'blue'], [15, 2, 'Train to Hamburg', 'green']],
+  5: [[11, 2, 'Brunch at Lea\'s', 'blue'], [19, 1, 'Birthday dinner', 'red']],
+  6: [[10, 1.5, 'Long walk', 'blue']],
+};
+const CALS = [['Personal', 'blue'], ['Work', 'purple'], ['Family', 'red'], ['Holidays in Germany', 'green'], ['Sport', 'orange'], ['Team', 'gold']];
+
+// ================= the app =================
+const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+const fmt = h => `${String(Math.floor(h)).padStart(2, '0')}:${String(Math.round((h % 1) * 60)).padStart(2, '0')}`;
+const dlab = d => `${DAYS[d][0]} ${DAYS[d][1]} Dec`;
+const range = (a, b) => a === b ? dlab(a) : `${dlab(a)} – ${dlab(b)}`;
+function deskClass() { return 'ev-7 bar-flush'; }
+const vis = () => S.scene === 'day' ? [4] : [0, 1, 2, 3, 4, 5, 6];
+const list = () => S.scene === 'empty' ? A.empty : A.week;
+const makeIn = () => ['dbl', 'click', 'clickdate'].includes(C('make'));
+let LAY = { n: 7, vis: [], rows: 0, occ: new Set() };
+
+function block(s, d, tt, c, i) {
+  const h = Math.max(16, d * HP - 2), one = h < 34;
+  return `<div class="ev ${one ? 'one' : ''} ${i < TODAY ? 'past' : ''}" style="--cc:${CC[c]};top:${(s - H0) * HP + 1}px;height:${h}px"><b>${esc(tt)}</b>${one ? `<span>${fmt(s)}</span>` : `<span>${fmt(s)}–${fmt(s + d)}</span>`}</div>`;
+}
+// Packs chips into lanes (first lane free on every day of the chip), then the draft into the first lane free across its range.
+function allDay(v) {
+  const n = v.length, lo = v[0], hi = v[n - 1], occ = new Set();
+  const items = list().map(e => ({ e, a: Math.max(e.d0, lo), b: Math.min(e.d1, hi), cl: e.d0 < lo, cr: e.d1 > hi || !!e.openR })).filter(x => x.a <= x.b);
+  const fits = (L, a, b) => { for (let d = a; d <= b; d++) if (occ.has(d + ',' + L)) return false; return true; };
+  const place = x => { let L = 0; while (!fits(L, x.a, x.b)) L++; x.lane = L; for (let d = x.a; d <= x.b; d++) occ.add(d + ',' + L); };
+  items.forEach(place);
+  let draft = null;
+  if (A.draft) { draft = { a: Math.max(A.draft.d0, lo), b: Math.min(A.draft.d1, hi) }; if (draft.a <= draft.b) place(draft); else draft = null; }
+  const lanes = Math.max(0, ...items.map(x => x.lane + 1), draft ? draft.lane + 1 : 0);
+  let rows, h;
+  if (lanes === 0) {
+    const m = C('empty');
+    rows = m === 'slim' || (m === 'hair' && A.hot) ? 1 : 0;
+    h = rows ? rows * ROW + 8 : m === 'hair' ? 10 : 0;
+  } else {
+    const r = C('room');
+    rows = lanes + (r === 'spare' || (r === 'grow' && A.hot) ? 1 : 0);
+    h = rows * ROW + 8;
+  }
+  LAY = { n, vis: v, rows, occ };
+  const strip = C('strip') === 'grid' ? ` - clamp(10px, ${10 / n}%, 20px)` : '';
+  const col = (i, w = 1) => `left:calc(${100 / n * i}% + 2px);width:calc(${100 / n * w}% - 6px${strip})`;
+  let out = v.map((d, i) => (d === TODAY ? `<div class="tc" style="left:${100 / n * i}%;width:${100 / n}%"></div>` : '') + `<i class="dv" style="left:${100 / n * i}%"></i>`).join('');
+  out += items.map(x => `<div class="chip ${x.cl ? 'cl' : ''} ${x.cr ? 'cr' : ''} ${A.sel === x.e.id ? 'sel' : ''}" data-id="${x.e.id}" style="--cc:${CC[x.e.c]};${col(x.a - lo, x.b - x.a + 1)};top:${PAD + x.lane * ROW}px">${esc(x.e.t)}</div>`).join('');
+  if (draft) out += `<div class="chip draft ${A.draft.t ? '' : 'empty'}" style="--cc:${CC.blue};${col(draft.a - lo, draft.b - draft.a + 1)};top:${PAD + draft.lane * ROW}px">${esc(A.draft.t || 'New event')}</div>`;
+  out += `<div class="adh" id="adh"></div>`;
+  const lbl = rows || h ? 'all-day' : '';
+  return `<div class="ad-l" style="height:${h}px;${h ? '' : 'padding:0'}">${h >= 20 ? lbl : ''}</div><div class="adw ${makeIn() ? 'act' : ''}" style="height:${h}px">${out}</div>`;
+}
+function week() {
+  const v = vis(), dayView = S.scene === 'day';
+  let mm = `<div class="mm-hd">December<span class="yr">2026</span><span class="nv"><button>‹</button><button>›</button></span></div><div class="mm-wd"><span></span>${'MTWTFSS'.split('').map(x => `<span>${x}</span>`).join('')}</div>`;
+  const start = new Date(2026, 10, 30);
+  for (let r = 0; r < 5; r++) {
+    const ws = new Date(start); ws.setDate(start.getDate() + r * 7); let cells = '';
+    for (let c = 0; c < 7; c++) { const d = new Date(ws); d.setDate(ws.getDate() + c); const inM = d.getMonth() === 11, td = inM && d.getDate() === 16;
+      cells += `<button class="mm-d ${inM ? '' : 'out'}"><b class="${td ? 'pill' : ''}">${d.getDate()}</b></button>`; }
+    mm += `<div class="mm-wk ${r === 2 ? 'vis' : ''}"><span class="mm-wn">${49 + r}</span>${cells}</div>`;
+  }
+  mm += `<div class="grp">Google</div>${CALS.map(([n, c]) => `<button class="row" style="--cc:${CC[c]}"><i></i>${n}</button>`).join('')}`;
+  const seg = ['Day', 'Week', 'Month'].map(x => `<button data-seg="${x}" class="${(dayView ? 'Day' : 'Week') === x ? 'pill' : ''}">${x}</button>`).join('');
+  const dz = C('make') === 'header' || C('make') === 'clickdate';
+  let grid = `<div></div>` + v.map(i => `<div class="dh ${i < TODAY ? 'past' : ''} ${i === TODAY ? 'today tcol' : ''} ${dz ? 'dz' : ''}" data-d="${i}" ${dz ? `title="${C('make') === 'header' ? 'Double-click' : 'Click'} for an all-day event"` : ''}>${DAYS[i][0]}<span class="n ${i === TODAY ? 'pill' : ''}">${DAYS[i][1]}</span></div>`).join('');
+  grid += allDay(v);
+  const HRS = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
+  grid += `<div class="hl">${HRS.map(h => `<div>${String(h).padStart(2, '0')}:00</div>`).join('')}${v.includes(TODAY) ? `<div style="position:relative;height:0"><span class="nowpill" style="top:${(NOWH - H0 - HRS.length) * HP}px">11:45</span></div>` : ''}</div>`;
+  grid += v.map(i => `<div class="col ${i === TODAY ? 'today tcol' : ''}">${(EVENTS[i] || []).map(([s, d, tt, c]) => block(s, d, tt, c, i)).join('')}<div class="now" style="top:${(NOWH - H0) * HP}px"></div></div>`).join('');
+  const title = dayView ? `Friday <span>18 December 2026</span>` : `December <span>2026</span>`;
+  return `<div class="side" data-area="sidebar">${mm}</div><div class="main" data-area="main"><div class="tb"><h1>${title}</h1><div class="sp"></div><div class="seg">${seg}</div><button class="ib">‹</button><button class="todaybtn">Today</button><button class="ib">›</button></div><div class="wk" style="--n:${v.length}">${grid}</div></div><div class="rc" data-area="panel">${panel()}</div>`;
+}
+function panel() {
+  if (A.panel === 'new' && A.draft) {
+    return `<div class="np"><div class="lb">New event</div><input id="nt" placeholder="Title" value="${esc(A.draft.t)}">
+      <div class="f">All-day<span class="sw"></span></div><div class="f">${A.draft.d0 === A.draft.d1 ? 'Day' : 'Days'}<span class="v">${range(A.draft.d0, A.draft.d1)}</span></div>
+      <div class="f" style="--cc:${CC.blue}"><i></i>Personal</div><div class="ft">Return saves · Esc discards</div></div>`;
+  }
+  const e = A.panel === 'event' && list().find(x => x.id === A.sel);
+  if (e) return `<div class="np"><div class="lb">All-day</div><div class="tt">${esc(e.t)}</div><div class="f">${e.d0 === e.d1 ? 'Day' : 'Days'}<span class="v">${range(e.d0, e.d1)}${e.openR ? ' →' : ''}</span></div><div class="f" style="--cc:${CC[e.c]}"><i></i>Personal</div></div>`;
+  const later = [[12.5, 'Lunch with Maya', 'blue'], [14, 'Pricing page copy', 'purple'], [17, 'Investor update', 'purple']];
+  return `<div class="search">Search events<span class="hint">/</span></div>
+    <div class="lead"><div class="lb">Now<b>15 min left</b></div><div class="t">1:1 with Jordan</div><div class="m">11:00–12:00 · 2 guests</div><button class="join">Join Google Meet <span class="kc">⌘J</span></button></div>
+    <div class="grp" style="margin-top:6px">Later today</div>${later.map(([h, n, c]) => `<button class="row" style="--cc:${CC[c]}"><span class="tm">${fmt(h)}</span><span class="bar"></span>${n}</button>`).join('')}`;
+}
+function app() { return `<style>#desk{${vars(tok('dark'))}}</style>` + week(); }
+function appClick(t) {
+  if (t.dataset.seg === 'Day') S.scene = 'day';
+  else if (t.dataset.seg === 'Week') S.scene = S.scene === 'day' ? 'busy' : S.scene;
+  else return false;
+  return true;
+}
+function customText() { return ''; }
+
+// ================= picker machinery: keep =================
+const KEY = `designr-${PRODUCT}-${VERSION}`;
+let S = null;
+try { S = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
+S = S || { c: {}, scene: SCENES[0][0], hover: true };
+DECISIONS.forEach(d => { if (!(d.id in S.c)) S.c[d.id] = d.lock ? LOCKED[d.id] : d.opts[0][0]; });
+let A = fresh(), PV = null;
+const C = id => (S.before && id in BEFORE ? BEFORE[id] : S.c[id]);
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(PV ? { ...S, c: { ...S.c, [PV.id]: PV.orig } } : S)); } catch (e) {} };
+const desk = document.getElementById('desk'), picker = document.getElementById('picker');
+const shot = location.hash.includes('&shot');
+if (shot) document.body.classList.add('shot');
+
+function fit() {
+  const st = document.getElementById('stage').getBoundingClientRect();
+  // Scale so the real window fits, then grow the app to fill the stage: no empty space.
+  // Shots (#scene&shot) keep the exact DESK size.
+  const k = shot ? 1 : Math.min(st.width / DESK.w, st.height / DESK.h, 1);
+  desk.style.width = (shot ? DESK.w : st.width / k) + 'px'; desk.style.height = (shot ? DESK.h : st.height / k) + 'px';
+  desk.style.transform = `scale(${k})`;
+}
+// fade: the old frame stays on top and fades out in 140 ms (hover previews only).
+function render(fade) {
+  if (fade && !shot) {
+    const g = desk.cloneNode(true); g.removeAttribute('id'); g.classList.add('ghost'); g.querySelector('#guides')?.remove();
+    desk.after(g); requestAnimationFrame(() => requestAnimationFrame(() => { g.style.opacity = 0; })); setTimeout(() => g.remove(), 200);
+  }
+  desk.className = 'desk ' + deskClass();
+  desk.innerHTML = app();
+  markPreview(); audit(); drawGuides();
+}
+function preset(id) { S.scene = id; A.sel = null; save(); renderPicker(); }
+
+const optLabel = d => (d.opts.find(o => o[0] === C(d.id)) || [0, C(d.id)])[1];
+function renderPicker() {
+  const open = DECISIONS.filter(d => !d.lock), locked = DECISIONS.filter(d => d.lock);
+  const radios = d => d.opts.map(([v, l, help], i) => {
+    const tag = d.lock ? (LOCKED[d.id] === v ? '<span class="lk">locked</span>' : '') : i === 0 ? '<span class="rec">recommended</span>' : '';
+    return `<button class="pk-opt ${C(d.id) === v ? 'on' : ''}" data-d="${d.id}" data-v="${v}"><span class="r"></span>${esc(l)}<span class="end">${tag}${help ? `<span class="hq" data-help="${esc(help)}">?</span>` : ''}</span></button>`;
+  }).join('');
+  let h = `<h1>${PRODUCT} ${VERSION} · round ${ROUND}</h1><p class="lede">${open.length} open. Hover an option to see it. ? explains it.</p>${READ ? `<p class="read">${esc(READ)}</p>` : ''}`;
+  if (Object.keys(BEFORE).length) h += `<div class="pk-ba"><button class="pk-btn ${S.before ? 'on' : ''}" data-a="before">Before</button><button class="pk-btn ${S.before ? '' : 'on'}" data-a="after">After</button><span>B</span></div>`;
+  h += `<div class="pk-notes"><ul>${HOWTO.map(n => `<li>${n}</li>`).join('')}</ul></div>`;
+  h += `<h2>Jump to</h2><div class="pk-scenes">${SCENES.map(([id, n]) => `<button class="pk-btn ${S.scene === id ? 'on' : ''}" data-scene="${id}">${n}</button>`).join('')}</div>`;
+  h += `<button class="pk-tog ${S.hover !== false ? 'on' : ''}" data-a="hover"><i></i>Preview on hover</button><button class="pk-tog ${S.guides ? 'on' : ''}" data-a="guides"><i></i>Alignment guides (G)</button><button class="pk-tog ${S.agt !== false ? 'on' : ''}" data-a="agt"><i></i>Notes on elements (Agentation)</button><div class="pk-audit" id="agt-state">${esc(AGT_MSG)}</div><div class="pk-audit" id="audit"></div>`;
+  h += `<h2>Open</h2>${open.length ? '' : '<p class="lede">Nothing open.</p>'}`;
+  open.forEach(d => { h += `<div class="pk-dec"><b>${esc(d.name)}</b>${d.fb ? `<div class="pk-new">You said: <q>${esc(d.fb)}</q></div>` : ''}${d.note ? `<p>${esc(d.note)}</p>` : ''}${radios(d)}</div>`; });
+  h += `<h2>Locked (${locked.length})</h2>`;
+  if (!S.unlock) {
+    h += locked.map(d => `<div class="pk-lock"><b>${esc(d.name)}</b><span>${esc(optLabel(d))}${C(d.id) !== LOCKED[d.id] ? ' · changed' : ''}</span></div>`).join('');
+    if (locked.length) h += `<button class="pk-btn" style="margin-top:8px" data-a="unlock">Unlock to compare</button>`;
+  } else {
+    h += `<button class="pk-btn" data-a="unlock">Hide the locked options</button>`;
+    locked.forEach(d => { h += `${d.g ? `<h2>${esc(d.g)}</h2>` : ''}<div class="pk-dec"><b>${esc(d.name)}</b>${radios(d)}</div>`; });
+  }
+  h += `<div class="pk-foot"><button class="pk-btn" data-a="copy">Copy my picks</button><button class="pk-btn" data-a="reset">Back to locked picks</button><button class="pk-btn" data-a="demo">Reset demo data</button></div><textarea id="picks" readonly></textarea>`;
+  const top = picker.scrollTop; picker.innerHTML = h; picker.scrollTop = top;
+  document.getElementById('picks').value = picksText();
+  render();
+}
+function picksText() {
+  const line = d => `- ${d.name}: ${optLabel(d)}${d.lock ? (C(d.id) !== LOCKED[d.id] ? ' (changed from the locked pick)' : '') : C(d.id) === d.opts[0][0] ? '' : ' (not the recommendation)'}`;
+  const scene = id => (SCENES.find(x => x[0] === id) || [0, id])[1];
+  const notes = (S.notes || []).map(n => `- ${scene(n.scene)} · \`${n.path}\`${n.text ? ` ("${n.text}")` : ''}: ${n.comment}`).join('\n');
+  return `# ${PRODUCT} ${VERSION} round ${ROUND} picks\n## Open\n${DECISIONS.filter(d => !d.lock).map(line).join('\n') || '- Nothing open'}\n## Locked\n${DECISIONS.filter(d => d.lock).map(line).join('\n')}${notes ? `\n## Notes on elements\n${notes}` : ''}\n## Notes\n- `;
+}
+// Agentation state line in the picker. The module script at the end sets it.
+let AGT_MSG = '';
+function agtMsg(m) { AGT_MSG = m; const el = document.getElementById('agt-state'); if (el) el.textContent = m; }
+// Notes from Agentation (the module script at the end). They go into the picks text.
+const NOTES = {
+  set(a) { const old = (S.notes || []).find(n => n.id === a.id); S.notes = (S.notes || []).filter(n => n.id !== a.id).concat({ id: a.id, scene: old ? old.scene : S.scene, path: a.elementPath, text: NOTES.text(a), comment: a.comment }); NOTES.done(); },
+  text(a) { let el = null; try { el = document.querySelector(a.elementPath); } catch (e) {} while (el && el !== desk && !el.innerText.trim()) el = el.parentElement; return (a.selectedText || el?.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 60); },
+  del(a) { S.notes = (S.notes || []).filter(n => n.id !== a.id); NOTES.done(); },
+  clear() { S.notes = []; NOTES.done(); },
+  done() { save(); const p = document.getElementById('picks'); if (p) p.value = picksText(); },
+};
+// Hover preview: the option applies while hovered, its scene opens, and the hl elements glow once.
+// Leaving goes back to the pick and to the scene you were on. A click keeps the option and the scene.
+// Only the app renders again, never the picker, so the picker does not move.
+function previewOn(id, v) {
+  if (S.hover === false) return;
+  const d = DECISIONS.find(x => x.id === id); if (!d) return;
+  if (PV && PV.id !== id) previewOff(true);
+  if (!PV) PV = { id, orig: S.c[id], scene: S.scene };
+  if (PV.v === v) return;
+  PV.v = v; S.c[id] = v;
+  if (d.scene && S.scene !== d.scene) S.scene = d.scene;
+  render(true);
+}
+function previewOff(silent) { if (!PV) return; S.c[PV.id] = PV.orig; S.scene = PV.scene; PV = null; save(); if (!silent) render(true); }
+function markPreview() {
+  const d = PV && DECISIONS.find(x => x.id === PV.id);
+  if (d && d.hl) desk.querySelectorAll(d.hl).forEach(el => el.classList.add('pvhl'));
+}
+// Counter: text sizes, colours and weights in view.
+function audit() {
+  const box = document.getElementById('audit'); if (!box) return;
+  const sz = new Set(), co = new Set(), wt = new Set(), n = {};
+  for (const el of desk.querySelectorAll('*')) {
+    if (el.closest('#guides, [data-os]')) continue;
+    const own = [...el.childNodes].some(x => x.nodeType === 3 && x.textContent.trim()) || (el.matches('input, textarea') && el.value);
+    if (!own) continue;
+    const r = el.getBoundingClientRect(); if (!r.width || !r.height) continue;
+    const cs = getComputedStyle(el); if (cs.visibility === 'hidden' || +cs.opacity === 0) continue;
+    const f = parseFloat(cs.fontSize); sz.add(f); n[f] = (n[f] || 0) + 1; co.add(cs.color); wt.add(cs.fontWeight);
+  }
+  box.innerHTML = `In view: <b>${sz.size}</b> sizes · <b>${co.size}</b> text colours · <b>${wt.size}</b> weights<br>${[...sz].sort((a, b) => b - a).map(f => `${f} px ×${n[f]}`).join(' · ')}`;
+}
+// Alignment guides (G). Areas: [data-area]. Centred items: [data-centred] or .btn.
+// Green: a left edge that 3 or more items share. Blue: a shared right edge. Red: 1 to 5 px off a line.
+const CENTRED = '[data-centred], .btn';
+function drawGuides() {
+  desk.querySelector('#guides')?.remove(); window.__guides = null;
+  if (!S.guides) return;
+  const k = desk.getBoundingClientRect().width / desk.offsetWidth, dr = desk.getBoundingClientRect();
+  const X = x => (x - dr.left) / k, Y = y => (y - dr.top) / k;
+  let out = '', misses = [], cols = 0;
+  desk.querySelectorAll('[data-area]').forEach(area => {
+    const ar = area.getBoundingClientRect(), L = [], R = [];
+    const vis = r => r.width > 0 && r.height > 0 && r.bottom > ar.top && r.top < ar.bottom;
+    const push = (arr, x, r, what) => arr.push({ x: Math.round(X(x) * 2) / 2, t: Y(r.top), b: Y(r.bottom), l: X(r.left), w: r.width / k, what });
+    const tw = document.createTreeWalker(area, NodeFilter.SHOW_TEXT, { acceptNode: x => x.textContent.trim() ? 1 : 2 });
+    for (let t; (t = tw.nextNode());) {
+      const el = t.parentElement; if (!el || el.closest(CENTRED)) continue;
+      const cs = getComputedStyle(el); if (cs.textAlign === 'center' || cs.textAlign === 'right' || cs.marginLeft === 'auto') continue;
+      const rg = document.createRange(); rg.selectNodeContents(t); const r = rg.getClientRects()[0];
+      if (r && vis(r)) push(L, r.left, r, t.textContent.trim().slice(0, 24));
+    }
+    area.querySelectorAll('input, textarea').forEach(el => {
+      const r = el.getBoundingClientRect(); if (!vis(r) || el.closest(CENTRED)) return;
+      const cs = getComputedStyle(el); push(L, r.left + parseFloat(cs.paddingLeft) + parseFloat(cs.borderLeftWidth), r, (el.value || el.placeholder || '').slice(0, 24));
+    });
+    area.querySelectorAll('.ic, svg').forEach(el => {
+      const r = el.getBoundingClientRect(); if (!vis(r) || el.closest(CENTRED)) return;
+      if (!el.previousElementSibling) push(L, r.left, r, 'icon');
+      if (!el.nextElementSibling && !el.nextSibling?.textContent?.trim()) push(R, r.right, r, 'icon');
+    });
+    const group = arr => { const g = []; arr.sort((a, b) => a.x - b.x).forEach(e => { const last = g[g.length - 1]; if (last && e.x - last.x0 <= .75) last.items.push(e); else g.push({ x0: e.x, items: [e] }); }); g.forEach(c => { c.x = c.items.reduce((a, b) => a + b.x, 0) / c.items.length; }); return g; };
+    const lines = (arr, cls) => {
+      const g = group(arr), strong = g.filter(c => c.items.length >= 3);
+      strong.forEach(c => { cols++; out += `<div class="gv ${cls}" style="left:${c.x}px;top:${Y(ar.top)}px;height:${ar.height / k}px"><span>${Math.round(c.x - X(ar.left))}</span></div>`; });
+      g.filter(c => c.items.length < 3).forEach(c => {
+        const near = strong.find(s2 => Math.abs(s2.x - c.x) >= 1 && Math.abs(s2.x - c.x) <= 5); if (!near) return;
+        c.items.forEach(it => { const d = (it.x - near.x).toFixed(1); misses.push({ area: area.dataset.area, what: it.what, x: it.x, off: +d }); out += `<div class="bx" style="left:${it.l}px;top:${it.t}px;width:${Math.max(it.w, 2)}px;height:${it.b - it.t}px"><span>${d > 0 ? '+' : ''}${d}</span></div>`; });
+      });
+    };
+    lines(L, ''); lines(R, 'r');
+    out += `<div class="ol" style="left:${X(ar.left)}px;top:${Y(ar.top)}px;width:${ar.width / k}px;height:${ar.height / k}px"></div>`;
+  });
+  window.__guides = misses;
+  desk.insertAdjacentHTML('beforeend', `<div id="guides">${out}<div class="legend"><b>Alignment guides</b> · G to hide<br>green: shared left edge (3+) · blue: shared right edge<br>red: ${misses.length} item${misses.length === 1 ? '' : 's'} 1 to 5 px off a line · ${cols} lines</div></div>`);
+}
+
+picker.addEventListener('click', ev => {
+  const t = ev.target.closest('button'); if (!t) return;
+  const a = t.dataset.a;
+  if (t.dataset.scene) return preset(t.dataset.scene);
+  if (t.dataset.d) { clearTimeout(PT); PV = null; S.c[t.dataset.d] = t.dataset.v; S.before = false; }
+  else if (a === 'before' || a === 'after') S.before = a === 'before';
+  else if (a === 'hover') S.hover = S.hover === false;
+  else if (a === 'guides') S.guides = !S.guides;
+  else if (a === 'agt') { S.agt = S.agt === false; save(); window.AGT?.set(S.agt, true); }
+  else if (a === 'unlock') S.unlock = !S.unlock;
+  else if (a === 'copy') { navigator.clipboard?.writeText(picksText()); t.textContent = 'Copied'; return; }
+  else if (a === 'reset') { DECISIONS.forEach(d => { S.c[d.id] = d.lock ? LOCKED[d.id] : d.opts[0][0]; }); S.before = false; }
+  else if (a === 'demo') A = fresh();
+  else return;
+  save(); renderPicker();
+});
+// Hover intent: show an option after 90 ms. The gaps inside one decision keep the preview, so nothing flickers.
+let PT = null;
+picker.addEventListener('mouseover', ev => {
+  const o = ev.target.closest('.pk-opt[data-d]'), blk = ev.target.closest('.pk-dec');
+  clearTimeout(PT);
+  if (o) PT = setTimeout(() => previewOn(o.dataset.d, o.dataset.v), 90);
+  else if (PV && blk && blk.querySelector(`[data-d="${PV.id}"]`)) return;
+  else if (PV) PT = setTimeout(() => previewOff(), 140);
+});
+picker.addEventListener('mouseleave', () => { clearTimeout(PT); previewOff(); });
+desk.addEventListener('click', ev => { const t = ev.target.closest('button'); if (t && appClick(t)) { save(); renderPicker(); } });
+document.addEventListener('keydown', ev => {
+  if (ev.target.closest?.('input, textarea') || ev.metaKey || ev.ctrlKey) return;
+  if (ev.key === 'g' || ev.key === 'G') { S.guides = !S.guides; save(); renderPicker(); }
+  else if ((ev.key === 'b' || ev.key === 'B') && Object.keys(BEFORE).length) { S.before = !S.before; save(); renderPicker(); }
+});
+window.addEventListener('resize', () => { fit(); drawGuides(); });
+window.addEventListener('hashchange', () => { const id = location.hash.slice(1).split('&')[0]; if (id) preset(id); });
+fit();
+const scene0 = location.hash.slice(1).split('&')[0];
+if (scene0 && SCENES.some(s => s[0] === scene0)) preset(scene0); else renderPicker();
+document.fonts?.ready.then(() => { fit(); drawGuides(); });
+// ---------- interaction: the all-day lane ----------
+function redraw() {
+  render();
+  if (A.focus) { A.focus = false; const i = document.getElementById('nt'); if (i) { i.focus(); i.select(); } }
+}
+function adHit(ev, force) {
+  const w = force || ev.target.closest('.adw'); if (!w) return null;
+  const r = w.getBoundingClientRect(), k = r.width / w.offsetWidth;
+  const x = (ev.clientX - r.left) / k, y = (ev.clientY - r.top) / k;
+  const i = Math.min(LAY.n - 1, Math.max(0, Math.floor(x / (w.offsetWidth / LAY.n))));
+  const lane = Math.min(LAY.rows - 1, Math.max(0, Math.floor((y - PAD) / ROW)));
+  const chip = !force && ev.target.closest('.chip:not(.draft)');
+  const d = LAY.vis[i];
+  return { i, d, lane, chip: chip ? +chip.dataset.id : null, free: !chip && LAY.rows > 0 };
+}
+function hint(h) {
+  const el = document.getElementById('adh'); if (!el) return;
+  const show = h && h.free && !DR && !A.draft && makeIn() && C('hint') !== 'none';
+  el.style.display = show ? 'flex' : 'none';
+  if (!show) return;
+  el.className = 'adh ' + C('hint');
+  el.style.left = `calc(${100 / LAY.n * h.i}% + 2px)`; el.style.width = `calc(${100 / LAY.n}% - 6px)`; el.style.top = (PAD + h.lane * ROW) + 'px';
+  el.textContent = C('hint') === 'ghost' ? 'New all-day event' : '';
+}
+function dismiss() {
+  if (!A.draft && A.sel == null && A.panel === 'today') return;
+  A.draft = null; A.sel = null; A.panel = 'today'; redraw();
+}
+function newDraft(d0, d1) { A.sel = null; A.draft = { d0, d1, t: '' }; A.panel = 'new'; A.focus = true; redraw(); }
+function commit() {
+  if (!A.draft) return;
+  const id = Date.now();
+  list().push({ id, t: A.draft.t.trim() || 'New event', c: 'blue', d0: A.draft.d0, d1: A.draft.d1 });
+  A.draft = null; A.sel = id; A.panel = 'event'; redraw();
+}
+let DR = null;
+desk.addEventListener('mousedown', ev => {
+  if (ev.target.closest('.np, .tb, .side')) return;
+  const h = adHit(ev);
+  // Keep the focus where redraw() put it (the new event's title), and no text selection while dragging.
+  if (h || ev.target.closest('.dh')) ev.preventDefault();
+  if (h) {
+    if (h.chip != null) { A.draft = null; A.sel = h.chip; A.panel = 'event'; redraw(); return; }
+    if (h.free && (C('make') === 'click' || C('make') === 'clickdate') && ev.detail === 1) { newDraft(h.d, h.d); return; }
+    if (h.free && C('make') === 'dbl') {
+      if (ev.detail === 2) { newDraft(h.d, h.d); return; }
+      DR = { i0: h.i, i: h.i, moved: false, w: ev.target.closest('.adw') };
+    }
+    if (ev.detail === 1) dismiss();
+    return;
+  }
+  const dh = ev.target.closest('.dh[data-d]');
+  if (dh && ((C('make') === 'header' && ev.detail === 2) || (C('make') === 'clickdate' && ev.detail === 1))) { newDraft(+dh.dataset.d, +dh.dataset.d); return; }
+  if (ev.detail === 1 && ev.target.closest('.wk')) dismiss();
+});
+desk.addEventListener('mousemove', ev => {
+  if (DR) {
+    const w = desk.querySelector('.adw'); if (!w) return;
+    const h = adHit(ev, w);
+    if (h.i !== DR.i) {
+      DR.i = h.i; DR.moved = true;
+      const a = LAY.vis[Math.min(DR.i0, DR.i)], b = LAY.vis[Math.max(DR.i0, DR.i)];
+      A.sel = null; A.draft = { d0: a, d1: b, t: '' }; A.panel = 'new'; redraw();
+    }
+    return;
+  }
+  const inLane = !!ev.target.closest('.adw, .ad-l');
+  const wantHot = inLane && (C('room') === 'grow' || C('empty') === 'hair');
+  if (wantHot !== A.hot) { A.hot = wantHot; render(); }
+  hint(adHit(ev));
+});
+desk.addEventListener('mouseleave', () => { if (A.hot) { A.hot = false; render(); } hint(null); });
+document.addEventListener('mouseup', () => { if (!DR) return; const moved = DR.moved; DR = null; if (moved) { A.focus = true; redraw(); } });
+desk.addEventListener('input', ev => {
+  if (ev.target.id === 'nt' && A.draft) {
+    A.draft.t = ev.target.value;
+    const c = desk.querySelector('.chip.draft'); if (c) { c.textContent = A.draft.t || 'New event'; c.classList.toggle('empty', !A.draft.t); }
+  }
+});
+document.addEventListener('keydown', ev => {
+  if (!A.draft) return;
+  if (ev.key === 'Enter') { ev.preventDefault(); commit(); }
+  else if (ev.key === 'Escape') { ev.preventDefault(); A.draft = null; A.panel = 'today'; redraw(); }
+}, true);
+
+</script>
+<div id="agentation"></div>
+<script type="module">
+// Agentation (agentation.com): click any element, write a note. The picker toggle turns it on and off.
+// It loads from esm.sh, so it needs the network. The mockup works without it. Its notes go into "Copy my picks".
+const deps = '?deps=react@18.3.1,react-dom@18.3.1';
+let lib = null, root = null;
+async function set(on, open) {
+  if (!on) { root?.unmount(); root = null; agtMsg('Off.'); return; }
+  if (root) return;
+  agtMsg('Loading from esm.sh …');
+  try {
+    lib = lib || await Promise.all([import('https://esm.sh/react@18.3.1'), import('https://esm.sh/react-dom@18.3.1/client' + deps), import('https://esm.sh/agentation@3.1.2' + deps)]);
+    const [React, { createRoot }, { Agentation }] = lib;
+    root = createRoot(document.getElementById('agentation'));
+    root.render(React.createElement(Agentation, {
+      appName: `${PRODUCT} ${VERSION} round ${ROUND}`, className: 'agt-host',
+      identifyingAttributes: ['data-area', 'data-k', 'data-d', 'data-v', 'data-go', 'data-open'],
+      onAnnotationAdd: NOTES.set, onAnnotationUpdate: NOTES.set, onAnnotationDelete: NOTES.del, onAnnotationsClear: NOTES.clear,
+    }));
+    agtMsg('On. ⌘⇧F or the button at the bottom right of the app opens it. Then click an element and write.');
+    // After a click on the toggle, open the toolbar at once.
+    if (open) setTimeout(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'F', code: 'KeyF', metaKey: true, shiftKey: true, bubbles: true })), 250);
+  } catch (e) { root = null; agtMsg('Did not load (no network?). The mockup works without it.'); console.info('Agentation did not load.', e); }
+}
+window.AGT = { set };
+if (!shot) set(S.agt !== false); else agtMsg('');
+</script>
+</body>
+</html>

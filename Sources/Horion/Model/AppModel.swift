@@ -15,6 +15,7 @@ func after(_ delay: TimeInterval, _ block: @escaping @MainActor () -> Void) {
 enum Overlay: Equatable {
     case command, shortcuts, settings
     case deleteRecurring(String)   // event id
+    case editRecurring(String)     // event id: which occurrences a held change (`recurringEdit`) goes to
     case deleteWithGuests(String)  // event id: the v4 dialog with the guest list
 }
 
@@ -72,10 +73,16 @@ final class AppModel {
     var rightColumnVisible = true
     /// The recurring-delete dialog's "send the guests a cancellation email" switch; reset each time the dialog opens.
     var deleteNotify = true
+    /// The recurring-delete and recurring-edit dialogs' focused button (filled, takes Return); starts on "This event" each time one opens.
+    var spanChoice: SpanChoice = .this
+    /// A change to a repeating event that waits for the recurring-edit dialog: drawn on the grid until it is chosen or cancelled.
+    var recurringEdit: RecurringEdit?
     var overlay: Overlay? {
         didSet {
             // The palette fades out over 260 ms; its text field must not keep the keyboard meanwhile.
             if oldValue == .command && overlay != .command { searchText = chromeState.columnQuery.trimmingCharacters(in: .whitespaces) }
+            // The recurring-edit dialog closed without a choice (Esc, the scrim): the held change goes, the event is back where it was.
+            if case .editRecurring? = oldValue, overlay != oldValue, recurringEdit != nil { recurringEdit = nil; storeChanged() }
             if overlay == nil && oldValue != nil {
                 // Submitting with Return re-focuses the field after the action returns, so resign now and again once the event is done.
                 resignTextFocus()
@@ -303,6 +310,10 @@ final class AppModel {
             if let i = windowEvents.firstIndex(where: { $0.id == id }) { windowEvents[i] = u.edited }
             eventsByID[id] = u.edited
         }
+        if let r = recurringEdit {
+            if let i = windowEvents.firstIndex(where: { $0.id == r.edited.id }) { windowEvents[i] = r.edited }
+            eventsByID[r.edited.id] = r.edited
+        }
         // Filter and sort by index: CalendarEvent is a large reference-heavy struct, so copying it around is the real cost.
         let showDeclined = settings.showDeclined
         let hidden = hiddenCalendars
@@ -407,6 +418,7 @@ final class AppModel {
     func event(id: String?) -> CalendarEvent? {
         guard let id else { return nil }
         if let d = draft, d.id == id { return d }
+        if let r = recurringEdit, r.edited.id == id { return r.edited }
         if let u = panelState.unsent[id] { return u.edited }
         return eventsByID[id]
     }
@@ -565,6 +577,7 @@ final class AppModel {
             return
         }
         if holdUnsent(before: before, after: e) { return }
+        if !textOnly && e.calendarID == before.calendarID && askSpan(base: before, edited: e, old: nil, notify: nil) { return }
         // Real stores (EventKit -> Google/iCloud) sync every save over the network: coalesce text typing into one write.
         if store.coalescesTextEdits && textOnly {
             pendingEdit = (e, span)
@@ -599,7 +612,7 @@ final class AppModel {
     func requestDeleteSelected() {
         guard let e = selectedEvent, isWritable(e) else { return }
         if isDraftOpen { discardDraft(); return }
-        if store.repeats(e) { deleteNotify = true; overlay = .deleteRecurring(e.id); return }
+        if store.repeats(e) { deleteNotify = true; spanChoice = .this; overlay = .deleteRecurring(e.id); return }
         if deleteNeedsGuestDialog(e) { overlay = .deleteWithGuests(e.id) } else { delete(e, span: .this) }
     }
 
