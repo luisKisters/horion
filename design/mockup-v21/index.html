@@ -476,12 +476,12 @@ function datePop() {
 function zoneInner(sheet) {
   const p = A.pop, list = filterZones(p.q || ''); p.list = list;
   if (p.hi < 0) p.hi = Math.max(0, list.findIndex(z => z.id === A.ev.tz)); p.hi = Math.min(p.hi, Math.max(0, list.length - 1));
-  const narrow = C('zonePlace') !== 'wide';
+  const narrow = C('zonePlace') !== 'wide' || C('popPlace') === 'inline';
   return `<div class="zs">${ic('search', 1)}<input data-f="zq" placeholder="Search a city, zone or GMT+1" value="${esc(p.q || '')}" autocomplete="off"></div>
     <div class="plist" style="max-height:${sheet ? 700 : 300}px">${list.length ? list.map((z, i) => `<div class="mi${i === p.hi ? ' act' : ''}" data-a="zrow" data-v="${i}"><span class="ck">${z.id === A.ev.tz ? '✓' : ''}</span><span class="off">${z.off}</span><span class="zn">${narrow ? `${esc(z.city)} <em data-centred>${esc(z.name)}</em>` : `${esc(z.name)} <em data-centred>– ${esc(z.city)}</em>`}</span></div>`).join('') : `<div class="empty">No zone matches “${esc(p.q)}”.</div>`}</div>
     <div class="keys" data-centred><span>↑↓ move</span><span>↩ pick</span><span>esc close</span></div>`;
 }
-function zonePop() { const w = C('zonePlace') === 'wide' ? 580 : 296; return `<div data-area="menu" class="pop right pick" style="width:${w}px">${zoneInner()}</div>`; }
+function zonePop() { const w = C('zonePlace') === 'wide' && C('popPlace') !== 'inline' ? 580 : 296; return `<div data-area="menu" class="pop right pick" style="width:${w}px">${zoneInner()}</div>`; }
 function repeatPop() {
   const p = A.pop, c = common(), cur = choiceOf(A.ev.rule); p.n = c.length + 1;
   if (p.custom) return `<div data-area="menu" class="pop under pick" data-f="pop" tabindex="-1" style="width:272px">${customInner()}</div>`;
@@ -523,6 +523,10 @@ function afterPaint() {
   if (el) { el.focus({ preventScroll: true }); if (el.setSelectionRange) { if (f.all) el.select(); else if (f.s != null) el.setSelectionRange(f.s, f.e); } }
   if (C('popPlace') === 'left') { const pn = desk.querySelector('.panel'), k = desk.getBoundingClientRect().width / desk.offsetWidth;
     desk.querySelectorAll('.pop.pick').forEach(pp => { const a = pp.parentElement.getBoundingClientRect(), pr = pn.getBoundingClientRect(); pp.style.left = (-(a.left - pr.left) / k - pp.offsetWidth - 8) + 'px'; pp.style.top = '-4px'; }); }
+  { const k = desk.getBoundingClientRect().width / desk.offsetWidth, dr = desk.getBoundingClientRect(), M = 8;
+    desk.querySelectorAll('.pop').forEach(pp => { if (getComputedStyle(pp).position !== 'absolute') return; const r = pp.getBoundingClientRect();
+      const over = (r.right - dr.left) / k - (desk.offsetWidth - M); if (over > 0) pp.style.left = (pp.offsetLeft - over) + 'px', pp.style.right = 'auto';
+      const down = (r.bottom - dr.top) / k - (desk.offsetHeight - M); if (down > 0) pp.style.top = (pp.offsetTop - down) + 'px'; }); }
   const act = desk.querySelector('.pop .plist .mi.act'), li = act?.parentElement;
   if (act && li) { if (A.pop?.scroll) { li.scrollTop = act.offsetTop - li.clientHeight / 2 + act.offsetHeight / 2; A.pop.scroll = false; } else if (act.offsetTop < li.scrollTop || act.offsetTop + act.offsetHeight > li.scrollTop + li.clientHeight) li.scrollTop = act.offsetTop - li.clientHeight / 2; }
   PAINTING = false;
