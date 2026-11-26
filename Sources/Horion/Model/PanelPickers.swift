@@ -271,6 +271,40 @@ extension AppModel {
     }
 }
 
+// MARK: Guests
+
+/// The guest field's suggestions by keyboard: Up and Down move a row (the first one is Return's until then), typing starts over.
+extension AppModel {
+    func guestKey(_ t: Teammate) -> String { "menu:guest:\(t.email)" }
+
+    var highlightedGuest: Teammate? {
+        guard panelMenus.open == .guests, let h = panelMenus.highlight else { return nil }
+        return guestSuggestions(panelMenus.guestQuery).first { guestKey($0) == h }
+    }
+
+    func guestQueryChanged(_ q: String) {
+        panelMenus.guestQuery = q
+        panelMenus.open = .guests
+        panelMenus.highlight = nil
+    }
+
+    /// Up and Down in the guest field. True when used.
+    func moveGuestHighlight(_ d: Int) -> Bool {
+        let list = guestSuggestions(panelMenus.guestQuery)
+        guard panelMenus.open == .guests, !list.isEmpty else { return false }
+        let i = list.firstIndex { guestKey($0) == panelMenus.highlight }
+        let n = i.map { min(max($0 + d, 0), list.count - 1) } ?? (d > 0 ? (list.count > 1 ? 1 : 0) : 0)
+        panelMenus.highlight = guestKey(list[n])
+        return true
+    }
+
+    /// The hint under an EventKit event's guests: Settings → Accounts, where a Google account (or the demo one) can be connected.
+    func openAccountsForGuests() {
+        services.settingsPage = .accounts
+        overlay = .settings
+    }
+}
+
 /// `TimeZoneList.all` names some 400 zones: made once per day it is asked for.
 @MainActor
 enum ZoneListCache {

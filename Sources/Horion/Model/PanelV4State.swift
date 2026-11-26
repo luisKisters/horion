@@ -507,6 +507,7 @@ extension AppModel {
     func addGuest(_ t: Teammate) {
         updateSelected { $0.attendees.append(Attendee(email: t.email, name: t.name)) }
         panelMenus.guestQuery = ""
+        panelMenus.highlight = nil
         closePanelMenu()
     }
 

@@ -19,7 +19,9 @@ struct PanelParticipants: View {
         let canAdd = canEdit && model.store.canEditParticipants(calendarID: e.calendarID)
         VStack(alignment: .leading, spacing: 0) {
             if cur.isEmpty && gone.isEmpty {
-                if canAdd { addField(empty: true).padding(.top, -8) } else { Text("No participants").foregroundStyle(Theme.fg3) }
+                if canAdd { addField(empty: true).padding(.top, -8) }
+                else if canEdit { NoGuestsHint() }
+                else { Text("No participants").foregroundStyle(Theme.fg3) }
             } else {
                 HStack(spacing: 2) {
                     VStack(alignment: .leading, spacing: 3) {
@@ -45,7 +47,7 @@ struct PanelParticipants: View {
                 // names from Contacts fill the gaps; the hint offers access once (mockup: hidden once Contacts is allowed)
                 let bare = EditorRows.withoutName(model.displayed(cur + gone))
                 if bare > 0 && !model.services.contacts.isAllowed { NameHint(count: bare) }
-                if canAdd { addField(empty: false) }
+                if canAdd { addField(empty: false) } else if canEdit { NoGuestsHint().padding(.top, 4) }
             }
         }
     }
@@ -53,13 +55,14 @@ struct PanelParticipants: View {
     /// `.addin`: 32 pt, radius 8, bg2. Typing filters the people the store knows; Return adds the first one, or the typed address.
     private func addField(empty: Bool) -> some View {
         let focused = focus.wrappedValue == .guest
-        return TextField("", text: Binding(get: { model.panelMenus.guestQuery }, set: { model.panelMenus.guestQuery = $0; model.panelMenus.open = .guests }), prompt: nil)
+        return TextField("", text: Binding(get: { model.panelMenus.guestQuery }, set: { model.guestQueryChanged($0) }), prompt: nil)
             .textFieldStyle(.plain).font(.text).foregroundStyle(Theme.fg)
             .panelPlaceholder(empty ? "Add participants" : "Add participant", when: model.panelMenus.guestQuery.isEmpty)
             .focused(focus, equals: .guest)
             .onSubmit {
                 let q = model.panelMenus.guestQuery
-                if let first = model.guestSuggestions(q).first, !q.isEmpty { model.addGuest(first) }
+                if let t = model.highlightedGuest { model.addGuest(t) }
+                else if let first = model.guestSuggestions(q).first, !q.isEmpty { model.addGuest(first) }
                 else if !q.trimmingCharacters(in: .whitespaces).isEmpty { model.addGuest(q); model.panelMenus.guestQuery = ""; model.closePanelMenu() }
                 after(0.02) { focus.wrappedValue = .guest }
             }
@@ -71,7 +74,7 @@ struct PanelParticipants: View {
             .padding(.top, 6)
             .panelMenuAnchor(.guests)
             .onChange(of: focused) { _, f in
-                if f { model.panelMenus.open = .guests } else if model.panelMenus.open == .guests { after(0.15) { if focus.wrappedValue != .guest && model.panelMenus.open == .guests { model.closePanelMenu() } } }
+                if f { model.panelMenus.open = .guests; model.panelMenus.highlight = nil } else if model.panelMenus.open == .guests { after(0.15) { if focus.wrappedValue != .guest && model.panelMenus.open == .guests { model.closePanelMenu() } } }
             }
     }
 
@@ -168,6 +171,27 @@ struct ReplyMark: View {
         }
         .frame(width: 14, height: 14)
         .help(status.map { PanelText.replyName($0) } ?? "")
+    }
+}
+
+/// The calendar is a macOS Calendar one (EventKit): Apple's API reads guests but cannot add them. Says so, and where it works.
+struct NoGuestsHint: View {
+    @Environment(AppModel.self) private var model
+    var body: some View {
+        HStack(spacing: 8) {
+            Text("macOS Calendar can\u{2019}t invite guests").foregroundStyle(Theme.fg3).lineLimit(1)
+            Spacer(minLength: 0)
+            Button { model.openAccountsForGuests() } label: {
+                Text(model.services.google.config.clientID == nil && !model.canUseDemoGoogle ? "Why?" : "Use Google").font(.smallMedium).foregroundStyle(Theme.fg)
+                    .padding(.horizontal, 8).frame(height: 24)
+                    .background(HoverFill(key: "field:guestsGoogle", fill: Theme.hoverRail, radius: Radius.small))
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
+        .frame(minHeight: 20)
+        .help("Apple\u{2019}s calendar API cannot add attendees. Events in a Google calendar connected in Settings \u{2192} Accounts can have guests.")
+        .tourAnchor("guests:eventkit")
     }
 }
 

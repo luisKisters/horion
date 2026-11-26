@@ -195,6 +195,9 @@ extension AppModel {
         }
         // a field's picker (times, date): its field keeps the keyboard
         if typing, let m = panelMenus.open, Self.fieldPickers.contains(m), handleFieldPickerKey(k, menu: m) { return true }
+        // the guest field: Up and Down move through the suggestions (the field keeps typing)
+        if typing, bare, k.keyCode == R.keyDown || k.keyCode == R.keyUp, panelMenus.stop == .guest,
+           moveGuestHighlight(k.keyCode == R.keyDown ? 1 : -1) { return true }
         // Down in such a field opens its picker again (after Esc or a press elsewhere closed it)
         if typing, bare, k.keyCode == R.keyDown, panelMenus.open == nil, let f = panelMenus.stop?.focus, fieldPicker(f) != nil {
             openFieldPicker(f)

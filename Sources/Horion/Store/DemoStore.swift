@@ -8,7 +8,8 @@ final class DemoStore: CalendarStore {
     let teammates: [Teammate]
     var authorization: StoreAuthorization = .authorized
     let defaultCalendarID: String?
-    let canEditParticipants = true
+    /// Tests and the `guests-eventkit` snapshot flip this to play EventKit (which cannot add guests).
+    var canEditParticipants = true
     var isDemo: Bool { true }
     /// The demo calendars behave like Google: updates can be sent or not, replies are written. Tests flip these to play EventKit.
     var canSendUpdates = true

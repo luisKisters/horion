@@ -319,7 +319,8 @@ struct PanelGuestMenu: View {
         if q.trimmingCharacters(in: .whitespaces).isEmpty { PopSection(text: "Recent") }
         else if list.isEmpty { PopSection(text: "Nobody found. Type a full address to invite it.").padding(.bottom, 4) }
         ForEach(Array(list.enumerated()), id: \.element) { i, t in
-            PopItem(key: "menu:guest:\(t.email)", highlighted: i == 0, action: { model.addGuest(t) }) {
+            let key = "menu:guest:\(t.email)"
+            PopItem(key: key, highlighted: model.panelMenus.highlight.map { $0 == key } ?? (i == 0), action: { model.addGuest(t) }) {
                 PopTwoLine(title: PanelMenuContent.highlight(t.name, q.trimmingCharacters(in: .whitespaces)), sub: t.email)
             } end: {
                 switch model.peopleSource(t) {

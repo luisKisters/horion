@@ -267,4 +267,37 @@ struct PanelPickerTests {
         let made = m.store.searchCorpus(around: s).filter { $0.title == "Standup" }
         #expect(made.count > 100 && Set(made.compactMap(\.seriesID)).count == 1)
     }
+
+    // MARK: Participants
+
+    @Test func guestsByKeyboard() throws {
+        let m = makeModelV4()
+        let e = open(m)
+        #expect(m.panelStops.contains(.guest))
+        focus(m, .guest)
+        m.guestQueryChanged("")
+        let list = m.guestSuggestions("")
+        try #require(list.count > 2)
+        #expect(m.highlightedGuest == nil, "Return adds the first one until the arrows move")
+        #expect(key(m, "", ShortcutResolver.keyDown, typing: true))
+        #expect(m.highlightedGuest == list[1])
+        #expect(key(m, "", ShortcutResolver.keyDown, typing: true) && key(m, "", ShortcutResolver.keyUp, typing: true))
+        #expect(m.highlightedGuest == list[1])
+        m.addGuest(m.highlightedGuest!)
+        #expect(m.selectedEvent!.attendees.contains { $0.email == list[1].email } && m.selectedEvent!.attendees.count == e.attendees.count + 1)
+        #expect(m.panelMenus.highlight == nil && m.panelMenus.open == nil)
+        // a typed address that nobody has
+        m.addGuest("new.person@example.org")
+        #expect(m.selectedEvent!.attendees.contains { $0.email == "new.person@example.org" })
+    }
+
+    @Test func eventKitCannotAddGuestsAndSaysWhere() throws {
+        let m = makeModelV4()
+        try #require(m.store is DemoStore)
+        (m.store as! DemoStore).canEditParticipants = false
+        _ = open(m)
+        #expect(!m.panelStops.contains(.guest), "no guest field to Tab to")
+        m.openAccountsForGuests()
+        #expect(m.overlay == .settings && m.services.settingsPage == .accounts)
+    }
 }
