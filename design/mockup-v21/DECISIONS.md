@@ -1,21 +1,21 @@
 # Horion v21 decisions
 Mockup: `design/mockup-v21/index.html` (designr). The picker shows the same state. Base: the panel on branch `t3/panel-pickers`, checked against `Horion --snapshot v4-event`, `picker-zone` and the other `picker-*` states.
-## Round 1 (open)
+## Round 1 (locked)
 Brief: the pickers missing from the event panel. Each must work by mouse and keyboard inside the v20 panel model.
 
-| Decision | Recommended (built) | Other options |
-| --- | --- | --- |
-| Where the pickers open | Under the field, over the panel | Left of the panel, over the grid · In the panel, rows move down |
-| The end time list | Time, then the length (20:30 · 1 h 30) | Length first · Times only |
-| Steps in the time lists | Every 15 min | Every 30 min |
-| When the time list and mini month open | As soon as the field has focus | Only on a click or ↓ |
-| ← → in the date field | Move days once ↑ or ↓ started picking | Always move days · Only move the caret |
-| Where the time zone list opens | Wide, over the grid, right edge on the button | Inside the panel · Takes over the panel |
-| What the zone button says | “Time zone”, then the city and its times | Offset and city · Always the zone |
-| Custom repeat | Rows with ‹ › | One sentence |
-| How a custom repeat ends | Never, or in 1, 2, 3 … months | Never, on a date, or after a count |
-| A new rule on a repeating event | Changes the whole series | Asks: all events, or this and following |
-| Participants on a macOS Calendar event | Field stays, one grey line says why | A card instead of the field · No field |
+| Decision | Pick |
+| --- | --- |
+| Where the pickers open | Left of the panel, over the grid |
+| The end time list | Time, then the length (20:30 · 1 h 30) |
+| Steps in the time lists | Every 15 min |
+| When the time list and mini month open | As soon as the field has focus |
+| ← → in the date field | Move days once ↑ or ↓ started picking |
+| Where the time zone list opens | Inside the panel width, names cut |
+| What the zone button says | Always the zone (GMT+2 Berlin) |
+| Custom repeat | Rows with ‹ › |
+| How a custom repeat ends | Never, or in 1, 2, 3 … months |
+| A new rule on a repeating event | Asks: all events, or this and following |
+| Participants on a macOS Calendar event | A card instead of the field |
 ## Locked in v20
 | Element | Pick |
 | --- | --- |

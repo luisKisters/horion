@@ -224,55 +224,55 @@ const DESK = { w: 1440, h: 900 };
 const SCENES = [['event', 'Panel at rest'], ['end', 'End time list'], ['date', 'Mini month'], ['zone', 'Time zone list'], ['repeat', 'Repeat menu'], ['custom', 'Custom repeat'], ['guests', 'Guests on macOS Calendar']];
 const HOWTO = ['The panel works like the app. Click or Tab into the date and times. Use ↑ ↓ ← → ⇞ ⇟ ↩ esc, or type “930”, “3 oct”, “fri”.', 'Time zone and Repeat open with a click, ↓ or space. In the zone list, type to search.', 'Click the calendar row (Personal) to move the event to a macOS Calendar calendar and back.', 'Outside a field: G alignment guides. Notes on one element: Agentation, ⌘⇧F.'];
 const READ = 'Reading this as: a native macOS calendar tool for one keyboard-heavy user, with a calm, dense dark language, leaning toward the locked Horion v11 tokens and Geist. Dials: variance 3 · motion 2 · density 6.';
-const LOCKED = { nav: 'flat', arrive: 'select', ret: 'next', wrap: 'wrap', jump: 'on' };
+const LOCKED = { endList: 'len', popPlace: 'left', step: '15', open: 'focus', dayArrows: 'after', zonePlace: 'panel', zoneLabel: 'always', custom: 'rows', ends: 'months', scope: 'ask', guestOff: 'card', nav: 'flat', arrive: 'select', ret: 'next', wrap: 'wrap', jump: 'on' };
 const BEFORE = {};
 const DECISIONS = [
-  { g: 'Round 1', id: 'endList', name: 'The end time list', fb: 'Time list: 15-minute steps, scrolled to the current value. The end list shows lengths.', note: 'Click the end time (20:00).', scene: 'end', hl: '[data-p="end"]', opts: [
+  { g: 'v21', id: 'endList', lock: true, name: 'The end time list', fb: 'Time list: 15-minute steps, scrolled to the current value. The end list shows lengths.', note: 'Click the end time (20:00).', scene: 'end', hl: '[data-p="end"]', opts: [
     ['len', 'Time, then the length (20:30 · 1 h 30)', 'Each row shows the end time and, in grey on the right, how long the event is then. This is built.'],
     ['lenfirst', 'Length first (1 h 30 · 20:30)', 'The length leads in grey, the time follows. Good when you think in “one hour”, not in clock times.'],
     ['plain', 'Times only', 'The end list looks like the start list. The length shows only next to the fields (1 h).'],
   ] },
-  { id: 'popPlace', name: 'Where the pickers open', fb: 'Time lists, a mini month, a time zone picker and Repeat, all by mouse and keyboard.', note: 'Click the date, a time, Time zone or Repeat.', scene: 'end', hl: '.panel', opts: [
+  { id: 'popPlace', lock: true, name: 'Where the pickers open', fb: 'Time lists, a mini month, a time zone picker and Repeat, all by mouse and keyboard.', note: 'Click the date, a time, Time zone or Repeat.', scene: 'end', hl: '.panel', opts: [
     ['under', 'Under the field, over the panel', 'The list hangs from the field and covers the rows below. This is built.'],
     ['left', 'Left of the panel, over the grid', 'The list opens beside the panel, level with the field. The panel stays readable; the grid is covered while it is open.'],
     ['inline', 'In the panel, rows move down', 'The list opens in place and pushes the rows below down. Nothing covers anything, but the panel jumps.'],
   ] },
-  { id: 'step', name: 'Steps in the time lists', fb: 'Time list: 15-minute steps.', note: 'Open the start or end list.', scene: 'end', hl: '[data-p="end"]', opts: [
+  { id: 'step', lock: true, name: 'Steps in the time lists', fb: 'Time list: 15-minute steps.', note: 'Open the start or end list.', scene: 'end', hl: '[data-p="end"]', opts: [
     ['15', 'Every 15 min', '96 rows a day. Typing “19:05” still works and keeps the exact time. This is built.'],
     ['30', 'Every 30 min', '48 rows a day. Faster to scroll, but 15-minute meetings need typing.'],
   ] },
-  { id: 'open', name: 'When the time list and mini month open', fb: 'Each must work by mouse and by keyboard. Typing still works and moves the list.', note: 'Click into the date or a time, then Tab between them.', scene: 'event', hl: '.when', opts: [
+  { id: 'open', lock: true, name: 'When the time list and mini month open', fb: 'Each must work by mouse and by keyboard. Typing still works and moves the list.', note: 'Click into the date or a time, then Tab between them.', scene: 'event', hl: '.when', opts: [
     ['focus', 'As soon as the field has focus', 'Click or Tab into the field and the picker is there. Esc closes it and keeps you in the field. This is built.'],
     ['down', 'Only on a click or ↓', 'Tab through the fields with no popups. A click or ↓ opens the picker.'],
   ] },
-  { id: 'dayArrows', name: '← → in the date field', fb: 'Mini month with today marked, the chosen day marked, ‹ › for months, arrow keys move days, Return picks.', note: 'Click the date, then press ← → and ↑ ↓.', scene: 'date', hl: '[data-p="date"]', opts: [
+  { id: 'dayArrows', lock: true, name: '← → in the date field', fb: 'Mini month with today marked, the chosen day marked, ‹ › for months, arrow keys move days, Return picks.', note: 'Click the date, then press ← → and ↑ ↓.', scene: 'date', hl: '[data-p="date"]', opts: [
     ['after', 'Move days once ↑ or ↓ started picking', '← → move the text caret first. After ↑ or ↓ they move one day. This is built.'],
     ['always', 'Always move days', '← → always move one day while the mini month is open. To move the caret, close it with esc.'],
     ['caret', 'Only move the text caret', 'Only ↑ ↓ (weeks) and ⇞ ⇟ (months) move in the mini month.'],
   ] },
-  { id: 'zonePlace', name: 'Where the time zone list opens', fb: 'Per-event time zone picker: searchable list, “GMT+01:00 Central European Standard Time – Berlin”.', note: 'Click “Time zone” next to All day.', scene: 'zone', hl: '[data-p="zone"]', opts: [
+  { id: 'zonePlace', lock: true, name: 'Where the time zone list opens', fb: 'Per-event time zone picker: searchable list, “GMT+01:00 Central European Standard Time – Berlin”.', note: 'Click “Time zone” next to All day.', scene: 'zone', hl: '[data-p="zone"]', opts: [
     ['wide', 'Wide, over the grid, right edge on the button', '580 pt wide, so the full zone names fit. It covers the grid while open. This is built.'],
     ['panel', 'Inside the panel, names cut', 'Stays inside the 320 pt panel. Long names end in “…”.'],
     ['sheet', 'Takes over the panel until you pick', 'The search and list fill the panel. Esc or a pick brings the event back.'],
   ] },
-  { id: 'zoneLabel', name: 'What the zone button says', fb: 'Per-event time zone picker.', note: 'Pick New York in the zone list, then look at the button.', scene: 'zone', hl: '[data-f="zone"]', opts: [
+  { id: 'zoneLabel', lock: true, name: 'What the zone button says', fb: 'Per-event time zone picker.', note: 'Pick New York in the zone list, then look at the button.', scene: 'zone', hl: '[data-f="zone"]', opts: [
     ['city', '“Time zone”, then the city and its times', 'Grey “Time zone” while the event is in your zone. Then “New York 13:00–14:00”: the same moment, in that city. This is built.'],
     ['offset', '“Time zone”, then the offset and city', 'Then “GMT−4 New York”. Shorter, but you do the sum.'],
     ['always', 'Always the zone', '“GMT+2 Berlin” even when the event is in your zone.'],
   ] },
-  { id: 'custom', name: 'Custom repeat', fb: 'Make Repeat editable … offer a menu of common rules plus custom/until.', note: 'Open Repeat, then “Custom…”.', scene: 'custom', hl: '[data-p="repeat"]', opts: [
+  { id: 'custom', lock: true, name: 'Custom repeat', fb: 'Make Repeat editable … offer a menu of common rules plus custom/until.', note: 'Open Repeat, then “Custom…”.', scene: 'custom', hl: '[data-p="repeat"]', opts: [
     ['rows', 'Rows with ‹ ›', 'Every, Unit, On (weekly) and Ends are rows. ↑ ↓ pick a row, ← → or ‹ › change it. This is built.'],
     ['sentence', 'One sentence', '“Every 2 weeks on Sun, until Sun 3 Jan.” ← → pick a part, ↑ ↓ change it, or click a part.'],
   ] },
-  { id: 'ends', name: 'How a custom repeat ends', fb: 'Offer a menu of common rules plus custom/until.', note: 'In Custom repeat, go to Ends.', scene: 'custom', hl: '[data-p="repeat"]', opts: [
+  { id: 'ends', lock: true, name: 'How a custom repeat ends', fb: 'Offer a menu of common rules plus custom/until.', note: 'In Custom repeat, go to Ends.', scene: 'custom', hl: '[data-p="repeat"]', opts: [
     ['months', 'Never, or in 1, 2, 3 … months', 'One row. Each step adds a month. This is built.'],
     ['full', 'Never, on a date, or after a count', 'Ends picks the kind. A second row sets the date (a week a step) or the count.'],
   ] },
-  { id: 'scope', name: 'A new rule on a repeating event', fb: 'Make Repeat editable.', note: 'Open Repeat and pick “Every 2 weeks on Sun”.', scene: 'repeat', hl: '[data-p="repeat"]', opts: [
+  { id: 'scope', lock: true, name: 'A new rule on a repeating event', fb: 'Make Repeat editable.', note: 'Open Repeat and pick “Every 2 weeks on Sun”.', scene: 'repeat', hl: '[data-p="repeat"]', opts: [
     ['all', 'Changes the whole series, no question', 'Like Google Calendar’s “All events”. This is built.'],
     ['ask', 'Asks: all events, or this and following', 'One more step. “This and following” ends the old series the day before.'],
   ] },
-  { id: 'guestOff', name: 'Participants on a macOS Calendar event', fb: 'Participants: find out what fails and give a way to test adding guests without Google.', note: 'macOS Calendar can’t add guests. The scene puts the event in iCloud.', scene: 'guests', hl: '[data-p="guests"]', opts: [
+  { id: 'guestOff', lock: true, name: 'Participants on a macOS Calendar event', fb: 'Participants: find out what fails and give a way to test adding guests without Google.', note: 'macOS Calendar can’t add guests. The scene puts the event in iCloud.', scene: 'guests', hl: '[data-p="guests"]', opts: [
     ['hint', 'Field stays, one grey line says why', '“macOS Calendar can’t invite guests. Use Google.” Use Google opens Settings → Accounts. This is built.'],
     ['card', 'A card instead of the field', 'A small card explains it and links Accounts. No field you can’t type in.'],
     ['hide', 'No participants field', 'The row is gone for these events. Nothing explains why.'],
