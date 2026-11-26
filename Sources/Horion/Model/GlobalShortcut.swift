@@ -59,9 +59,10 @@ struct GlobalShortcut: Codable, Equatable {
 
     /// The menu item key equivalent for this shortcut ("" for a key a menu cannot show).
     var keyEquivalent: String {
-        if key.count == 1 { return Self.character(for: keyCode) ?? key.lowercased() }
+        // by key code first: arrows, Return, Tab and Delete are recorded with one-glyph names ("←")
         if let c = Self.functionKeys[Int(keyCode)] { return String(Character(UnicodeScalar(UInt16(c))!)) }
-        return [kVK_Space: " ", kVK_Return: "\r", kVK_Tab: "\t", kVK_Delete: "\u{8}"][Int(keyCode)] ?? ""
+        if let s = [kVK_Space: " ", kVK_Return: "\r", kVK_Tab: "\t", kVK_Delete: "\u{8}"][Int(keyCode)] { return s }
+        return key.count == 1 ? Self.character(for: keyCode) ?? key.lowercased() : ""
     }
 
     /// What the key types in the current keyboard layout: the hot key goes by key code, so the menu item that takes the

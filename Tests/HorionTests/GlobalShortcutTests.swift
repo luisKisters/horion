@@ -39,6 +39,12 @@ struct GlobalShortcutTests {
 
     @Test func specialKeysGetMenuKeyEquivalents() {
         #expect(GlobalShortcut(keyCode: 49, modifiers: 0, key: "Space").keyEquivalent == " ")
-        #expect(GlobalShortcut(keyCode: 96, modifiers: 0, key: "F5").keyEquivalent == String(Character(UnicodeScalar(UInt16(NSF5FunctionKey))!)))
+        func fn(_ c: Int) -> String { String(Character(UnicodeScalar(UInt16(c))!)) }
+        #expect(GlobalShortcut(keyCode: 96, modifiers: 0, key: "F5").keyEquivalent == fn(NSF5FunctionKey))
+        #expect(GlobalShortcut(keyCode: 123, modifiers: 0, key: "\u{2190}").keyEquivalent == fn(NSLeftArrowFunctionKey))
+        #expect(GlobalShortcut(keyCode: 117, modifiers: 0, key: "\u{2326}").keyEquivalent == fn(NSDeleteFunctionKey))
+        #expect(GlobalShortcut(keyCode: 36, modifiers: 0, key: "\u{21A9}").keyEquivalent == "\r")
+        #expect(GlobalShortcut(keyCode: 48, modifiers: 0, key: "\u{21E5}").keyEquivalent == "\t")
+        #expect(GlobalShortcut(keyCode: 51, modifiers: 0, key: "\u{232B}").keyEquivalent == "\u{8}")
     }
 }
