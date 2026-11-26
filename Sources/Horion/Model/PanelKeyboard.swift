@@ -72,7 +72,7 @@ extension AppModel {
 
     /// Moves the keyboard to a stop: a text field takes the keyboard, any other stop shows the focus ring.
     func focusPanelStop(_ s: PanelStop) {
-        if let m = panelMenus.open, Self.keyboardMenus.contains(m) { closePanelMenu() }
+        if let m = panelMenus.open, Self.keyboardMenus.contains(m) || Self.fieldPickers.contains(m) { closePanelMenu() }
         panelMenus.stop = s
         if let f = s.focus { focusEditorField(f) } else { blurTick += 1 }
     }
@@ -87,7 +87,11 @@ extension AppModel {
 
     /// The editor's text field focus changed (`PanelDetailView`).
     func panelFieldFocusChanged(_ f: PanelFocus?) {
-        if let f { panelMenus.stop = f.stop; return }
+        if let f {
+            panelMenus.stop = f.stop
+            openFieldPicker(f)
+            return
+        }
         // left the field (Esc, a click elsewhere); a move to a switch or menu has set its stop already
         if panelMenus.stop?.isText == true { panelMenus.stop = nil }
     }
@@ -180,6 +184,13 @@ extension AppModel {
            let s = PanelTabOrder.jump(c, in: panelStops) {
             jumpToPanelStop(s)
             return true
+        }
+        // a field's picker (times, date): its field keeps the keyboard
+        if typing, let m = panelMenus.open, Self.fieldPickers.contains(m), handleFieldPickerKey(k, menu: m) { return true }
+        // Down in such a field opens its picker again (after Esc or a press elsewhere closed it)
+        if typing, bare, k.keyCode == R.keyDown, panelMenus.open == nil, let f = panelMenus.stop?.focus, fieldPicker(f) != nil {
+            openFieldPicker(f)
+            return panelMenus.open != nil
         }
         guard let stop = panelMenus.stop else { return false }
         if typing != stop.isText {

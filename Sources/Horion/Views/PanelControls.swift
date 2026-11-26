@@ -76,6 +76,10 @@ struct PanelCommitField: View {
     /// Returns false to refuse the text.
     let commit: (String) -> Bool
     var onReturn: () -> Void = {}
+    /// Typing (the field's picker follows it).
+    var onType: (String) -> Void = { _ in }
+    /// Changes when a picker chose a value: the field takes the model's text although it keeps the keyboard.
+    var resync = 0
     @State private var text = ""
     @State private var bad = false
     @State private var shakes: CGFloat = 0
@@ -109,7 +113,11 @@ struct PanelCommitField: View {
             apply()
             text = value; accepted = false
         }
-        .onChange(of: text) { _, _ in bad = false }
+        .onChange(of: text) { _, t in
+            bad = false
+            if focused && editable && t != value { onType(t) }
+        }
+        .onChange(of: resync) { _, _ in text = value; accepted = false }
     }
 
     private func apply() {

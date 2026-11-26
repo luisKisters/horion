@@ -17,9 +17,21 @@ final class PanelClickAway {
                    Self.settles(at: event.locationInWindow, in: content.bounds.size, model: model) {
                     model.settleDraft()
                 }
+                if let model = self?.model, let w = event.window, !(w is NSPanel), let content = w.contentView {
+                    Self.closesPicker(at: event.locationInWindow, in: content.bounds.size, model: model)
+                }
             }
             return event
         }
+    }
+
+    /// A field's picker has no click-catcher (its field must take the press): a press outside it and outside its field closes it.
+    static func closesPicker(at point: CGPoint, in size: CGSize, model: AppModel) {
+        let menus = model.panelMenus
+        guard let m = menus.open, AppModel.fieldPickers.contains(m) else { return }
+        let p = CGPoint(x: point.x, y: size.height - point.y)
+        if menus.menuFrame.contains(p) || menus.frames["menu.\(m.rawValue)"]?.contains(p) == true { return }
+        model.closePanelMenu()
     }
 
     /// `point` in window coordinates (bottom-left origin).

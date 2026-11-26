@@ -31,6 +31,10 @@ struct PanelDetailView: View {
         .onChange(of: model.panelMenus.focusTick) { _, _ in focus = model.panelMenus.focusRequest }
         .onChange(of: focus) { old, new in
             model.panelFieldFocusChanged(new)
+            // a field's picker closes with its field (later, so a click on one of its rows lands first)
+            if let old, old != new, model.fieldPicker(old) != nil {
+                after(0.15) { if focus != old { model.closeFieldPicker(old) } }
+            }
             if old == .place && new != .place, model.panelMenus.open == .places || model.panelMenus.open == .maps {
                 after(0.15) { if focus != .place && (model.panelMenus.open == .places) { model.closePanelMenu() } }
             }
@@ -129,12 +133,16 @@ struct PanelDetailView: View {
             if !e.isAllDay {
                 Color.clear.frame(width: 4, height: 1)
                 PanelCommitField(value: model.fmt.time(e.start), width: 52, centered: true, tabular: true, editable: canEdit, focusKey: .start, focus: $focus,
-                                 commit: { t in TimeParser.parse(t).map { model.setSelectedStart($0); return true } ?? false }, onReturn: submit)
+                                 commit: { t in TimeParser.parse(t).map { model.setSelectedStart($0); return true } ?? false }, onReturn: submit,
+                                 onType: { model.fieldPickerTyped(.start, $0) }, resync: model.panelMenus.pickTick)
                     .panelStop(.start)
+                    .panelMenuAnchor(.startTime)
                 PanelIcon(name: .arrow).frame(width: 16)
                 PanelCommitField(value: model.fmt.time(e.end), width: 52, centered: true, tabular: true, editable: canEdit, focusKey: .end, focus: $focus,
-                                 commit: { t in TimeParser.parse(t).map { model.setSelectedEnd($0) } ?? false }, onReturn: submit)
+                                 commit: { t in TimeParser.parse(t).map { model.setSelectedEnd($0) } ?? false }, onReturn: submit,
+                                 onType: { model.fieldPickerTyped(.end, $0) }, resync: model.panelMenus.pickTick)
                     .panelStop(.end)
+                    .panelMenuAnchor(.endTime)
             }
             Text(e.isAllDay ? (days > 1 ? "\(days) days" : "all day") : PanelText.editorDuration(e.durationMinutes))
                 .font(.smallTab).foregroundStyle(Theme.fg3).lineLimit(1).fixedSize().padding(.leading, 8)

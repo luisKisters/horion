@@ -19,7 +19,7 @@ struct PanelMenuLayer: View {
         GeometryReader { geo in
             if let m = menus.open, let a = frames["menu.\(m.rawValue)"] {
                 ZStack(alignment: .topLeading) {
-                    if m != .places {
+                    if m != .places && !AppModel.fieldPickers.contains(m) {
                         Color.clear.contentShape(Rectangle()).onTapGesture { model.closePanelMenu() }
                     }
                     let size = sizes[m]
@@ -28,6 +28,7 @@ struct PanelMenuLayer: View {
                         .frame(width: Self.width(m), alignment: .topLeading)
                         .surface()
                         .onGeometryChange(for: CGSize.self) { $0.size } action: { sizes[m] = $0 }
+                        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { menus.menuFrame = $0 }
                         .opacity(size == nil ? 0 : 1)
                         .offset(Self.origin(m, anchor: a, size: size ?? .zero, in: geo.size))
                         .transition(.opacity.combined(with: .offset(y: -4)))
@@ -56,6 +57,8 @@ struct PanelMenuLayer: View {
         case .call: 280
         case .send, .inviteSend: 260
         case .deleteSend: 300
+        case .startTime: 112
+        case .endTime: 184
         }
     }
 
@@ -74,6 +77,11 @@ struct PanelMenuLayer: View {
         case .deleteSend:
             x = r.minX - 8
             y = r.maxY + 4
+        case .startTime, .endTime:
+            // the row's time under the field's (centred) time
+            x = r.minX - 6
+            y = r.maxY + 4
+            if y + h > win.height - 8 { y = r.minY - h - 4 }
         case .maps, .places, .reminders, .call, .availability, .visibility:
             // `r` is the field's text frame. The menu's first row text sits 16 in (6 padding, 10 row padding), 40 after a check column,
             // 42 after a 16 pt logo (the maps and call menus line up the item text, not the section heading).
@@ -197,6 +205,7 @@ struct PanelMenuContent: View {
             case .places: places
             case .call: call
             case .guests: PanelGuestMenu()
+            case .startTime, .endTime: PanelTimeList(menu: menu)
             case .send:
                 PopItem(key: "menu:discard", danger: true, action: { model.discardUnsent() }) { Text("Discard changes") }
                 PopItem(key: "menu:quiet", action: { model.sendUnsent(notify: false) }) { Text("Save without sending") } end: {

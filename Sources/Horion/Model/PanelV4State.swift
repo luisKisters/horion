@@ -7,6 +7,8 @@ import HorionKit
 /// the control that opened it.
 enum PanelMenu: String, Hashable, CaseIterable {
     case calendar, reminders, maps, places, call, guests, send, inviteSend, deleteSend, availability, visibility
+    /// The lists under the start and end fields (`PanelPickers.swift`).
+    case startTime, endTime
 }
 
 /// Edits to an event with guests that are not sent yet (v4 Phase 7b): `base` is what the store has, `edited` what the editor shows.
@@ -36,6 +38,8 @@ final class PanelMenuState {
     /// Frames (window points, top-left origin) of the editor's rows and controls by name: "menu.<menu>" for the control a menu
     /// opens from, the rest for the walkthrough to point at. Written by `PanelMenuLayer` from the anchor preferences; not observed.
     @ObservationIgnored var frames: [String: CGRect] = [:]
+    /// The open menu's own frame (window points, top-left origin), for a press outside a field's picker.
+    @ObservationIgnored var menuFrame: CGRect = .zero
     /// A field the editor should focus (the walkthrough, and "Paste a link…").
     var focusRequest: PanelFocus?
     var focusTick = 0
@@ -45,6 +49,10 @@ final class PanelMenuState {
     var highlight: String?
     /// Option is held: the jump letters show.
     var jumpLetters = false
+    /// A field's picker (times, date) was moved with the arrow keys since the last typing: Return picks its row.
+    var picking = false
+    /// A picker chose a value: the field takes the model's text even while it keeps the keyboard.
+    var pickTick = 0
 }
 
 /// Place search behind a protocol, so tests and snapshots never reach the network.
@@ -127,6 +135,7 @@ extension AppModel {
         panelMenus.pastingLink = false
         panelMenus.stop = nil
         panelMenus.highlight = nil
+        panelMenus.picking = false
     }
 
     /// Moves the keyboard to an editor field.

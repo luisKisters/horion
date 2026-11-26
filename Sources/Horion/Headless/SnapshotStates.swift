@@ -5,7 +5,7 @@ import HorionKit
 @MainActor
 enum SnapshotStates {
     static let all = SnapshotV4.states + SnapshotChrome.v4States + SnapshotPanel.v4States + SnapshotServices.states
-        + SnapshotGrid.states + SnapshotChrome.states + SnapshotPanel.states
+        + SnapshotGrid.states + SnapshotChrome.states + SnapshotPanel.states + SnapshotPanel.pickerStates
 
     static func find(_ m: AppModel, _ title: String, day: Int) -> CalendarEvent? {
         m.layout.timed[day].first { $0.event.title == title }?.event
