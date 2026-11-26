@@ -86,10 +86,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         MainActor.assumeIsolated { MenuBarHotKey.unregister() }
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
-    /// A Dock click with the window closed reopens it.
+    /// A Dock click with the window closed or minimised brings it back.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        if !flag { MainActor.assumeIsolated { MainWindow.show() } }
-        return true
+        MainActor.assumeIsolated {
+            guard MainWindow.window?.isVisible != true else { return true }
+            MainWindow.show()
+            return false
+        }
     }
 }
 

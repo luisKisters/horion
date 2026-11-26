@@ -131,6 +131,8 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     /// Return or Enter on an event row opens it in Horion, even when the row has a menu.
     /// Returns true when the key was handled here.
     private func key(_ e: NSEvent) -> Bool {
+        // the global keys go to their menu items (Close Menu, Open Horion), even when one is ⌘ plus a row key
+        if model.settings.menuShortcut.matches(e) || model.settings.appShortcut.matches(e) { return false }
         if e.modifierFlags.intersection([.command, .option, .control, .shift]) == .command { return rowShortcut(e) }
         guard e.modifierFlags.intersection([.command, .option, .control, .shift]).isEmpty else { return false }
         let lit = open.reversed().lazy.compactMap(\.highlightedItem).first
@@ -327,7 +329,10 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     }
 
     @objc private func closeMenu() {}   // choosing it closes the menu
-    @objc private func openHorion() { MainWindow.show() }
+    /// Clicked, it shows Horion; through the app key (off as a hot key while the menu is open) it shows or hides it.
+    @objc private func openHorion() {
+        if let e = NSApp.currentEvent, e.type == .keyDown, model.settings.appShortcut.matches(e) { MainWindow.toggle() } else { MainWindow.show() }
+    }
     @objc private func openSettings() { MainWindow.show(); model.handle(.settings) }
     @objc private func quit() { NSApp.terminate(nil) }
 

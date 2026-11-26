@@ -48,8 +48,8 @@ struct AppSettings: Codable, Equatable {
         showWeekNumbers = try c.decodeIfPresent(Bool.self, forKey: .showWeekNumbers) ?? d.showWeekNumbers
         menuBarDisplay = (try? c.decodeIfPresent(MenuBarDisplay.self, forKey: .menuBarDisplay)) ?? d.menuBarDisplay
         hourHeight = try c.decodeIfPresent(Double.self, forKey: .hourHeight)
-        menuShortcut = (try? c.decodeIfPresent(GlobalShortcut.self, forKey: .menuShortcut))?.replacingOldDefault(with: d.menuShortcut) ?? d.menuShortcut
-        appShortcut = (try? c.decodeIfPresent(GlobalShortcut.self, forKey: .appShortcut))?.replacingOldDefault(with: d.appShortcut) ?? d.appShortcut
+        (menuShortcut, appShortcut) = GlobalShortcut.migrate(menu: try? c.decodeIfPresent(GlobalShortcut.self, forKey: .menuShortcut),
+                                                             app: try? c.decodeIfPresent(GlobalShortcut.self, forKey: .appShortcut))
     }
 
     static let key = "horion.settings.v2"
