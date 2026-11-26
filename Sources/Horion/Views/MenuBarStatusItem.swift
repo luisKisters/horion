@@ -111,6 +111,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         open.removeAll { $0 === menu }
         open.append(menu)
         guard menu === self.menu, keys == nil else { return }
+        MenuBarHotKey.suspend()   // so the menu key reaches the menu's hidden Close item
         keys = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] e in
             MainActor.assumeIsolated { self?.key(e) ?? false } ? nil : e
         }
@@ -120,17 +121,18 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         open.removeAll { $0 === menu }
         guard menu === self.menu else { return }
         open.removeAll()
-        if let keys { NSEvent.removeMonitor(keys) }
-        keys = nil
+        guard let keys else { return }
+        NSEvent.removeMonitor(keys)
+        self.keys = nil
+        MenuBarHotKey.resume()
     }
 
     /// With nothing highlighted, Down starts at the first event and Up at the last one (not at Quit).
     /// Return or Enter on an event row opens it in Horion, even when the row has a menu.
     /// Returns true when the key was handled here.
     private func key(_ e: NSEvent) -> Bool {
-        // While the menu tracks, the global keys may not reach the hot key handler: run them here.
-        if model.settings.menuShortcut.matches(e) { MenuBarHotKey.fire(.menu); return true }
-        if model.settings.appShortcut.matches(e) { menu.cancelTracking(); MenuBarHotKey.fire(.app); return true }
+        // the global keys go to their menu items (Close Menu, Open Horion), even when one is ⌘ plus a row key
+        if model.settings.menuShortcut.matches(e) || model.settings.appShortcut.matches(e) { return false }
         if e.modifierFlags.intersection([.command, .option, .control, .shift]) == .command { return rowShortcut(e) }
         guard e.modifierFlags.intersection([.command, .option, .control, .shift]).isEmpty else { return false }
         let lit = open.reversed().lazy.compactMap(\.highlightedItem).first
@@ -191,6 +193,15 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             case .fold(let t, let d, let sections): menu.addItem(fold(t, detail: d, sections: sections, width: width))
             case .separator: menu.addItem(.separator())
             }
+        }
+        // The menu key closes the open menu: the hot keys are off while it is open, and an open menu runs its items' keys.
+        let menuKey = model.settings.menuShortcut
+        if menuKey.on, !menuKey.keyEquivalent.isEmpty {
+            let close = command("Close Menu", key: menuKey.keyEquivalent, #selector(closeMenu))
+            close.keyEquivalentModifierMask = menuKey.flags
+            close.isHidden = true
+            close.allowsKeyEquivalentWhenHidden = true
+            menu.addItem(close)
         }
         menu.addItem(.separator())
         let app = model.settings.appShortcut
@@ -317,7 +328,11 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         model.open(event: e)
     }
 
-    @objc private func openHorion() { MainWindow.show() }
+    @objc private func closeMenu() {}   // choosing it closes the menu
+    /// Clicked, it shows Horion; through the app key (off as a hot key while the menu is open) it shows or hides it.
+    @objc private func openHorion() {
+        if let e = NSApp.currentEvent, e.type == .keyDown, model.settings.appShortcut.matches(e) { MainWindow.toggle() } else { MainWindow.show() }
+    }
     @objc private func openSettings() { MainWindow.show(); model.handle(.settings) }
     @objc private func quit() { NSApp.terminate(nil) }
 
@@ -328,7 +343,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         rebuild(menu)
         var lines = ["item: \(item.button?.attributedTitle.string.trimmingCharacters(in: .whitespaces) ?? "")\(item.button?.imagePosition == .imageOnly ? "[glyph]" : "")"]
         func walk(_ m: NSMenu, _ depth: Int) {
-            for it in m.items {
+            for it in m.items where !it.isHidden {
                 let pad = String(repeating: "    ", count: depth)
                 if it.isSeparatorItem { lines.append(pad + "----"); continue }
                 var line = pad + (it.view == nil ? (it.attributedTitle?.string ?? it.title) : it.title).replacingOccurrences(of: "\t", with: " | ")

@@ -51,7 +51,7 @@ public enum ShortcutResolver {
     public static func resolve(_ k: KeyInput, textFocused: Bool) -> ShortcutAction? {
         let c = k.characters.lowercased()
         if k.command {
-            // ⌃⌘K is gone: the menu bar menu has its own global key (⌥⌘C by default, Settings → Shortcuts)
+            // ⌃⌘K is gone: the menu bar menu has its own global key (⌃⌘E by default, Settings → Shortcuts)
             if k.control { return nil }
             if k.option { return c == "i" && !k.shift ? .toggleRightColumn : nil }
             switch c {

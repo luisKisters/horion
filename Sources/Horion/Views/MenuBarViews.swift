@@ -6,20 +6,47 @@ import HorionKit
 enum MainWindow {
     /// Set by the main window's content: reopens it after it was closed.
     static var openAction: (() -> Void)?
+    /// The calendar window: the `Window(id: "main")` scene's, which SwiftUI keeps (and reuses) after it closes.
+    /// Found by its identifier: the old lookup wanted `canBecomeMain`, which a hidden or minimised window is not, so it
+    /// opened a second window next to the hidden one.
+    static var window: NSWindow? { NSApp.windows.first { $0.identifier?.rawValue == "main" } }
 
     static func show() {
+        NSApp.unhide(nil)
         NSApp.activate(ignoringOtherApps: true)
-        if let w = NSApp.windows.first(where: { !($0 is NSPanel) && $0.canBecomeMain && $0.contentView != nil }) {
+        guard let w = window else { openAction?(); return }
+        if w.isMiniaturized {
+            w.deminiaturize(nil)   // also brings it forward; ordering it front during the animation closes it
+        } else if w.isVisible {
             w.makeKeyAndOrderFront(nil)
         } else {
-            openAction?()
+            openAction?()   // closed: SwiftUI shows its window again
         }
+    }
+
+    /// Horion is in front: its window is on screen in this Space, and Horion is active or the window is the topmost one.
+    /// macOS may refuse to activate the app; going by the active state alone, the key would then never hide the window.
+    static var isFront: Bool {
+        guard !NSApp.isHidden, let w = window, w.isVisible, !w.isMiniaturized, w.isOnActiveSpace else { return false }
+        return NSApp.isActive || topWindowNumber() == w.windowNumber
+    }
+
+    /// The frontmost normal window on a display, of any app (numbers, layers and bounds need no screen recording permission).
+    private static func topWindowNumber() -> Int? {
+        var ids = [CGDirectDisplayID](repeating: 0, count: 16), n: UInt32 = 0
+        CGGetActiveDisplayList(16, &ids, &n)
+        let displays = ids.prefix(Int(n)).map(CGDisplayBounds)
+        let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[CFString: Any]] ?? []
+        return list.first { info in
+            guard (info[kCGWindowLayer] as? Int) == 0, (info[kCGWindowAlpha] as? Double ?? 1) > 0,
+                  let d = info[kCGWindowBounds] as? NSDictionary, let r = CGRect(dictionaryRepresentation: d) else { return false }
+            return displays.contains { $0.intersects(r) }
+        }?[kCGWindowNumber] as? Int
     }
 
     /// The app key: hides Horion when its window is in front, else brings it forward.
     static func toggle() {
-        let front = NSApp.isActive && !NSApp.isHidden && NSApp.windows.contains { !($0 is NSPanel) && $0.canBecomeMain && $0.isVisible && $0.isKeyWindow }
-        if front { NSApp.hide(nil) } else { show() }
+        if isFront { NSApp.hide(nil) } else { show() }
     }
 }
 
@@ -31,19 +58,33 @@ struct MainWindowOpener: View {
     }
 }
 
-/// Control-Command-K (`MenuBarHotKey` from anywhere, `KeyRouter` inside the app) opens the status item's menu.
+/// The menu key (`MenuBarHotKey` from anywhere, `KeyRouter` inside the app) opens the status item's menu.
+/// While the menu is open the key reaches its key monitor instead, which closes it.
 @MainActor
 enum MenuBarControl {
+    /// An open is scheduled and has not run yet.
+    private static var pending = false
+
+    /// Opens the menu on the next run loop turn: `performClick` tracks the menu until it closes, which must not
+    /// happen inside a hot key handler or a main queue block.
     static func open() -> Bool {
         guard let b = MenuBarController.shared?.item.button else { return false }
-        b.performClick(nil)
+        guard !pending else { return true }
+        pending = true
+        RunLoop.main.perform(inModes: [.default]) {
+            MainActor.assumeIsolated {
+                guard pending else { return }
+                pending = false
+                if MenuBarController.shared?.isOpen == false { b.performClick(nil) }
+            }
+        }
         return true
     }
 
-    /// The menu key: opens the menu, or closes it when it is open.
+    /// The menu key: opens the menu, closes it when it is open, and a second press before it opened cancels the open.
     static func toggle() {
         guard let c = MenuBarController.shared else { return }
-        if c.isOpen { c.menu.cancelTracking() } else { _ = open() }
+        if pending { pending = false } else if c.isOpen { c.menu.cancelTracking() } else { _ = open() }
     }
 }
 
