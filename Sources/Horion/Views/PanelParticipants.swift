@@ -20,7 +20,7 @@ struct PanelParticipants: View {
         VStack(alignment: .leading, spacing: 0) {
             if cur.isEmpty && gone.isEmpty {
                 if canAdd { addField(empty: true).padding(.top, -8) }
-                else if canEdit { NoGuestsHint() }
+                else if canEdit { NoGuestsCard() }
                 else { Text("No participants").foregroundStyle(Theme.fg3) }
             } else {
                 HStack(spacing: 2) {
@@ -47,7 +47,7 @@ struct PanelParticipants: View {
                 // names from Contacts fill the gaps; the hint offers access once (mockup: hidden once Contacts is allowed)
                 let bare = EditorRows.withoutName(model.displayed(cur + gone))
                 if bare > 0 && !model.services.contacts.isAllowed { NameHint(count: bare) }
-                if canAdd { addField(empty: false) } else if canEdit { NoGuestsHint().padding(.top, 4) }
+                if canAdd { addField(empty: false) } else if canEdit { NoGuestsCard().padding(.top, 6) }
             }
         }
     }
@@ -174,23 +174,29 @@ struct ReplyMark: View {
     }
 }
 
-/// The calendar is a macOS Calendar one (EventKit): Apple's API reads guests but cannot add them. Says so, and where it works.
-struct NoGuestsHint: View {
+/// The calendar is a macOS Calendar one (EventKit): Apple's API reads guests but cannot add them. A card takes the field's place
+/// (mockup-v21 `guestOff: card`): what fails, why, and Settings → Accounts, where a Google account (or the demo one) connects.
+struct NoGuestsCard: View {
     @Environment(AppModel.self) private var model
     var body: some View {
-        HStack(spacing: 8) {
-            Text("macOS Calendar can\u{2019}t invite guests").foregroundStyle(Theme.fg3).lineLimit(1)
-            Spacer(minLength: 0)
+        VStack(alignment: .leading, spacing: 4) {
+            Text("No guests on macOS Calendar").font(.textMedium).foregroundStyle(Theme.fg)
+            Text("Apple\u{2019}s calendar API can\u{2019}t send invitations. Move the event to a Google calendar to invite people.")
+                .font(.small).foregroundStyle(Theme.fg3).fixedSize(horizontal: false, vertical: true)
             Button { model.openAccountsForGuests() } label: {
-                Text(model.services.google.config.clientID == nil && !model.canUseDemoGoogle ? "Why?" : "Use Google").font(.smallMedium).foregroundStyle(Theme.fg)
+                Text("Open Accounts").font(.smallMedium).foregroundStyle(Theme.fg)
                     .padding(.horizontal, 8).frame(height: 24)
-                    .background(HoverFill(key: "field:guestsGoogle", fill: Theme.hoverRail, radius: Radius.small))
+                    .background(HoverFill(key: "field:guestsGoogle", on: true, fill: Theme.bg3, radius: Radius.small))
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .panelStop(.guestsCard, radius: Radius.small, inset: -2)
+            .padding(.top, 4)
         }
-        .frame(minHeight: 20)
-        .help("Apple\u{2019}s calendar API cannot add attendees. Events in a Google calendar connected in Settings \u{2192} Accounts can have guests.")
+        .padding(.horizontal, 10).padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: Radius.control).fill(Theme.bg2))
+        .padding(.leading, -10)
         .tourAnchor("guests:eventkit")
     }
 }

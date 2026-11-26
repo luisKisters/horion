@@ -18,6 +18,12 @@ struct PanelTabOrderTests {
         // an invitation: my own fields and Join only
         #expect(PanelTabOrder.stops(ctx(canEdit: false, call: .joinOnly, reminders: [])) == [.join, .calendar, .busy, .visibility, .addReminder])
         #expect(PanelTabOrder.stops(ctx(canEdit: false, writable: false, call: .none)).isEmpty)
+        // a macOS Calendar event: the guest card's Open Accounts button takes the field's place
+        var card = ctx(call: .none, reminders: [])
+        card.canAddGuests = false
+        card.guestsCard = true
+        #expect(PanelTabOrder.stops(card) == [.title, .date, .start, .end, .allDay, .timeZone, .repeats, .guestsCard, .place, .notes,
+                                             .calendar, .busy, .visibility, .addReminder])
     }
 
     @Test func tabWrapsAndStartsAtTheEnds() {

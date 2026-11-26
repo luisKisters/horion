@@ -60,9 +60,10 @@ extension AppModel {
             : gone != nil ? .none
             : panelMenus.pastingLink ? .link
             : canEdit ? .add : .none
+        let canAddGuests = canEdit && store.canEditParticipants(calendarID: e.calendarID)
         return PanelStopContext(canEdit: canEdit, writable: isWritable(e), dateEditable: canEdit && days == 1, isAllDay: e.isAllDay,
                                 findTime: rows.contains(.findTime), going: rows.contains(.going) && canRespond(e) && !e.iAmOrganizer,
-                                canAddGuests: canEdit && store.canEditParticipants(calendarID: e.calendarID), call: call, reminders: e.reminders)
+                                canAddGuests: canAddGuests, guestsCard: canEdit && !canAddGuests, call: call, reminders: e.reminders)
     }
 
     var panelStops: [PanelStop] { selectedEvent.map { PanelTabOrder.stops(panelStopContext($0)) } ?? [] }
@@ -150,6 +151,7 @@ extension AppModel {
         case .timeZone: openZonePicker(byKeyboard: true)
         case .repeats: openRepeatMenu(byKeyboard: true)
         case .findTime: findNewTime()
+        case .guestsCard: openAccountsForGuests()
         case .join: joinCall(e)
         case .addCall: openPanelMenuByKeyboard(.call)
         case .calendar: openPanelMenuByKeyboard(.calendar)

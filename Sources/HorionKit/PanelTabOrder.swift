@@ -3,7 +3,7 @@ import Foundation
 /// One keyboard stop in the event panel (design/mockup-v20, "Flat Tab"): every field, switch, button and menu, top to bottom.
 /// Delete and Close are not stops.
 public enum PanelStop: Hashable, Sendable {
-    case title, date, start, end, allDay, timeZone, repeats, findTime, guest, going, addCall, link, join, place, notes, calendar, busy, visibility
+    case title, date, start, end, allDay, timeZone, repeats, findTime, guest, guestsCard, going, addCall, link, join, place, notes, calendar, busy, visibility
     case reminder(Int)
     case addReminder
 
@@ -34,7 +34,7 @@ public enum PanelStop: Hashable, Sendable {
         case .timeZone: "z"
         case .repeats: "r"
         case .findTime: "f"
-        case .guest: "p"
+        case .guest, .guestsCard: "p"
         case .going: "g"
         case .addCall, .link: "c"
         case .join: "j"
@@ -64,12 +64,14 @@ public struct PanelStopContext: Equatable, Sendable {
     public var findTime: Bool
     public var going: Bool
     public var canAddGuests: Bool
+    /// The NoGuestsCard takes the guest field's place (a macOS Calendar event I may change): its "Open Accounts" button is a stop.
+    public var guestsCard: Bool
     public var call: Call
     public var reminders: [Int]
 
-    public init(canEdit: Bool, writable: Bool, dateEditable: Bool, isAllDay: Bool, findTime: Bool, going: Bool, canAddGuests: Bool, call: Call, reminders: [Int]) {
+    public init(canEdit: Bool, writable: Bool, dateEditable: Bool, isAllDay: Bool, findTime: Bool, going: Bool, canAddGuests: Bool, guestsCard: Bool = false, call: Call, reminders: [Int]) {
         self.canEdit = canEdit; self.writable = writable; self.dateEditable = dateEditable; self.isAllDay = isAllDay; self.findTime = findTime
-        self.going = going; self.canAddGuests = canAddGuests; self.call = call; self.reminders = reminders
+        self.going = going; self.canAddGuests = canAddGuests; self.guestsCard = guestsCard; self.call = call; self.reminders = reminders
     }
 }
 
@@ -84,7 +86,7 @@ public enum PanelTabOrder {
         if c.canEdit && !c.isAllDay { s.append(.timeZone) }
         if c.canEdit { s.append(.repeats) }
         if c.findTime { s.append(.findTime) }
-        if c.canAddGuests { s.append(.guest) }
+        if c.canAddGuests { s.append(.guest) } else if c.canEdit && c.guestsCard { s.append(.guestsCard) }
         if c.going { s.append(.going) }
         switch c.call {
         case .none: break

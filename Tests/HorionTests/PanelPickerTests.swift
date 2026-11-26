@@ -357,7 +357,12 @@ struct PanelPickerTests {
         (m.store as! DemoStore).canEditParticipants = false
         _ = open(m)
         #expect(!m.panelStops.contains(.guest), "no guest field to Tab to")
-        m.openAccountsForGuests()
+        // the card's Open Accounts button is a stop where the field was, Option-P reaches it
+        let stops = m.panelStops
+        let i = try #require(stops.firstIndex(of: .guestsCard))
+        #expect(stops[i - 1] == .repeats && PanelTabOrder.jump("p", in: stops) == .guestsCard)
+        m.focusPanelStop(.guestsCard)
+        #expect(key(m, "\r", ShortcutResolver.keyReturn))
         #expect(m.overlay == .settings && m.services.settingsPage == .accounts)
     }
 }
