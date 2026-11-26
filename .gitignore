@@ -10,4 +10,5 @@ artifacts/*.mov
 artifacts/screenshots/
 artifacts/perf.txt
 artifacts/*.mov.*.json
+.claude/worktrees/
 .env

@@ -1,0 +1,4 @@
+- 2026-11-26 | review | medium | agent rules | A project made two tickets: one at the start of the thread and one in step 3 | fixed: yes
+- 2026-11-26 | review | medium | PR video | The video was only in a comment, but Luis reads only the PR text | fixed: yes, the script prints the link and the rule says to put it in the text
+- 2026-11-26 | review | low | ticket command | `list` read only the first 100 tickets | fixed: yes
+- 2026-11-26 | review | low | skills | Five small bugs in designr's own example mockups, one unclear rule in stop-yapping | fixed: no, these are copies of the skills repo and must stay identical; fix them there

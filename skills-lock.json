@@ -1,0 +1,31 @@
+{
+  "version": 2,
+  "skills": {
+    "design-taste-frontend": {
+      "source": "Leonxlnx/taste-skill",
+      "sourceType": "github",
+      "skillPath": "skills/taste-skill/SKILL.md",
+      "computedHash": "44f5bbbf437a1d5d08f2540a3db55c2e930395cbdc029276819e942dc158217b"
+    },
+    "designr": {
+      "source": "luisKisters/skills",
+      "commit": "8c4c010c0732a2653cdebb4f3a8789bac3a822e3",
+      "sourceType": "github",
+      "skillPath": "designr/SKILL.md",
+      "computedHash": "9159609bc4c29e4d9c4cfa1f0e0d6339d53e2398d84675f7b2ce67217c1adfcd"
+    },
+    "grilling": {
+      "source": "mattpocock/skills",
+      "commit": "6f7f7831a625f040a8e06a0e7954826b87ce775a",
+      "sourceType": "github",
+      "skillPath": "skills/productivity/grilling/SKILL.md"
+    },
+    "stop-yapping": {
+      "source": "luisKisters/skills",
+      "commit": "8c4c010c0732a2653cdebb4f3a8789bac3a822e3",
+      "sourceType": "github",
+      "skillPath": "stop-yapping/SKILL.md",
+      "computedHash": "54664b071927bdee9e26a2646f191fd910d2de4fa14b3f9a970e40f402c83888"
+    }
+  }
+}
