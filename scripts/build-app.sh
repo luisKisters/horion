@@ -4,6 +4,15 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 
+# Google Calendar API (v4 Phase 8b): needs an iOS-type OAuth client ID, never committed. HORION_GOOGLE_CLIENT_ID comes from the
+# environment or from .env in the main checkout (gitignored, and shared by its worktrees, so install.sh main finds it too).
+if [ -z "${HORION_GOOGLE_CLIENT_ID:-}" ]; then
+  MAIN_CHECKOUT="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+  MAIN_CHECKOUT="${MAIN_CHECKOUT%/.git}"
+  if [ -f "${MAIN_CHECKOUT:-$PWD}/.env" ]; then set -a; . "${MAIN_CHECKOUT:-$PWD}/.env"; set +a; fi
+fi
+if [ -z "${HORION_GOOGLE_CLIENT_ID:-}" ]; then echo "note: no HORION_GOOGLE_CLIENT_ID (environment or .env), this build has no Google sign-in" >&2; fi
+
 swift build -c release
 BIN="$(swift build -c release --show-bin-path)/Horion"
 
@@ -17,8 +26,6 @@ cp design/icon/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 mkdir -p "$APP/Contents/Resources/Fonts"
 cp "Sources/Horion/Resources/Fonts/Geist[wght].ttf" Sources/Horion/Resources/Fonts/Geist-OFL.txt "$APP/Contents/Resources/Fonts/"
 
-# Google Calendar API (v4 Phase 8b): only when HORION_GOOGLE_CLIENT_ID is set (an iOS-type OAuth client ID, never committed).
-# It goes into Info.plist with its reversed-client-ID URL scheme, which ASWebAuthenticationSession receives the sign-in redirect on.
 GOOGLE_PLIST=""
 if [ -n "${HORION_GOOGLE_CLIENT_ID:-}" ]; then
   case "$HORION_GOOGLE_CLIENT_ID" in *.apps.googleusercontent.com) ;; *) echo "HORION_GOOGLE_CLIENT_ID must end in .apps.googleusercontent.com"; exit 1 ;; esac
