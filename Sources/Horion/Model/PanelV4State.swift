@@ -204,17 +204,19 @@ extension AppModel {
     /// "This and following" only where it differs from the other two: the series has an occurrence before this one (else it
     /// is "All events") and one after it (else it is "This event").
     func deleteOffersFollowing(_ e: CalendarEvent) -> Bool {
-        guard e.isRecurring else { return false }
-        let series = store.series(of: e)
-        return series.contains { $0.start < e.start } && series.contains { $0.start > e.start }
+        store.hasOccurrencesAround(e)
     }
 
     /// The recurring-delete and recurring-edit dialogs' buttons, left to right ("This and following" only where it is offered).
     /// An edit asks about the occurrence where it was, not where the held change put it.
+    /// Asked once per dialog (`series(of:)` loads a year either side), then kept until the overlay changes.
     func spanChoices(_ id: String) -> [SpanChoice] {
+        if let c = spanChoicesCache, c.id == id { return c.choices }
         let e = recurringEdit.flatMap { $0.base.id == id ? $0.base : nil } ?? event(id: id)
         let following = e.map(deleteOffersFollowing) ?? false
-        return following ? [.cancel, .all, .future, .this] : [.cancel, .all, .this]
+        let choices: [SpanChoice] = following ? [.cancel, .all, .future, .this] : [.cancel, .all, .this]
+        spanChoicesCache = (id, choices)
+        return choices
     }
 
     /// ←/→ and A/D move the focus and stop at the ends; Tab and ⇧Tab move it and wrap around.

@@ -108,6 +108,9 @@ final class CompositeStore: CalendarStore {
     func delete(_ event: CalendarEvent, span: EditSpan, notify: Bool) throws { try route(event).delete(event, span: span, notify: notify) }
     func series(of event: CalendarEvent) -> [CalendarEvent] { route(event).series(of: event) }
     func repeats(_ event: CalendarEvent) -> Bool { route(event).repeats(event) }
+    func hasOccurrencesAround(_ event: CalendarEvent) -> Bool { route(event).hasOccurrencesAround(event) }
+    func restoresDeletedSeries(calendarID: String) -> Bool { owner(calendarID).restoresDeletedSeries(calendarID: calendarID) }
+    func restoreDeletedSeries(_ event: CalendarEvent) { route(event).restoreDeletedSeries(event) }
 
     /// An existing event belongs to the store whose id it carries (a move to another calendar is that store's business).
     private func route(_ e: CalendarEvent) -> CalendarStore {

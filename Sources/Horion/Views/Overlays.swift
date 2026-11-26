@@ -274,7 +274,7 @@ struct SheetFrame<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text(title).font(.title15).tracking(TypeTrack.title).foregroundStyle(Theme.fg)
+                Text(title).font(.title15).tracking(TypeTrack.title).foregroundStyle(Theme.fg).lineLimit(1)
                 Spacer()
                 if let accessory { accessory.padding(.trailing, 8) }
                 if closable { IconButton(name: "xmark") { model.closeOverlay() } }
@@ -347,7 +347,7 @@ struct DeleteRecurringDialog: View {
         let event = model.event(id: eventID)
         let guests = event.map { model.deleteNeedsGuestDialog($0) } ?? false
         let following = model.spanChoices(eventID).contains(.future)
-        SheetFrame(title: "Delete recurring event", width: following ? 480 : 400, closable: false, bottom: 20) {
+        SheetFrame(title: "Delete recurring event \u{201C}\(Self.name(event))\u{201D}", width: following ? 480 : 400, closable: false, bottom: 20) {
             Text("This event repeats. Which events should be deleted?").font(.text).foregroundStyle(Theme.fg2).padding(.top, 12)
             if guests {
                 PanelSwitch(label: "Send the guests a cancellation email", isOn: model.deleteNotify) { model.deleteNotify.toggle() }.padding(.top, 10)
@@ -355,6 +355,8 @@ struct DeleteRecurringDialog: View {
             SpanButtons(eventID: eventID, choose: model.chooseDelete).padding(.top, 16)
         }
     }
+
+    static func name(_ e: CalendarEvent?) -> String { e.map { $0.title.isEmpty ? "(No title)" : $0.title } ?? "" }
 }
 
 /// Moving or resizing a repeating event (grid, keys, the editor's time) or sending a held change to one: which occurrences change.
@@ -365,7 +367,7 @@ struct EditRecurringDialog: View {
     var body: some View {
         let edit = model.recurringEdit
         let following = model.spanChoices(eventID).contains(.future)
-        SheetFrame(title: "Edit recurring event", width: following ? 480 : 400, closable: false, bottom: 20) {
+        SheetFrame(title: "Edit recurring event \u{201C}\(DeleteRecurringDialog.name(edit?.edited ?? model.event(id: eventID)))\u{201D}", width: following ? 480 : 400, closable: false, bottom: 20) {
             Text("This event repeats. Which events should change?").font(.text).foregroundStyle(Theme.fg2).padding(.top, 12)
             if let edit, Self.when(model, edit, edit.base) != Self.when(model, edit, edit.edited) {
                 HStack(alignment: .firstTextBaseline, spacing: 12) {

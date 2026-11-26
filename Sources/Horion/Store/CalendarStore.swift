@@ -44,6 +44,13 @@ protocol CalendarStore: AnyObject {
     func series(of event: CalendarEvent) -> [CalendarEvent]
     /// Whether the event has other occurrences (the delete question). Called on the key press, so it must be cheap.
     func repeats(_ event: CalendarEvent) -> Bool
+    /// Whether the series has an occurrence before this one and one after it (the "This and following" choice).
+    /// Asked before the recurring dialog draws, so it must be cheap.
+    func hasOccurrencesAround(_ event: CalendarEvent) -> Bool
+    /// The store can undo an "All events" or "This and following" delete itself (`restoreDeletedSeries`), without the model
+    /// loading every occurrence first.
+    func restoresDeletedSeries(calendarID: String) -> Bool
+    func restoreDeletedSeries(_ event: CalendarEvent)
     /// The capabilities above for one calendar: a `CompositeStore` mixes EventKit (no) and Google (yes) calendars.
     func canSendUpdates(calendarID: String) -> Bool
     func canRespond(calendarID: String) -> Bool
@@ -69,6 +76,13 @@ extension CalendarStore {
     func canUndoSeriesDelete(calendarID: String) -> Bool { true }
     /// Stores that keep their events in memory (demo, Google) can just count.
     func repeats(_ event: CalendarEvent) -> Bool { event.isRecurring && series(of: event).count > 1 }
+    func restoresDeletedSeries(calendarID: String) -> Bool { false }
+    func restoreDeletedSeries(_ event: CalendarEvent) {}
+    func hasOccurrencesAround(_ event: CalendarEvent) -> Bool {
+        guard event.isRecurring else { return false }
+        let series = series(of: event)
+        return series.contains { $0.start < event.start } && series.contains { $0.start > event.start }
+    }
     @discardableResult func create(_ event: CalendarEvent, notify: Bool) throws -> CalendarEvent { try create(event) }
     @discardableResult func update(_ event: CalendarEvent, span: EditSpan, notify: Bool) throws -> CalendarEvent { try update(event, span: span) }
     func delete(_ event: CalendarEvent, span: EditSpan, notify: Bool) throws { try delete(event, span: span) }
