@@ -57,7 +57,7 @@ struct PanelMenuLayer: View {
         case .call: 280
         case .send, .inviteSend: 260
         case .deleteSend: 300
-        case .startTime: 80
+        case .startTime: 64
         case .endTime: 136
         case .datePicker: 236
         case .timeZone: 296
@@ -114,8 +114,8 @@ struct PopItem<Label: View, End: View>: View {
                 if let check {
                     PanelIcon(name: .check, size: 14, color: Theme.fg).opacity(check ? 1 : 0).frame(width: 14)
                 }
-                label
-                Spacer(minLength: 0)
+                // the label takes the free width: no spacer gap after it when the row has no end
+                label.frame(maxWidth: .infinity, alignment: .leading)
                 end
             }
             .font(.text).foregroundStyle(danger ? Theme.replyNo : Theme.fg)

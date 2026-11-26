@@ -19,7 +19,7 @@ Brief: the pickers missing from the event panel. Each must work by mouse and key
 ## Changed after use (in the app)
 - ← → in the date field: the caret moving before ↑/↓ felt wrong. Now ← → always move days while the mini month is open; Esc closes it to move the caret (the `always` option).
 - Every panel menu opens left of the panel, not only the pickers: reminders, availability, visibility, call, maps, places and the send menus too.
-- The time lists hug their rows: start 80 pt, end 136 pt. The end list shows the length on the right, short ("1 h 30").
+- The time lists hug their rows: start 64 pt, end 136 pt (no empty space right of the times). The end list shows the length on the right, short ("1 h 30").
 ## Locked in v20
 | Element | Pick |
 | --- | --- |
