@@ -51,7 +51,7 @@ struct PanelMenuLayer: View {
         case .guests: 400
         case .maps: 272
         case .places: 296
-        case .reminders: 230
+        case .reminders: 136
         case .availability: 160
         case .visibility: 210
         case .call: 280
@@ -207,7 +207,7 @@ struct PanelMenuContent: View {
         let on = model.selectedEvent?.reminders ?? []
         return ForEach(Reminders.choices, id: \.self) { r in
             PopItem(check: on.contains(r), key: "menu:rem\(r)", highlighted: model.panelMenus.highlight == "menu:rem\(r)", action: { model.toggleReminder(r) }) {
-                Text(Reminders.label(r)).font(.textTab)
+                Text(Reminders.label(r)).font(.textTab).lineLimit(1).fixedSize()
             }
         }
     }
