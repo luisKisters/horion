@@ -45,7 +45,7 @@ Then launch Horion and press "Allow access". Cmd R asks macOS to re-sync remote 
 
 Settings → Accounts → "Connect Google account" signs in with Google in the system web sheet (`ASWebAuthenticationSession`, OAuth 2.0 with PKCE, no client secret) and keeps one refresh token per account in the Keychain. A connected account writes your reply (a PATCH of your own attendee entry only), guests, new Meet links (`conferenceDataVersion=1`) and lets the editor choose whether guests get an email ("Send update" is `sendUpdates=all`, "Save without sending" and "Delete event ▾ without email" are `none`). macOS Calendar's copy of the same account (a CalDAV source with the same address) is hidden while it is connected; iCloud and local calendars keep coming through EventKit. It syncs every 60 s, when the window becomes active and on ⌘R, with Google's sync tokens (a 410 answer starts a full sync), and caches the calendars and events in `~/Library/Application Support/Horion/google/`. It also reads the account's contacts and "other contacts" (People API, read only) for names and guest suggestions. Moving an event to another calendar of the same account uses Google's `move` (same event, guests and Meet link); moving it to a macOS Calendar calendar or another account is refused. A pasted call link that is not a new Meet is kept in the location (or at the end of the notes): Google only takes `conferenceData` it creates itself. Undo puts a deleted Google event back without emailing anyone; deleting a whole Google series has no undo. When Google refuses the refresh token (revoked or expired), Settings → Accounts shows "Connect again". Remove revokes the token at Google, then deletes the cache and the Keychain item. A Google account works without macOS calendar access, and macOS Calendar's copy of a connected account is hidden by address and, per event, by iCalUID.
 
-This needs an OAuth client ID, which the repository does not contain. Build with `HORION_GOOGLE_CLIENT_ID=<id>.apps.googleusercontent.com scripts/build-app.sh`: the ID and its reversed-client-ID URL scheme (`CFBundleURLTypes`) go into Info.plist. Without it, "Connect Google account" explains that a client ID is needed and does nothing else. Tests, snapshots and the tours never reach Google: they answer from JSON fixtures and an in-memory fake server (`DemoGoogleServer`).
+This needs an OAuth client ID, which the repository does not contain (see Build configuration below). `scripts/build-app.sh` writes the ID and its reversed-client-ID URL scheme (`CFBundleURLTypes`) into Info.plist. Without it, "Connect Google account" explains that a client ID is needed and does nothing else. Tests, snapshots and the tours never reach Google: they answer from JSON fixtures and an in-memory fake server (`DemoGoogleServer`).
 
 ### Names from Contacts
 
@@ -94,12 +94,25 @@ design/              design-system (the v5 hand-off: tokens, type, event recipe,
 
 AppKit is used only where SwiftUI cannot: window chrome, the key event monitor, offscreen rendering, video writing, opening the menu bar item.
 
+## Build configuration
+
+Per-machine build settings live outside the repository, in `~/.config/horion/build.env` (override the path with `HORION_BUILD_ENV`). Set up each Mac you build on once:
+
+```sh
+mkdir -p ~/.config/horion
+echo 'HORION_GOOGLE_CLIENT_ID=<id>.apps.googleusercontent.com' > ~/.config/horion/build.env
+```
+
+`scripts/build-app.sh` (and so `install.sh`, `make-dmg.sh` and `verify.sh`) takes the Google client ID from, in order: the `HORION_GOOGLE_CLIENT_ID` environment variable, `build.env`, the installed `/Applications/Horion.app`. Without one it prints a note and builds without Google sign-in. `HORION_REQUIRE_GOOGLE=1`, and any build with `SIGNING_IDENTITY`, fails instead. CI (`.github/workflows/ci.yml`) takes it from the repository variable `HORION_GOOGLE_CLIENT_ID` (Settings → Secrets and variables → Actions → Variables) and requires it.
+
 ## Verify
 
 ```sh
 scripts/verify.sh          # gates, build, tests, app bundle, snapshots, walkthrough.mov + every v4 tour, perf, launch time, DMG build + mount check
 scripts/verify.sh --fast   # skips walkthrough video, perf and DMG
 ```
+
+CI runs `scripts/verify.sh --fast` and `scripts/make-dmg.sh` on every pull request and push to main (GitHub Actions, `macos-26`), and keeps the DMG as a build artifact for 14 days.
 
 - **Unit tests**: `swift test` (HorionKit logic and app model).
 - **Snapshots**: `scripts/snapshots.sh` renders every state in `design/states.json` offscreen into `artifacts/snapshots/`; `swift scripts/render-mockup.swift` renders the `mockup` scene of each state from `design/mockup-v4/index.html` (`mockupDir`) into `design/mockup-v4/shots/` (committed), and `--eval "<js>"` prints a value from the mockup page (how `Tests/HorionKitTests/Fixtures/layout-v4.json`, the golden output of the mockup's `layoutDay()`, was made); `scripts/compare-all.sh` writes mockup | snapshot | diff images to `artifacts/compare/` and a mean-difference score per state to `artifacts/compare/report.json` (a report, not a gate). Every state renders the demo data, the mockup's week, so both sides show the same data. `v4-b-layout` is not app UI: a debug picture of OverlapV5 on the fixture's Wednesday evening (boxes at the v5 placements, the "+N" group and its stack rows).

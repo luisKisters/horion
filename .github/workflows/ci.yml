@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: macos-26
+    timeout-minutes: 45
+    env:
+      # Not a secret (native OAuth clients have none), but never committed: a repository variable.
+      HORION_GOOGLE_CLIENT_ID: ${{ vars.HORION_GOOGLE_CLIENT_ID }}
+      # A build without Google sign-in fails here instead of shipping quietly.
+      HORION_REQUIRE_GOOGLE: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Verify (grep gates, build, tests, app bundle, snapshots)
+        run: scripts/verify.sh --fast
+
+      - name: Google client ID in the app
+        run: |
+          id="$(/usr/libexec/PlistBuddy -c 'Print :HorionGoogleClientID' build/Horion.app/Contents/Info.plist)"
+          [ "$id" = "$HORION_GOOGLE_CLIENT_ID" ] || { echo "Info.plist has the wrong client ID"; exit 1; }
+          echo "ok: HorionGoogleClientID set"
+
+      - name: DMG (build, mount, codesign check, launch from the volume)
+        run: scripts/make-dmg.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Horion-${{ github.sha }}
+          path: dist/Horion.dmg
+          retention-days: 14
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: snapshots-${{ github.sha }}
+          path: artifacts/snapshots
+          retention-days: 7

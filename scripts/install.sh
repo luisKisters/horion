@@ -2,7 +2,7 @@
 # Builds Horion and installs it to /Applications, replacing and restarting the running instance.
 #   scripts/install.sh        the current checkout (including uncommitted changes)
 #   scripts/install.sh main   the latest origin/main, built in a temporary worktree
-# HORION_GOOGLE_CLIENT_ID: taken from the environment, else from the installed app's Info.plist.
+# The Google client ID comes from wherever build-app.sh finds it (environment, ~/.config/horion/build.env, the installed app).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 REPO="$PWD"
@@ -18,13 +18,6 @@ case "${1:-}" in
     echo "Building origin/main @ $(git rev-parse --short origin/main)" ;;
   *) echo "usage: scripts/install.sh [main]"; exit 1 ;;
 esac
-
-# keep Google sign-in working: reuse the client ID of the installed app
-if [ -z "${HORION_GOOGLE_CLIENT_ID:-}" ] && [ -f "$APP/Contents/Info.plist" ]; then
-  HORION_GOOGLE_CLIENT_ID="$(/usr/libexec/PlistBuddy -c 'Print :HorionGoogleClientID' "$APP/Contents/Info.plist" 2>/dev/null || true)"
-  [ -n "$HORION_GOOGLE_CLIENT_ID" ] && export HORION_GOOGLE_CLIENT_ID
-fi
-[ -z "${HORION_GOOGLE_CLIENT_ID:-}" ] && echo "note: no HORION_GOOGLE_CLIENT_ID, this build has no Google sign-in"
 
 # build before quitting, so a failed build leaves the running app alone
 "$SRC/scripts/build-app.sh"
