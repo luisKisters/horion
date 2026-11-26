@@ -53,6 +53,7 @@ struct PanelMenuLayer: View {
         case .reminders: 230
         case .availability: 160
         case .visibility: 210
+        case .repeats: 240
         case .call: 280
         case .send, .inviteSend: 260
         case .deleteSend: 300
@@ -74,11 +75,11 @@ struct PanelMenuLayer: View {
         case .deleteSend:
             x = r.minX - 8
             y = r.maxY + 4
-        case .maps, .places, .reminders, .call, .availability, .visibility:
+        case .maps, .places, .reminders, .call, .availability, .visibility, .repeats:
             // `r` is the field's text frame. The menu's first row text sits 16 in (6 padding, 10 row padding), 40 after a check column,
             // 42 after a 16 pt logo (the maps and call menus line up the item text, not the section heading).
             let menuText: CGFloat = switch m {
-            case .reminders, .availability, .visibility: 40
+            case .reminders, .availability, .visibility, .repeats: 40
             case .places: 39
             default: 42
             }
@@ -193,6 +194,7 @@ struct PanelMenuContent: View {
             case .reminders: reminders
             case .availability: availability
             case .visibility: visibility
+            case .repeats: repeats
             case .maps: maps
             case .places: places
             case .call: call
@@ -242,6 +244,14 @@ struct PanelMenuContent: View {
             PopItem(check: cur == v, key: key, highlighted: model.panelMenus.highlight == key, action: {
                 model.closePanelMenu(); model.updateSelected { $0.visibility = v }
             }) { Text(PanelDetailView.visibility(v)) }
+        }
+    }
+
+    private var repeats: some View {
+        ForEach(model.repeatMenuRows(), id: \.key) { row in
+            PopItem(check: row.checked, key: row.key, highlighted: model.panelMenus.highlight == row.key, action: {
+                if let r = row.rule { model.setSelectedRepeat(r) } else { model.closePanelMenu() }
+            }) { Text(row.text).lineLimit(1) }
         }
     }
 

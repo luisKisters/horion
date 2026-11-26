@@ -6,7 +6,7 @@ import HorionKit
 /// The editor's menus (design/mockup-v4 `popHTML`): one open at a time, drawn by `PanelMenuLayer` over the window and anchored to
 /// the control that opened it.
 enum PanelMenu: String, Hashable, CaseIterable {
-    case calendar, reminders, maps, places, call, guests, send, inviteSend, deleteSend, availability, visibility
+    case calendar, reminders, maps, places, call, guests, send, inviteSend, deleteSend, availability, visibility, repeats
 }
 
 /// Edits to an event with guests that are not sent yet (v4 Phase 7b): `base` is what the store has, `edited` what the editor shows.
@@ -165,8 +165,10 @@ extension AppModel {
     @discardableResult
     func sendUnsent(_ id: String, notify: Bool) -> Bool {
         guard let u = panelState.unsent[id] else { return false }
+        // a new rule goes to the whole series
+        let span: EditSpan = Self.ruleChanged(u.base, u.edited) && u.base.isRecurring ? .all : .this
         do {
-            try store.update(u.edited, span: .this, notify: notify)
+            try store.update(u.edited, span: span, notify: notify)
         } catch {
             showToast("Could not save event. Your changes are kept.")
             return false
@@ -254,12 +256,16 @@ extension AppModel {
         commit(e, span: .this, old: old)
     }
 
+    /// The Repeat menu changed the rule (or made a series a single event).
+    static func ruleChanged(_ a: CalendarEvent, _ b: CalendarEvent) -> Bool { a.recurrence != b.recurrence || a.seriesID != b.seriesID }
+
     /// A changed time of a repeating event (not the event being created) waits for the recurring-edit dialog. Returns false
     /// when nothing is asked. `old`: undo goes back to it (this occurrence only). `notify`: the held change of an event with guests.
     func askSpan(base: CalendarEvent, edited: CalendarEvent, old: CalendarEvent?, notify: Bool?) -> Bool {
         guard draft?.id != edited.id, store.repeats(base) else { return false }
         let timeChanged = base.start != edited.start || base.end != edited.end || base.isAllDay != edited.isAllDay
-        guard timeChanged || notify != nil else { return false }
+        // a new rule alone goes to the whole series: nothing to ask
+        guard timeChanged || (notify != nil && !Self.ruleChanged(base, edited)) else { return false }
         flushPendingEdit()
         recurringEdit = RecurringEdit(base: base, edited: edited, old: old, notify: notify)
         spanChoice = .this
@@ -508,6 +514,14 @@ extension PanelText {
     static func editorDuration(_ minutes: Int) -> String {
         let m = max(0, minutes)
         return m >= 60 ? "\(m / 60) h" + (m % 60 > 0 ? " \(m % 60) min" : "") : "\(m) min"
+    }
+
+    /// A row of the Repeat menu for this event: "Does not repeat", "Every day", "Every week on Thu", ...
+    static func repeatChoice(_ r: Recurrence?, _ e: CalendarEvent, _ fmt: Fmt) -> String {
+        guard let r else { return EditorRow.repeats.placeholder ?? "" }
+        var x = e
+        x.recurrence = r
+        return editorRepeats(x, fmt) ?? ""
     }
 
     /// The editor's repeat line: "Every week on Sun" for one weekday, else the general text.

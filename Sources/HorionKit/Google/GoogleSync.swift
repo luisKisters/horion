@@ -56,6 +56,11 @@ public struct GoogleCalendarSync: Codable, Equatable, Sendable {
         return true
     }
 
+    /// The next round is a full sync; what is kept stays until it is done (a changed series rule: instances come and go).
+    public mutating func forgetToken() {
+        syncToken = nil; roundToken = nil; pageToken = nil; pending = nil
+    }
+
     /// 410 Gone: the sync token expired. Everything is dropped; the next request is a full sync.
     public mutating func gone() {
         syncToken = nil; roundToken = nil; pageToken = nil; pending = nil

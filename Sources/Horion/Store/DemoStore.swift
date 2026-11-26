@@ -90,6 +90,8 @@ final class DemoStore: CalendarStore {
     @discardableResult
     func create(_ event: CalendarEvent) throws -> CalendarEvent {
         insert(event)
+        // a new repeating event: its occurrences too
+        if event.recurrence != nil && event.seriesID == nil { var plain = event; plain.recurrence = nil; reseries(old: plain, new: event) }
         onChange?()
         return event
     }
@@ -105,6 +107,7 @@ final class DemoStore: CalendarStore {
         if failWrites { throw WriteFailed() }
         guard let idx = events.firstIndex(where: { $0.id == event.id }) else { return event }
         let old = events[idx]
+        if event.recurrence != old.recurrence || (old.seriesID != nil && event.seriesID == nil) { reseries(old: old, new: event); return events.first { $0.id == event.id } ?? event }
         var targets: [Int] = [idx]
         if span != .this, let sid = old.seriesID {
             targets = events.indices.filter { events[$0].seriesID == sid && (span == .all || events[$0].start >= old.start) }
@@ -131,6 +134,31 @@ final class DemoStore: CalendarStore {
         recomputeMax()
         onChange?()
         return event
+    }
+
+    /// A new rule (or none) for the event's whole series: the occurrences are made again from the series' first start, for two
+    /// years. The edited occurrence keeps its id (on the new rule's nearest start), so the editor stays on it.
+    private func reseries(old: CalendarEvent, new event: CalendarEvent) {
+        let siblings = old.seriesID.map { s in events.filter { $0.seriesID == s } } ?? []
+        let first = (siblings.map(\.start).min() ?? old.start).addingTimeInterval(event.start.timeIntervalSince(old.start))
+        events.removeAll { $0.id == old.id || (old.seriesID != nil && $0.seriesID == old.seriesID) }
+        guard let r = event.recurrence else {
+            var e = event; e.seriesID = nil
+            insert(e)
+            recomputeMax(); onChange?(); return
+        }
+        let sid = old.seriesID ?? "series-\(old.id)"
+        let starts = RepeatRules.starts(r, first: first, calendar: math.calendar, limit: math.addDays(first, 730))
+        let mine = starts.min { abs($0.timeIntervalSince(event.start)) < abs($1.timeIntervalSince(event.start)) }
+        let length = event.end.timeIntervalSince(event.start)
+        for (i, s) in starts.enumerated() {
+            var e = event
+            e.id = s == mine ? event.id : "\(sid)#\(i)"
+            e.seriesID = sid
+            e.start = s; e.end = s.addingTimeInterval(length)
+            insert(e)
+        }
+        recomputeMax(); onChange?()
     }
 
     @discardableResult

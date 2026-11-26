@@ -50,6 +50,8 @@ final class GoogleStore: CalendarStore {
     private var waiting: [String: Waiting] = [:]
     /// Our writes that landed while a sync round ran: the round read the server before them, so they are applied again on top.
     private var writesDuringSync: [(cal: String, gid: String, event: GEvent?)] = []
+    /// Calendars whose next round is a full sync (a series got a new rule: its instances come and go).
+    private var fullSync: Set<String> = []
     /// The full-sync window around "now".
     var window: () -> DateInterval = { DateInterval(start: Date().addingTimeInterval(-400 * 86400), end: Date().addingTimeInterval(800 * 86400)) }
 
@@ -121,7 +123,8 @@ final class GoogleStore: CalendarStore {
         isSyncing = true
         writesDuringSync = []
         inFlight += 1
-        let api = api, start = syncs, window = window()
+        let api = api, start = syncs, window = window(), full = fullSync
+        fullSync = []
         Task.detached {
             let result: Result<SyncResult, Error>
             do {
@@ -130,6 +133,7 @@ final class GoogleStore: CalendarStore {
                 var errors: [String: String] = [:]
                 for c in cals where c.accessRole != "freeBusyReader" {
                     var s = start[c.id] ?? GoogleCalendarSync()
+                    if full.contains(c.id) { s.forgetToken() }
                     do {
                         var resets = 0
                         while true {
@@ -175,6 +179,7 @@ final class GoogleStore: CalendarStore {
                 s.lastSync = Date(); s.needsReconnect = false
                 s.lastError = res.errors.isEmpty ? nil : "\(res.errors.count) calendar\(res.errors.count == 1 ? "" : "s") did not sync"
                 s.rebuild(); s.saveCache(); s.onChange?()
+                if !s.fullSync.isEmpty { s.scheduleResync() }
             case .failure(let e):
                 s.writesDuringSync = []
                 if case GoogleCalendarAPI.APIError.needsReconnect = e { s.needsReconnect = true }
@@ -351,9 +356,13 @@ final class GoogleStore: CalendarStore {
         }
         let meet = event.conferencing == GoogleMapping.newMeetLink && old.conferencing != event.conferencing
         guard var body = GoogleMapping.patch(old: old, new: event, zone: zone, meetRequestID: meet ? UUID().uuidString : nil, resources: resources) else { return event }
+        // a new rule (or none) belongs to the series' main event; the next round is a full one, as the instances change
+        let ruleChanged = body.recurrence != nil
+        let span: EditSpan = ruleChanged && old.seriesID != nil ? .all : span
         if span == .this || old.seriesID == nil {
             let patch = body
-            run({ try await api.patch(calendarID: cal, eventID: ref.gid, patch, notify: notify, conference: meet) }, done: store, failed: restore)
+            run({ try await api.patch(calendarID: cal, eventID: ref.gid, patch, notify: notify, conference: meet) },
+                done: { [weak self] g in store(g); if ruleChanged { self?.resyncFully(cal) } }, failed: restore)
         } else if span == .future {
             // this and following: a new series from this occurrence with the change, then the old one ends the second before it
             let master = syncs[cal]?.items[ref.gid]?.recurringEventId ?? ref.gid
@@ -384,7 +393,7 @@ final class GoogleStore: CalendarStore {
                     }
                 }
                 return try await api.patch(calendarID: cal, eventID: master, p, notify: notify, conference: meet)
-            }, done: { _ in }, failed: restore)
+            }, done: { [weak self] _ in if ruleChanged { self?.resyncFully(cal) } }, failed: restore)
             scheduleResync()
         }
         return event
@@ -429,6 +438,12 @@ final class GoogleStore: CalendarStore {
     /// A series change: the next round brings the changed instances.
     private func scheduleResync() {
         after(0.5) { [weak self] in self?.sync() }
+    }
+
+    /// A new rule: the calendar syncs in full (instances of the old rule go, the new ones come).
+    private func resyncFully(_ cal: String) {
+        fullSync.insert(cal)
+        scheduleResync()
     }
 
     /// Work outside the store that the tests and tours wait for (the People API read).

@@ -87,8 +87,18 @@ struct PanelDetailView: View {
         case .repeats:
             EditorRowBox(icon: .repeats) {
                 let text = PanelText.editorRepeats(e, model.fmt)
-                Text(text ?? EditorRow.repeats.placeholder!).foregroundStyle(text == nil ? Theme.fg3 : Theme.fg).lineLimit(1)
+                let label = Text(text ?? EditorRow.repeats.placeholder!).foregroundStyle(text == nil ? Theme.fg3 : Theme.fg).lineLimit(1)
+                if canEdit {
+                    Button { model.openPanelMenu(.repeats) } label: {
+                        label.frame(minHeight: 20).contentShape(Rectangle())
+                            .editorField(focused: false, editable: true, key: "field:repeat", held: model.panelMenus.open == .repeats)
+                    }
+                    .buttonStyle(.plain).fixedSize()
+                    .panelStop(.repeats).panelMenuAnchor(.repeats)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    label.frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
         case .findTime:
             EditorRowBox(icon: .sparkle) {

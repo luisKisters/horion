@@ -355,6 +355,29 @@ extension GoogleStoreTests {
         #expect(rule.until == old.start.addingTimeInterval(-1) && trim.query["sendUpdates"] == "none")
     }
 
+    @Test func aNewRuleGoesToTheEventAndTheNextRoundIsFull() async throws {
+        let (s, http) = await store()
+        var e = try #require(event(s, "wg"))
+        e.recurrence = Recurrence(frequency: .weekly, weekdays: [5])
+        try s.update(e, span: .this, notify: false)
+        await s.idle()
+        let p = try #require(http.sent.last { $0.method == "PATCH" })
+        #expect(p.path.hasSuffix("/events/wg") && p.json?.keys.sorted() == ["recurrence"] && (p.json?["recurrence"] as? [String]) == ["RRULE:FREQ=WEEKLY;BYDAY=TH"])
+        let full = http.sent.filter { $0.path.hasSuffix("/events") && $0.query["syncToken"] == nil }.count
+        s.sync()
+        await s.idle()
+        #expect(http.sent.filter { $0.path.hasSuffix("/events") && $0.query["syncToken"] == nil }.count > full, "the instances come in a full round")
+
+        // "Does not repeat" on an instance: the series' main event loses its rules
+        var inst = try #require(event(s, "g1"))
+        #expect(inst.seriesID != nil)
+        inst.seriesID = nil
+        try s.update(inst, span: .this, notify: false)
+        await s.idle()
+        let clear = try #require(http.sent.last { $0.method == "PATCH" })
+        #expect(clear.path.hasSuffix("/events/g1") && (clear.json?["recurrence"] as? [String]) == [])
+    }
+
     @Test func undoOfADeleteEmailsNobodyAndGoogleSeriesHaveNoUndo() async throws {
         let m = makeModelV4Composite()
         let g = try #require(m.connectDemoGoogle())

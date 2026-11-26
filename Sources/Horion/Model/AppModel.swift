@@ -567,14 +567,16 @@ final class AppModel {
         if e.end < e.start { e.end = e.start }
         if e == before { return }
         if e.title != before.title && !panelState.titleTyped { panelState.titleTyped = true }
-        let textOnly = e.start == before.start && e.end == before.end && e.isAllDay == before.isAllDay && e.calendarID == before.calendarID
+        let ruleChanged = Self.ruleChanged(before, e)
+        let textOnly = e.start == before.start && e.end == before.end && e.isAllDay == before.isAllDay && e.calendarID == before.calendarID && !ruleChanged
         if draft?.id == e.id {
             draft = e
             if textOnly { patchLayout(e) } else { reload() }
             return
         }
         if holdUnsent(before: before, after: e) { return }
-        if !textOnly && e.calendarID == before.calendarID && askSpan(base: before, edited: e, old: nil, notify: nil) { return }
+        // a new rule goes to the whole series (`setSelectedRepeat`): no question
+        if !textOnly && !ruleChanged && e.calendarID == before.calendarID && askSpan(base: before, edited: e, old: nil, notify: nil) { return }
         // Real stores (EventKit -> Google/iCloud) sync every save over the network: coalesce text typing into one write.
         if store.coalescesTextEdits && textOnly {
             pendingEdit = (e, span)
@@ -590,6 +592,14 @@ final class AppModel {
     }
 
     /// Writes a coalesced text edit to the store now (called by the debounce timer, before selection changes, undo, delete and quit).
+    /// The Repeat menu: the rule goes to the whole series, and a single event becomes one. "Does not repeat" keeps this event only.
+    func setSelectedRepeat(_ r: Recurrence?) {
+        closePanelMenu()
+        guard let e = selectedEvent, editorCanEdit(e) else { return }
+        if r == nil ? !e.isRecurring : RepeatRules.same(e.recurrence, r, start: e.start, calendar: math.calendar) { return }
+        updateSelected(span: e.isRecurring ? .all : .this) { $0.recurrence = r; if r == nil { $0.seriesID = nil } }
+    }
+
     func flushPendingEdit() {
         editTimer?.invalidate(); editTimer = nil
         guard let p = pendingEdit else { return }

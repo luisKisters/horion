@@ -36,6 +36,15 @@ extension PanelStop {
     }
 }
 
+/// A row of the Repeat menu. `rule` is the rule it picks (`.some(nil)`: "Does not repeat"); nil for the current rule the menu
+/// has no row for.
+struct RepeatMenuRow {
+    let key: String
+    let text: String
+    let rule: Recurrence??
+    let checked: Bool
+}
+
 /// One row a menu's keyboard can pick: the `PopItem` key it highlights and what picking it does.
 struct PanelMenuChoice {
     let key: String
@@ -93,7 +102,7 @@ extension AppModel {
     }
 
     /// The menus the keyboard drives (the guest and place lists follow their fields' typing).
-    static let keyboardMenus: Set<PanelMenu> = [.calendar, .reminders, .call, .availability, .visibility]
+    static let keyboardMenus: Set<PanelMenu> = [.calendar, .reminders, .call, .availability, .visibility, .repeats]
 
     func panelMenuChoices(_ m: PanelMenu) -> [PanelMenuChoice] {
         guard selectedEvent != nil else { return [] }
@@ -113,6 +122,8 @@ extension AppModel {
             return Availability.allCases.map { a in PanelMenuChoice(key: "menu:avail:\(a.rawValue)") { [weak self] in self?.updateSelected { $0.availability = a } } }
         case .visibility:
             return EventVisibility.allCases.map { v in PanelMenuChoice(key: "menu:vis:\(v.rawValue)") { [weak self] in self?.updateSelected { $0.visibility = v } } }
+        case .repeats:
+            return repeatMenuRows().map { row in PanelMenuChoice(key: row.key) { [weak self] in if let r = row.rule { self?.setSelectedRepeat(r) } else { self?.closePanelMenu() } } }
         default:
             return []
         }
@@ -127,6 +138,7 @@ extension AppModel {
         case .availability: "menu:avail:\(e.availability.rawValue)"
         case .visibility: "menu:vis:\(e.visibility.rawValue)"
         case .reminders: e.reminders.first.map { "menu:rem\($0)" }
+        case .repeats: repeatMenuRows().first { $0.checked }?.key
         default: nil
         }
         return current.flatMap { keys.contains($0) ? $0 : nil } ?? keys.first
@@ -141,12 +153,28 @@ extension AppModel {
         case .join: joinCall(e)
         case .addCall: openPanelMenuByKeyboard(.call)
         case .calendar: openPanelMenuByKeyboard(.calendar)
+        case .repeats: openPanelMenuByKeyboard(.repeats)
         case .busy: openPanelMenuByKeyboard(.availability)
         case .visibility: openPanelMenuByKeyboard(.visibility)
         case .reminder, .addReminder: openPanelMenuByKeyboard(.reminders)
         case .going: break
         default: if let f = s.focus { focusEditorField(f) }
         }
+    }
+
+    /// The Repeat menu's rows: a rule the menu has no row for comes first, checked (`rule` nil: picking it changes nothing).
+    func repeatMenuRows() -> [RepeatMenuRow] {
+        guard let e = selectedEvent else { return [] }
+        let cal = math.calendar
+        let choices = RepeatRules.choices(start: e.start, calendar: cal)
+        let known = !e.isRecurring || choices.contains { $0 != nil && RepeatRules.same($0, e.recurrence, start: e.start, calendar: cal) }
+        var rows: [RepeatMenuRow] = []
+        if !known { rows.append(RepeatMenuRow(key: "menu:rep:cur", text: PanelText.editorRepeats(e, fmt) ?? "Repeats", rule: nil, checked: true)) }
+        for (i, r) in choices.enumerated() {
+            let on = known && (r == nil ? !e.isRecurring : RepeatRules.same(r, e.recurrence, start: e.start, calendar: cal))
+            rows.append(RepeatMenuRow(key: "menu:rep:\(i)", text: PanelText.repeatChoice(r, e, fmt), rule: .some(r), checked: on))
+        }
+        return rows
     }
 
     func openPanelMenuByKeyboard(_ m: PanelMenu) {

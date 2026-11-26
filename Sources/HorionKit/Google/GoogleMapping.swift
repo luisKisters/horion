@@ -140,6 +140,9 @@ public enum GoogleMapping {
         set(old.colorHex, new.colorHex) { g.colorId = new.colorHex.flatMap(GoogleColors.colorId(hex:)) ?? "" }
         set(old.availability, new.availability) { g.transparency = new.availability == .free ? "transparent" : "opaque" }
         set(old.visibility, new.visibility) { g.visibility = switch new.visibility { case .standard: "default"; case .public: "public"; case .private: "private" } }
+        // a new rule, or none: an instance knows only that it repeats (no rule), so "Does not repeat" also drops the series id
+        if let r = new.recurrence, r != old.recurrence { g.recurrence = [RRule.format(r, zone: zone)]; any = true }
+        else if new.recurrence == nil && new.seriesID == nil && old.isRecurring { g.recurrence = []; any = true }
         // only a new Meet goes in `conferenceData` (with `conferenceDataVersion=1`); removing Google's own Meet is not sent
         if let id = meetRequestID {
             g.conferenceData = GConferenceData(createRequest: GCreateRequest(requestId: id, conferenceSolutionKey: GSolutionKey(type: "hangoutsMeet"))); any = true
