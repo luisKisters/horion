@@ -8,6 +8,8 @@ import HorionKit
 final class KeyRouter {
     static let shared = KeyRouter()
     private var monitor: Any?
+    private var flagsMonitor: Any?
+    private var mouseMonitor: Any?
     private weak var model: AppModel?
 
     func install(model: AppModel) {
@@ -16,6 +18,24 @@ final class KeyRouter {
         monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self, let model = self.model else { return event }
             return MainActor.assumeIsolated { self.handle(event, model: model) ? nil : event }
+        }
+        // Option alone, held outside a text field: the panel shows its jump letters.
+        flagsMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+            guard let self, let model = self.model else { return event }
+            MainActor.assumeIsolated {
+                let mods = event.modifierFlags.intersection([.command, .option, .control, .shift])
+                let show = mods == .option && model.panelTakesKeys && !self.textFocused(in: event.window ?? NSApp.keyWindow)
+                if model.panelMenus.jumpLetters != show { model.panelMenus.jumpLetters = show }
+            }
+            return event
+        }
+        // A click takes the keyboard's ring off a switch, button or menu of the panel (a field keeps its own focus).
+        mouseMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak self] event in
+            guard let model = self?.model else { return event }
+            MainActor.assumeIsolated {
+                if let s = model.panelMenus.stop, !s.isText { model.panelMenus.stop = nil }
+            }
+            return event
         }
     }
 
@@ -71,6 +91,9 @@ final class KeyRouter {
                 if !input.shift && ch == "d" { model.moveSpanChoice(id, by: 1, wrap: false); return true }
             }
         }
+
+        // The event panel: Tab through its stops, keys on a switch, button or menu, Option + letter jumps (`handlePanelKey`).
+        if model.handlePanelKey(input, typing: typing) { return true }
 
         guard let action = ShortcutResolver.resolve(input, textFocused: typing) else {
             // A sheet keeps every other key from the grid underneath. Outside a field a bare character has no other

@@ -51,6 +51,8 @@ struct PanelMenuLayer: View {
         case .maps: 272
         case .places: 296
         case .reminders: 230
+        case .availability: 160
+        case .visibility: 210
         case .call: 280
         case .send, .inviteSend: 260
         case .deleteSend: 300
@@ -72,11 +74,11 @@ struct PanelMenuLayer: View {
         case .deleteSend:
             x = r.minX - 8
             y = r.maxY + 4
-        case .maps, .places, .reminders, .call:
+        case .maps, .places, .reminders, .call, .availability, .visibility:
             // `r` is the field's text frame. The menu's first row text sits 16 in (6 padding, 10 row padding), 40 after a check column,
             // 42 after a 16 pt logo (the maps and call menus line up the item text, not the section heading).
             let menuText: CGFloat = switch m {
-            case .reminders: 40
+            case .reminders, .availability, .visibility: 40
             case .places: 39
             default: 42
             }
@@ -189,6 +191,8 @@ struct PanelMenuContent: View {
             switch menu {
             case .calendar: PanelCalendarMenu()
             case .reminders: reminders
+            case .availability: availability
+            case .visibility: visibility
             case .maps: maps
             case .places: places
             case .call: call
@@ -215,9 +219,29 @@ struct PanelMenuContent: View {
     private var reminders: some View {
         let on = model.selectedEvent?.reminders ?? []
         return ForEach(Reminders.choices, id: \.self) { r in
-            PopItem(check: on.contains(r), key: "menu:rem\(r)", action: { model.toggleReminder(r) }) {
+            PopItem(check: on.contains(r), key: "menu:rem\(r)", highlighted: model.panelMenus.highlight == "menu:rem\(r)", action: { model.toggleReminder(r) }) {
                 Text(Reminders.label(r)).font(.textTab)
             }
+        }
+    }
+
+    private var availability: some View {
+        let cur = model.selectedEvent?.availability
+        return ForEach(Availability.allCases, id: \.self) { a in
+            let key = "menu:avail:\(a.rawValue)"
+            PopItem(check: cur == a, key: key, highlighted: model.panelMenus.highlight == key, action: {
+                model.closePanelMenu(); model.updateSelected { $0.availability = a }
+            }) { Text(PanelDetailView.availability(a)) }
+        }
+    }
+
+    private var visibility: some View {
+        let cur = model.selectedEvent?.visibility
+        return ForEach(EventVisibility.allCases, id: \.self) { v in
+            let key = "menu:vis:\(v.rawValue)"
+            PopItem(check: cur == v, key: key, highlighted: model.panelMenus.highlight == key, action: {
+                model.closePanelMenu(); model.updateSelected { $0.visibility = v }
+            }) { Text(PanelDetailView.visibility(v)) }
         }
     }
 
@@ -251,7 +275,7 @@ struct PanelMenuContent: View {
 
     @ViewBuilder private var call: some View {
         if model.canInventVideoLink {
-            PopItem(key: "menu:meet", alignTop: true, action: { model.addMeet() }) {
+            PopItem(key: "menu:meet", alignTop: true, highlighted: model.panelMenus.highlight == "menu:meet", action: { model.addMeet() }) {
                 HStack(alignment: .top, spacing: 10) {
                     CallLogo(kind: .meet, size: 16).padding(.top, 2)
                     PopTwoLine(title: Text("Google Meet"), sub: model.isDraftOpen ? "Link made when you save" : "A new meeting link")
@@ -259,7 +283,7 @@ struct PanelMenuContent: View {
             }
             PopSep()
         }
-        PopItem(key: "menu:paste", action: { model.startPastingLink() }) {
+        PopItem(key: "menu:paste", highlighted: model.panelMenus.highlight == "menu:paste", action: { model.startPastingLink() }) {
             HStack(spacing: 10) { PanelIcon(name: .link, size: 16); Text("Paste a link\u{2026}") }
         }
     }
