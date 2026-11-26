@@ -105,7 +105,7 @@ struct JoinKbd: View {
     var body: some View {
         Text(text).font(.smallTabMedium).foregroundStyle(Theme.onAct)
             .padding(.horizontal, 4).frame(minWidth: 18, minHeight: 18, maxHeight: 18)
-            .background(RoundedRectangle(cornerRadius: 4).fill(Theme.onAct.opacity(0.16)))
+            .background(RoundedRectangle(cornerRadius: Radius.mark).fill(Theme.onAct.opacity(0.16)))
             .fixedSize()
     }
 }
