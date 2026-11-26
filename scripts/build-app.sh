@@ -5,7 +5,7 @@ cd "$(dirname "$0")/.."
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 
 # Google Calendar API (v4 Phase 8b): needs an iOS-type OAuth client ID, never committed. HORION_GOOGLE_CLIENT_ID comes from the
-# environment (CI) or from .env in the main checkout (gitignored, and shared by its worktrees, so install.sh main finds it too).
+# environment or from .env in the main checkout (gitignored, and shared by its worktrees, so install.sh main finds it too).
 if [ -z "${HORION_GOOGLE_CLIENT_ID:-}" ]; then
   MAIN_CHECKOUT="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
   MAIN_CHECKOUT="${MAIN_CHECKOUT%/.git}"

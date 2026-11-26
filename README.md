@@ -102,7 +102,7 @@ The Google client ID lives in a gitignored `.env` in the main checkout, which it
 echo 'HORION_GOOGLE_CLIENT_ID=<id>.apps.googleusercontent.com' > .env
 ```
 
-`scripts/build-app.sh` reads it when `HORION_GOOGLE_CLIENT_ID` is not already in the environment; without either it prints a note and builds without Google sign-in. CI sets it from the repository variable `HORION_GOOGLE_CLIENT_ID`.
+`scripts/build-app.sh` reads it when `HORION_GOOGLE_CLIENT_ID` is not already in the environment; without either it prints a note and builds without Google sign-in.
 
 ## Verify
 
@@ -110,8 +110,6 @@ echo 'HORION_GOOGLE_CLIENT_ID=<id>.apps.googleusercontent.com' > .env
 scripts/verify.sh          # gates, build, tests, app bundle, snapshots, walkthrough.mov + every v4 tour, perf, launch time, DMG build + mount check
 scripts/verify.sh --fast   # skips walkthrough video, perf and DMG
 ```
-
-CI runs `scripts/verify.sh --fast` and `scripts/make-dmg.sh` on every pull request and push to main (GitHub Actions, `macos-26`), and keeps the DMG as a build artifact for 14 days.
 
 - **Unit tests**: `swift test` (HorionKit logic and app model).
 - **Snapshots**: `scripts/snapshots.sh` renders every state in `design/states.json` offscreen into `artifacts/snapshots/`; `swift scripts/render-mockup.swift` renders the `mockup` scene of each state from `design/mockup-v4/index.html` (`mockupDir`) into `design/mockup-v4/shots/` (committed), and `--eval "<js>"` prints a value from the mockup page (how `Tests/HorionKitTests/Fixtures/layout-v4.json`, the golden output of the mockup's `layoutDay()`, was made); `scripts/compare-all.sh` writes mockup | snapshot | diff images to `artifacts/compare/` and a mean-difference score per state to `artifacts/compare/report.json` (a report, not a gate). Every state renders the demo data, the mockup's week, so both sides show the same data. `v4-b-layout` is not app UI: a debug picture of OverlapV5 on the fixture's Wednesday evening (boxes at the v5 placements, the "+N" group and its stack rows).
