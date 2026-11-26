@@ -132,10 +132,12 @@ struct PanelZoneList: View {
                             PopItem(check: z.id == current, key: "tz:\(z.id)", highlighted: hl == "tz:\(z.id)", action: {
                                 model.closePanelMenu(); model.setSelectedTimeZone(z.id)
                             }) {
+                                // the panel-wide list (v21): the city first, the zone's name after it in fg3, cut at the end
                                 HStack(spacing: 8) {
                                     Text(z.offset).font(.textTab).foregroundStyle(Theme.fg3).lineLimit(1).frame(width: 72, alignment: .leading)
-                                    (Text(z.name) + Text("  \u{2013}  ").foregroundColor(Theme.fg3) + Text(z.city)).lineLimit(1).truncationMode(.tail)
+                                    (Text(z.city) + Text("  " + z.name).foregroundColor(Theme.fg3)).lineLimit(1).truncationMode(.tail)
                                 }
+                                .help("\(z.offset) \(z.name) \u{2013} \(z.city)")
                             }
                             .id(z.id)
                         }

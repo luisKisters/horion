@@ -60,7 +60,7 @@ struct PanelMenuLayer: View {
         case .startTime: 112
         case .endTime: 184
         case .datePicker: 236
-        case .timeZone: 420
+        case .timeZone: 296
         case .repeats: 264
         }
     }
