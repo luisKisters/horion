@@ -366,8 +366,18 @@ struct EditRecurringDialog: View {
         let edit = model.recurringEdit
         let following = model.spanChoices(eventID).contains(.future)
         SheetFrame(title: "Edit recurring event", width: following ? 480 : 400, closable: false, bottom: 20) {
-            Text("This event repeats. Which events should change?").font(.text).foregroundStyle(Theme.fg2).padding(.top, 12)
-            if let edit, Self.when(model, edit, edit.base) != Self.when(model, edit, edit.edited) {
+            Text(edit?.rule == true ? "This event repeats. Use the new rule for which events?" : "This event repeats. Which events should change?")
+                .font(.text).foregroundStyle(Theme.fg2).padding(.top, 12)
+            if let edit, edit.rule {
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    Text("Repeat").font(.text).foregroundStyle(Theme.fg3)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(PanelText.editorRepeats(edit.edited, model.fmt) ?? "Does not repeat").font(.text).foregroundStyle(Theme.fg)
+                        Text(PanelText.editorRepeats(edit.base, model.fmt) ?? "Does not repeat").font(.text).strikethrough().foregroundStyle(Theme.fg3)
+                    }
+                }
+                .padding(.top, 12)
+            } else if let edit, Self.when(model, edit, edit.base) != Self.when(model, edit, edit.edited) {
                 HStack(alignment: .firstTextBaseline, spacing: 12) {
                     Text("Time").font(.text).foregroundStyle(Theme.fg3)
                     VStack(alignment: .leading, spacing: 2) {

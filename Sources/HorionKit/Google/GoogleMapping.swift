@@ -157,7 +157,7 @@ public enum GoogleMapping {
     public static func following(_ m: GEvent, change: GEvent, start: GDateTime, end: GDateTime) -> GEvent {
         var g = GEvent(summary: change.summary ?? m.summary, description: change.description ?? m.description, location: change.location ?? m.location,
                        start: start, end: end, attendees: change.attendees ?? m.attendees, reminders: change.reminders ?? m.reminders,
-                       colorId: change.colorId ?? m.colorId, recurrence: m.recurrence, transparency: change.transparency ?? m.transparency,
+                       colorId: change.colorId ?? m.colorId, recurrence: change.recurrence ?? m.recurrence, transparency: change.transparency ?? m.transparency,
                        visibility: change.visibility ?? m.visibility, guestsCanModify: m.guestsCanModify)
         g.conferenceData = change.conferenceData ?? m.conferenceData
         return g

@@ -77,6 +77,8 @@ final class AppModel {
     var spanChoice: SpanChoice = .this
     /// A change to a repeating event that waits for the recurring-edit dialog: drawn on the grid until it is chosen or cancelled.
     var recurringEdit: RecurringEdit?
+    /// The answer of the rule dialog while the Repeat menu stays open (nil: ask).
+    var repeatSpan: EditSpan?
     var overlay: Overlay? {
         didSet {
             // The palette fades out over 260 ms; its text field must not keep the keyboard meanwhile.

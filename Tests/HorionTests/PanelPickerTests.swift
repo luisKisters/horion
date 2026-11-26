@@ -233,15 +233,57 @@ struct PanelPickerTests {
         #expect(m.selectedEvent?.recurrence == nil && m.selectedEvent?.seriesID == nil && m.selectedEventID == e.id)
     }
 
+    /// A weekly series made from a one-off event, open on its second occurrence (one before it, many after).
+    func openSeries(_ m: AppModel) throws -> CalendarEvent {
+        let e = open(m)
+        m.setSelectedRecurrence(RepeatRules.rule(.weekly, start: e.start, math: m.math))
+        let first = try #require(m.selectedEvent)
+        let wg = try #require(m.store.series(of: first).sorted { $0.start < $1.start }.dropFirst().first)
+        m.select(eventID: wg.id)
+        try #require(wg.seriesID != nil && m.deleteOffersFollowing(wg), "the demo series has occurrences before and after")
+        return wg
+    }
+
     @Test func repeatRuleChangeOfASeries() throws {
         let m = makeModelV4()
-        let wg = try #require(SnapshotV4.event(m, "wg"))
-        m.select(eventID: wg.id)
-        let before = m.store.series(of: wg).count
-        #expect(before >= 1 && wg.seriesID != nil)
+        let wg = try openSeries(m)
+        m.openRepeatMenu()
         m.setSelectedRecurrence(RepeatRules.rule(.daily, start: wg.start, math: m.math))
-        #expect(m.overlay == nil, "a rule change does not ask which occurrences: it is the series'")
-        #expect(m.selectedEvent?.recurrence?.frequency == .daily && m.store.series(of: m.selectedEvent!).count > before)
+        // v21 `scope: ask`: the new rule waits for All events or This and following
+        #expect(m.overlay == .editRecurring(wg.id) && m.recurringEdit?.rule == true && m.panelMenus.open == nil)
+        #expect(m.spanChoices(wg.id) == [.cancel, .all, .future] && m.spanChoice == .all)
+        #expect(m.store.series(of: wg).allSatisfy { $0.recurrence == wg.recurrence }, "nothing is saved before the choice")
+        m.chooseEdit(wg.id, .cancel)
+        #expect(m.overlay == nil && m.event(id: wg.id)?.recurrence == wg.recurrence)
+    }
+
+    @Test func ruleDialogAllEvents() throws {
+        let m = makeModelV4()
+        let wg = try openSeries(m)
+        let first = try #require(m.store.series(of: wg).map(\.start).min())
+        m.setSelectedRecurrence(RepeatRules.rule(.daily, start: wg.start, math: m.math))
+        m.chooseEdit(wg.id, .all)
+        let series = m.store.series(of: m.selectedEvent!)
+        #expect(m.overlay == nil && m.selectedEvent?.recurrence?.frequency == .daily)
+        #expect(series.allSatisfy { $0.recurrence?.frequency == .daily } && series.map(\.start).min() == first, "the whole series, from its first day")
+        #expect(m.repeatSpan == .all, "later steps in the open menu do not ask again")
+    }
+
+    @Test func ruleDialogThisAndFollowing() throws {
+        let m = makeModelV4()
+        let wg = try openSeries(m)
+        let old = m.store.series(of: wg)
+        m.setSelectedRecurrence(RepeatRules.rule(.daily, start: wg.start, math: m.math))
+        m.chooseEdit(wg.id, .future)
+        let new = try #require(m.selectedEvent)
+        #expect(new.recurrence?.frequency == .daily && new.seriesID != wg.seriesID, "a new series starts here")
+        let head = m.store.series(of: new)
+        #expect(head.allSatisfy { $0.start >= m.math.startOfDay(wg.start) } && head.count > old.filter { $0.start >= wg.start }.count)
+        // the old series keeps the days before, with its rule, ending the day before
+        let before = old.filter { $0.start < wg.start }.compactMap { m.event(id: $0.id) }
+        #expect(!before.isEmpty && before.allSatisfy { $0.recurrence?.frequency == wg.recurrence?.frequency && $0.seriesID == wg.seriesID })
+        #expect(before.allSatisfy { $0.recurrence?.until == m.math.addDays(m.math.startOfDay(wg.start), -1) })
+        #expect(m.repeatSpan == .all)
     }
 
     @Test func fieldPickersOpenLeftOfThePanel() {

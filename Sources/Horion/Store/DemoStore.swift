@@ -136,6 +136,16 @@ final class DemoStore: CalendarStore {
         if failWrites { throw WriteFailed() }
         guard let idx = events.firstIndex(where: { $0.id == event.id }) else { return event }
         let old = events[idx]
+        if old.recurrence != event.recurrence, span == .future, let sid = old.seriesID {
+            // this and following: the old series keeps what is before this occurrence, a new series starts with it
+            events.removeAll { $0.seriesID == sid && $0.start >= old.start }
+            for i in events.indices where events[i].seriesID == sid { events[i].recurrence?.until = math.addDays(math.startOfDay(old.start), -1) }
+            var head = event
+            head.seriesID = nil
+            reseries(old: head, new: head, insertingOld: false)
+            onChange?()
+            return event
+        }
         if old.recurrence != event.recurrence {
             reseries(old: old, new: event)
             onChange?()

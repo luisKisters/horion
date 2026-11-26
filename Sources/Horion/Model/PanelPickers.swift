@@ -219,6 +219,7 @@ extension AppModel {
 
     func openRepeatMenu(byKeyboard: Bool = false) {
         if panelMenus.open == .repeats && !byKeyboard { closePanelMenu(); return }
+        repeatSpan = nil
         panelMenus.stop = .repeats
         openPanelMenuByKeyboard(.repeats)
     }
@@ -233,19 +234,31 @@ extension AppModel {
         case "rep:until": r = RepeatRules.stepUntil(e.recurrence, by: d, start: e.start, math: math)
         default: return
         }
-        setSelectedRecurrence(r)
-        panelMenus.highlight = key
+        setSelectedRecurrence(r, reopen: key)
+        if overlay == nil { panelMenus.highlight = key }
     }
 
-    /// Writes a new rule. A repeating event changes as a whole series (EventKit saves its main event for the future events, Google
-    /// patches the main event); the event being created only keeps it. Guests hear about it.
-    func setSelectedRecurrence(_ r: Recurrence?) {
+    /// Writes a new rule. The event being created only keeps it. A repeating event with occurrences before this one asks first
+    /// (v21 `scope: ask`): All events, or This and following (the series ends the day before and a new one starts here). The
+    /// answer holds while the Repeat menu stays open, so the custom rows' ‹ › do not ask at every step. Guests hear about it.
+    func setSelectedRecurrence(_ r: Recurrence?, reopen: String? = nil) {
         guard var e = selectedEvent, editorCanEdit(e), e.recurrence != r else { return }
         let before = e
         e.recurrence = r
         if draft?.id == e.id { draft = e; reload(); return }
         flushPendingEdit()
-        let span: EditSpan = before.seriesID != nil ? .all : .this
+        if before.seriesID != nil, repeatSpan == nil, deleteOffersFollowing(before) {
+            closePanelMenu()
+            recurringEdit = RecurringEdit(base: before, edited: e, old: nil, notify: nil, rule: true, reopen: reopen)
+            spanChoice = .all
+            overlay = .editRecurring(e.id)
+            return
+        }
+        saveRecurrence(e, before: before, span: before.seriesID != nil ? (repeatSpan ?? .all) : .this)
+    }
+
+    func saveRecurrence(_ e: CalendarEvent, before: CalendarEvent, span: EditSpan) {
+        let r = e.recurrence
         let guests = e.attendees.contains { !$0.isMe }
         do {
             let saved = try store.update(e, span: span, notify: guests && store.canSendUpdates(calendarID: e.calendarID))
@@ -256,6 +269,7 @@ extension AppModel {
                 let same = store.events(in: day).first { $0.title == e.title && $0.calendarID == e.calendarID && ($0.seriesID != nil || r == nil) }
                 selectedEventID = same?.id ?? saved.id
             }
+            if span == .future { repeatSpan = .all }   // the new series starts here: later steps change all of it
         } catch { showToast("Could not save the repeat rule") }
     }
 

@@ -241,6 +241,7 @@ extension AppModel {
     /// The recurring-delete and recurring-edit dialogs' buttons, left to right ("This and following" only where it is offered).
     /// An edit asks about the occurrence where it was, not where the held change put it.
     func spanChoices(_ id: String) -> [SpanChoice] {
+        if let r = recurringEdit, r.rule, r.edited.id == id { return [.cancel, .all, .future] }
         let e = recurringEdit.flatMap { $0.base.id == id ? $0.base : nil } ?? event(id: id)
         let following = e.map(deleteOffersFollowing) ?? false
         return following ? [.cancel, .all, .future, .this] : [.cancel, .all, .this]
@@ -299,6 +300,12 @@ extension AppModel {
         case .all: span = .all
         case .future: span = .future
         case .this: span = .this
+        }
+        if r.rule {
+            repeatSpan = span
+            saveRecurrence(r.edited, before: r.base, span: span)
+            if let key = r.reopen { openPanelMenuByKeyboard(.repeats); panelMenus.highlight = key }
+            return
         }
         if let notify = r.notify {
             do { try store.update(r.edited, span: span, notify: notify) } catch { showToast("Could not save event. Your changes are kept."); storeChanged(); return }
@@ -555,6 +562,10 @@ struct RecurringEdit: Equatable {
     var old: CalendarEvent?
     /// The held change of an event with guests: Send update (true) or Save without sending (false). Nil: no guests to tell.
     var notify: Bool?
+    /// A new repeat rule (v21 `scope: ask`): the dialog offers All events and This and following only.
+    var rule = false
+    /// The Repeat menu's row to reopen on after the choice (a custom row steps on).
+    var reopen: String?
 }
 
 /// A button of the recurring-delete and recurring-edit dialogs.
