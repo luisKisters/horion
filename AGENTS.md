@@ -6,10 +6,10 @@ Horion is a macOS calendar app in Swift. Luis builds it with agents and does not
 
 1. Say in your first line which path you take: **Fix**, **Visual change** or **Project**. Luis can change the path with one word.
 2. One thread, one ticket, one PR.
-3. Every thread has a ticket. A ticket is a GitHub issue.
-    - Fix: if there is no ticket, create one yourself.
+3. Every thread has a ticket. Tickets are in Plane, not in GitHub issues. `scripts/ticket.py` does it all: `list`, `show`, `new`, `start`.
+    - Fix: if there is no ticket, create one yourself with `--path fix`.
     - Visual change or Project: propose a title and two or three lines of content. Create the ticket when Luis says yes.
-    - Put `Closes #<number>` in the PR.
+    - Run `scripts/ticket.py start HORION-<n>` when you begin. Put `Ticket: HORION-<n>` in the PR.
 
 ## The three paths
 
@@ -25,10 +25,10 @@ Horion is a macOS calendar app in Swift. Luis builds it with agents and does not
 **Project.** A big feature. It needs a plan before anyone builds.
 1. Say what it is, which milestone it belongs to and which area of the app it changes.
 2. Grill Luis with the grilling skill until the plan is clear: what it does, the cases at the edges, and the structure (which part owns what, what talks to what). Ask only about things that are expensive to change later. Swift patterns and types are your decision.
-3. Write the result into one parent issue.
+3. Write the result into the project's ticket in Plane: `scripts/ticket.py new "<name>" --path project`, then `scripts/ticket.py body`.
 4. Make mockups as in "Visual change", when the project has a visual part.
-5. Split the work into tickets under the parent issue. Start one new T3 Code thread per ticket, with the ticket as its brief. Luis works in those threads.
-6. This thread stays the project thread. Keep the parent issue up to date as the tickets merge.
+5. Split the work into tickets under the project's ticket (`--parent HORION-<n>`). Start one new T3 Code thread per ticket, with the ticket as its brief. Luis works in those threads.
+6. This thread stays the project thread. Keep the project's ticket up to date as the tickets merge.
 
 Read the code before you ask. Never ask what you can look up.
 
@@ -48,14 +48,18 @@ Read the code before you ask. Never ask what you can look up.
     - A visual bug: no new test.
     - A feature: test its rules, not its views.
 5. If your ticket fixes a bug that an earlier check did not catch, add one line to the findings file that says why the check missed it.
-6. Run one build or one test run at a time. This Mac has 8 GB of memory.
+6. The tours cannot press a real global shortcut, open the real menu bar item or move the real mouse. If your ticket changes one of these, say in the PR that it was not tested with real input.
+7. Run one build or one test run at a time. This Mac has 8 GB of memory.
 
 ## The PR
 
 Luis reads only the PR. It must make sense without the thread.
 
 - Use the PR template. Use plain words and short sentences. Each block has at most 5 lines.
-- Visual change: add a screenshot. When motion matters, add a video: record it with `Horion --walkthrough <tour> --record <file>` and post it with `gh pr comment --attach <file>`.
+- Something Luis can see changed: put a screenshot before and after into the PR text. Upload the pictures with `gh pr comment --attach <file>` and use their links in the PR text.
+- When motion matters (a drag, an animation, a row of key presses): add a video. `scripts/pr-video.sh <tour>` records the tour and posts the video on the PR. If no tour shows your change, add one.
+- Do not commit screenshots or videos to the repo.
+- Say under "How it was checked" what you did not test.
 - Luis asks for changes in a new thread. After the change, rewrite the PR body so that it describes the PR as it is now.
 
 ## Code

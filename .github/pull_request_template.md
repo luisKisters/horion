@@ -4,10 +4,10 @@
 <!-- What Luis will see or notice. -->
 
 ## Before and after
-<!-- A screenshot for a visual change. A video when motion matters. -->
+<!-- A screenshot for a change Luis can see. A video when motion matters: scripts/pr-video.sh <tour>. -->
 
 ## How it was checked
-<!-- The result of verify.sh, the tours you ran, and what the reviewing agent found. -->
+<!-- The result of verify.sh, the tours you ran, what the reviewing agent found, and what was not tested. -->
 
 ## Try it yourself
 <!-- Only for a ticket of a project: 3 to 5 things to try by hand. -->
@@ -17,4 +17,4 @@
 
 - [ ] If this changes a locked design value, `design/LOCKED.md` is updated.
 
-Closes #
+Ticket: HORION-
