@@ -20,12 +20,10 @@ concurrency:
 jobs:
   verify:
     name: Verify (fast)
-    # The newest macOS image GitHub offers (macOS 27, label xcode-27).
-    # Xcode 27.2 is the newest Xcode installed on that image.
+    # The newest macOS image GitHub offers. It uses the Xcode that is set as
+    # the default on that image, so a new Xcode needs no change here.
     runs-on: xcode-27
     timeout-minutes: 45
-    env:
-      DEVELOPER_DIR: /Applications/Xcode_27.2.app/Contents/Developer
     steps:
       - name: Check out the code
         uses: actions/checkout@v7
