@@ -5,28 +5,30 @@ Horion is a macOS calendar app in Swift. Luis builds it with agents and does not
 ## At the start of a thread
 
 1. Say in your first line which path you take: **Fix**, **Visual change** or **Project**. Luis can change the path with one word.
-2. Work in your own worktree, on a branch from `origin/main`. One thread, one ticket, one PR.
+2. One thread, one ticket, one PR.
 3. Every thread has a ticket. A ticket is a GitHub issue.
     - Fix: if there is no ticket, create one yourself.
-    - Other paths: propose a title and two or three lines of content. Create the ticket when Luis says yes.
+    - Visual change or Project: propose a title and two or three lines of content. Create the ticket when Luis says yes.
     - Put `Closes #<number>` in the PR.
 
 ## The three paths
 
-**Fix.** A bug, or a small UI change with one clear answer. Build it, check it, open the PR with a picture before and after. No mockup and no questions.
+**Fix.** A bug, or a small UI change with one clear answer. Build it, check it, open the PR with a screenshot before and after, or a video when motion matters. No mockup and no questions.
 
 **Visual change.** You can see it, and there is more than one good answer.
 - Use the designr skill.
-- Start from how the app looks today: build main and take fresh screenshots. Never start from an old mockup.
-- A PR that changes a locked value also updates `design/LOCKED.md`.
-- First show 2 or 3 different approaches and how other calendars do it. Then show options per element.
-- When Luis sends the picks, lock them and build. Do not ask again.
+- Start from `design/current/`: the mockup of the app as it is now. First compare it with fresh screenshots of the app. Fix where they differ. Then make the options on top of it.
+- First show 2 or 3 different approaches. Choose them by what is easiest to use and what fits the rest of the app best. Say for each one why. Then show options per element.
+- When Luis sends picks, lock them. If he says to keep going, make the next round. Otherwise build. Do not ask again.
+- The PR that builds the change also updates `design/current/` and `design/LOCKED.md`, so the next round starts from the app as it is then.
 
-**Project.** A big feature that needs design.
+**Project.** A big feature. It needs a plan before anyone builds.
 1. Say what it is, which milestone it belongs to and which area of the app it changes.
-2. Ask about the structure: which parts exist, which part owns what, and what talks to what. Ask only about things that are expensive to change later. Mix open questions and proposals. Swift patterns and types are your decision.
-3. Make mockups as in "Visual change".
-4. Split the work into tickets under one parent issue. This thread stays the project thread. It starts one thread per ticket and keeps the parent issue up to date.
+2. Grill Luis with the grilling skill until the plan is clear: what it does, the cases at the edges, and the structure (which part owns what, what talks to what). Ask only about things that are expensive to change later. Swift patterns and types are your decision.
+3. Write the result into one parent issue.
+4. Make mockups as in "Visual change", when the project has a visual part.
+5. Split the work into tickets under the parent issue. Start one new T3 Code thread per ticket, with the ticket as its brief. Luis works in those threads.
+6. This thread stays the project thread. Keep the parent issue up to date as the tickets merge.
 
 Read the code before you ask. Never ask what you can look up.
 
