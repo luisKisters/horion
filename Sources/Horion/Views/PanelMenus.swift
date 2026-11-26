@@ -71,7 +71,8 @@ struct PanelMenuLayer: View {
         let w = width(m), h = size.height
         var x: CGFloat, y: CGFloat
         switch m {
-        case .calendar, .guests, .timeZone:
+        case .calendar, .guests, .timeZone, .startTime, .endTime, .datePicker, .repeats:
+            // v21: the field pickers open left of the panel too, over the grid, level with their field
             x = win.width - PanelMetrics.width - w - 8
             y = r.minY - 6
         case .send, .inviteSend:
@@ -80,16 +81,11 @@ struct PanelMenuLayer: View {
         case .deleteSend:
             x = r.minX - 8
             y = r.maxY + 4
-        case .startTime, .endTime, .datePicker:
-            // the row's time under the field's (centred) time
-            x = r.minX - 6
-            y = r.maxY + 4
-            if y + h > win.height - 8 { y = r.minY - h - 4 }
-        case .maps, .places, .reminders, .call, .availability, .visibility, .repeats:
+        case .maps, .places, .reminders, .call, .availability, .visibility:
             // `r` is the field's text frame. The menu's first row text sits 16 in (6 padding, 10 row padding), 40 after a check column,
             // 42 after a 16 pt logo (the maps and call menus line up the item text, not the section heading).
             let menuText: CGFloat = switch m {
-            case .reminders, .availability, .visibility, .repeats: 40
+            case .reminders, .availability, .visibility: 40
             case .places: 39
             default: 42
             }

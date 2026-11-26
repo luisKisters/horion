@@ -242,6 +242,22 @@ struct PanelPickerTests {
         #expect(m.selectedEvent?.recurrence?.frequency == .daily && m.store.series(of: m.selectedEvent!).count > before)
     }
 
+    @Test func fieldPickersOpenLeftOfThePanel() {
+        let win = CGSize(width: 1440, height: 900)
+        let field = CGRect(x: 1200, y: 300, width: 80, height: 20)
+        for m in [PanelMenu.startTime, .endTime, .datePicker, .timeZone, .repeats] {
+            let w = PanelMenuLayer.width(m)
+            let o = PanelMenuLayer.origin(m, anchor: field, size: CGSize(width: w, height: 200), in: win)
+            #expect(o.width == win.width - PanelMetrics.width - w - 8 && o.height == field.minY - 6, "\(m): over the grid, level with the field")
+            // a field low in the window: the menu moves up, 8 pt inside
+            let low = PanelMenuLayer.origin(m, anchor: CGRect(x: 1200, y: 860, width: 80, height: 20), size: CGSize(width: w, height: 300), in: win)
+            #expect(low.height == win.height - 300 - 8)
+        }
+        // a narrow window: the menu stays 8 pt inside on the left
+        let narrow = PanelMenuLayer.origin(.timeZone, anchor: field, size: CGSize(width: 296, height: 200), in: CGSize(width: PanelMetrics.width + 100, height: 600))
+        #expect(narrow.width == 8)
+    }
+
     @Test func storesWriteTheRule() {
         let zone = TimeZone(identifier: "Europe/Berlin")!
         let old = CalendarEvent(calendarID: "c", title: "x", start: Date(timeIntervalSince1970: 1_800_000_000), end: Date(timeIntervalSince1970: 1_800_003_600))
