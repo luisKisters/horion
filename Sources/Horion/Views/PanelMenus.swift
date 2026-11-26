@@ -57,8 +57,8 @@ struct PanelMenuLayer: View {
         case .call: 280
         case .send, .inviteSend: 260
         case .deleteSend: 300
-        case .startTime: 96
-        case .endTime: 150
+        case .startTime: 80
+        case .endTime: 136
         case .datePicker: 236
         case .timeZone: 296
         case .repeats: 264

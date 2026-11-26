@@ -303,7 +303,7 @@ struct PanelPickerTests {
         // a narrow window: the menu stays 8 pt inside on the left
         let narrow = PanelMenuLayer.origin(.timeZone, anchor: field, size: CGSize(width: 296, height: 200), in: CGSize(width: PanelMetrics.width + 100, height: 600))
         #expect(narrow.width == 8)
-        #expect(PanelMenuLayer.width(.startTime) == 96 && PanelMenuLayer.width(.endTime) == 150, "the mockup's list widths")
+        #expect(PanelMenuLayer.width(.startTime) == 80 && PanelMenuLayer.width(.endTime) == 136, "the lists hug their rows")
     }
 
     @Test func storesWriteTheRule() {

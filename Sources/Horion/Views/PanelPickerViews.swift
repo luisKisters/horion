@@ -19,7 +19,7 @@ struct PanelTimeList: View {
                     ForEach(slots, id: \.self) { m in
                         PopItem(key: "time:\(m)", highlighted: hl == m, action: { model.pickTime(menu, m) }) {
                             HStack(spacing: 6) {
-                                Text(model.fmt.time(minutes: m)).font(.textTab)
+                                Text(model.fmt.time(minutes: m)).font(.textTab).lineLimit(1).fixedSize()
                                 if menu == .endTime, let len = model.timeLength(m) {
                                     Spacer(minLength: 0)
                                     Text(len).font(.smallTab).foregroundStyle(Theme.fg3).lineLimit(1).fixedSize()
