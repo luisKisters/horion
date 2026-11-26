@@ -75,10 +75,13 @@ final class AppModel {
     var deleteNotify = true
     /// The recurring-delete and recurring-edit dialogs' focused button (filled, takes Return); starts on "This event" each time one opens.
     var spanChoice: SpanChoice = .this
+    /// `spanChoices(_:)` for the open recurring dialog; cleared whenever the overlay changes.
+    @ObservationIgnored var spanChoicesCache: (id: String, choices: [SpanChoice])?
     /// A change to a repeating event that waits for the recurring-edit dialog: drawn on the grid until it is chosen or cancelled.
     var recurringEdit: RecurringEdit?
     var overlay: Overlay? {
         didSet {
+            if overlay != oldValue { spanChoicesCache = nil }
             // The palette fades out over 260 ms; its text field must not keep the keyboard meanwhile.
             if oldValue == .command && overlay != .command { searchText = chromeState.columnQuery.trimmingCharacters(in: .whitespaces) }
             // The recurring-edit dialog closed without a choice (Esc, the scrim): the held change goes, the event is back where it was.
@@ -613,9 +616,12 @@ final class AppModel {
     @discardableResult
     func delete(_ e: CalendarEvent, span: EditSpan, notify: Bool = true) -> Bool {
         flushPendingEdit()
+        // EventKit undoes a series delete itself: no loading every occurrence before the delete.
+        let storeUndo = span != .this && store.restoresDeletedSeries(calendarID: e.calendarID)
         let removed: [CalendarEvent]
         switch span {
         case .this: removed = [e]
+        case _ where storeUndo: removed = []
         case .all: removed = store.series(of: e)
         case .future: removed = store.series(of: e).filter { $0.start >= e.start }
         }
@@ -628,7 +634,7 @@ final class AppModel {
                 // Google lists a series as single occurrences: undo would make one new event per occurrence
                 showToast("Deleted \(title). A Google series cannot be undone.")
             } else {
-                undoStack.push(.deleted(removed))
+                undoStack.push(storeUndo ? .deletedSeries(e) : .deleted(removed))
                 showToast("Deleted \(title)", undo: true)
             }
             return true
@@ -643,6 +649,7 @@ final class AppModel {
         switch change {
         case .created(let e): try? store.delete(e, span: .this); if selectedEventID == e.id { selectedEventID = nil }
         // put back without telling anyone (`create` without notify: no new invitations); the store may give it a new id
+        case .deletedSeries(let e): store.restoreDeletedSeries(e); selectedEventID = e.id
         case .deleted(let es): let made = es.compactMap { try? store.create($0) }; selectedEventID = made.first?.id ?? es.first?.id
         case .updated(let old, let new):
             // Undo the move/resize only: text typed into the inspector since then stays.
