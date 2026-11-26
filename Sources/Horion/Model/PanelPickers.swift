@@ -108,8 +108,9 @@ extension AppModel {
         switch k.keyCode {
         case R.keyDown: return move(7)
         case R.keyUp: return move(-7)
-        case R.keyLeft: return panelMenus.picking ? move(-1) : false
-        case R.keyRight: return panelMenus.picking ? move(1) : false
+        // ← → always move days while the mini month is open (user pick after v21); Esc closes it to move the caret
+        case R.keyLeft: return move(-1)
+        case R.keyRight: return move(1)
         case Self.keyPageUp, Self.keyPageDown:
             showPickDay(math.addMonths(day, k.keyCode == Self.keyPageDown ? 1 : -1))
             panelMenus.picking = true

@@ -9,13 +9,17 @@ Brief: the pickers missing from the event panel. Each must work by mouse and key
 | The end time list | Time, then the length (20:30 · 1 h 30) |
 | Steps in the time lists | Every 15 min |
 | When the time list and mini month open | As soon as the field has focus |
-| ← → in the date field | Move days once ↑ or ↓ started picking |
+| ← → in the date field | Always move days while the mini month is open (changed after use, see below) |
 | Where the time zone list opens | Inside the panel width, names cut |
 | What the zone button says | Always the zone (GMT+2 Berlin) |
 | Custom repeat | Rows with ‹ › |
 | How a custom repeat ends | Never, or in 1, 2, 3 … months |
 | A new rule on a repeating event | Asks: all events, or this and following |
 | Participants on a macOS Calendar event | A card instead of the field |
+## Changed after use (in the app)
+- ← → in the date field: the caret moving before ↑/↓ felt wrong. Now ← → always move days while the mini month is open; Esc closes it to move the caret (the `always` option).
+- Every panel menu opens left of the panel, not only the pickers: reminders, availability, visibility, call, maps, places and the send menus too.
+- The time lists hug their rows: start 80 pt, end 136 pt. The end list shows the length on the right, short ("1 h 30").
 ## Locked in v20
 | Element | Pick |
 | --- | --- |
