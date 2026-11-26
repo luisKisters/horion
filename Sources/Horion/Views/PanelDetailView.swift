@@ -172,14 +172,14 @@ struct PanelDetailView: View {
         }
     }
 
-    /// The event's time zone (Notion's "Time zone"): fg3 while it is the calendar's own zone, else the city and the times there.
+    /// The event's time zone, always shown (mockup-v21 `zoneLabel: always`): "GMT+2 Berlin", the offset in fg3.
     private func zoneButton() -> some View {
         let label = model.zoneLabel(e)
         return Button { model.openZonePicker() } label: {
             HStack(spacing: 6) {
-                PanelIcon(name: .globe, size: 14, color: label.city == nil ? Theme.fg3 : Theme.fg2)
-                Text(label.city ?? "Time zone").font(.small).foregroundStyle(label.city == nil ? Theme.fg2 : Theme.fg).lineLimit(1)
-                if let t = label.times { Text(t).font(.smallTab).foregroundStyle(Theme.fg3).lineLimit(1).fixedSize() }
+                PanelIcon(name: .globe, size: 14, color: Theme.fg2)
+                Text(label.offset).font(.smallTab).foregroundStyle(Theme.fg3).lineLimit(1).fixedSize()
+                Text(label.city).font(.small).foregroundStyle(Theme.fg).lineLimit(1)
             }
             .frame(minHeight: 20)
             .contentShape(Rectangle())

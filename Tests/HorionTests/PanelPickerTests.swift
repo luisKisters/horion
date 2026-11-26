@@ -151,7 +151,9 @@ struct PanelPickerTests {
         #expect(key(m, "\r", ShortcutResolver.keyReturn))
         #expect(m.selectedEvent?.timeZoneID == "Asia/Tokyo" && m.panelMenus.open == nil && m.panelMenus.stop == .timeZone)
         #expect(m.selectedEvent?.start == e.start, "the moment stays; the zone says where it is kept")
-        #expect(m.zoneLabel(m.selectedEvent!).city == "Tokyo" && m.zoneLabel(m.selectedEvent!).times != nil)
+        #expect(m.zoneLabel(m.selectedEvent!) == ("GMT+9", "Tokyo"))
+        #expect(m.zoneLabel(e).city == TimeZoneList.city(e.timeZoneID), "the calendar's own zone shows too")
+        #expect(TimeZoneList.shortOffset(19800) == "GMT+5:30" && TimeZoneList.shortOffset(-14400) == "GMT-4" && TimeZoneList.shortOffset(0) == "GMT")
         // the mouse: the button opens the list, typing still searches it
         m.panelMenus.stop = nil
         m.openZonePicker()

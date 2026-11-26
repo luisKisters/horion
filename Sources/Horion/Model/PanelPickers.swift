@@ -185,14 +185,11 @@ extension AppModel {
         updateSelected { $0.timeZoneID = id }
     }
 
-    /// The zone button's text: "Time zone" while the event is in the calendar's zone, else the city and the event's times there.
-    func zoneLabel(_ e: CalendarEvent) -> (city: String?, times: String?) {
-        guard e.timeZoneID != math.timeZone.identifier, let tz = TimeZone(identifier: e.timeZoneID) else { return (nil, nil) }
-        var c = Calendar(identifier: .gregorian)
-        c.timeZone = tz
-        func t(_ d: Date) -> String { let x = c.dateComponents([.hour, .minute], from: d); return fmt.time(minutes: (x.hour ?? 0) * 60 + (x.minute ?? 0)) }
-        let same = tz.secondsFromGMT(for: e.start) == math.timeZone.secondsFromGMT(for: e.start)
-        return (TimeZoneList.city(e.timeZoneID), same ? nil : "\(t(e.start))\u{2013}\(t(e.end))")
+    /// The zone button's text (v21: always the zone): "GMT+2" and "Berlin", also while the event is in the calendar's own zone.
+    func zoneLabel(_ e: CalendarEvent) -> (offset: String, city: String) {
+        let id = TimeZone(identifier: e.timeZoneID) != nil ? e.timeZoneID : math.timeZone.identifier
+        let tz = TimeZone(identifier: id) ?? math.timeZone
+        return (TimeZoneList.shortOffset(tz.secondsFromGMT(for: e.start)), TimeZoneList.city(id))
     }
 }
 

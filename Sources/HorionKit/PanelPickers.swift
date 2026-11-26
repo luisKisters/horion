@@ -71,6 +71,13 @@ public enum TimeZoneList {
         return String(format: "GMT%@%02d:%02d", seconds < 0 ? "-" : "+", m / 60, m % 60)
     }
 
+    /// The zone button's offset: 7200 -> "GMT+2", 19800 -> "GMT+5:30", -14400 -> "GMT-4", 0 -> "GMT".
+    public static func shortOffset(_ seconds: Int) -> String {
+        guard seconds != 0 else { return "GMT" }
+        let m = abs(seconds) / 60
+        return "GMT\(seconds < 0 ? "-" : "+")\(m / 60)" + (m % 60 == 0 ? "" : String(format: ":%02d", m % 60))
+    }
+
     /// Every word of the query is in the city, the zone's name, its id or its offset ("berlin", "central eu", "gmt+1", "+05:30").
     public static func filter(_ list: [TimeZoneEntry], _ query: String) -> [TimeZoneEntry] {
         let words = query.lowercased().split(whereSeparator: \.isWhitespace).map(String.init)
