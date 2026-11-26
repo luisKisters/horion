@@ -40,19 +40,28 @@ def call(method, path, body=None):
         sys.exit(f"Plane answered {e.code} for {method} {path}: {e.read().decode()[:300]}")
 
 
-def rows(d):
-    return d["results"] if isinstance(d, dict) else d
+def rows(path):
+    """Every row of a list, following Plane's pages (100 rows each)."""
+    out, cursor = [], None
+    while True:
+        d = call("GET", path + (("&" if "?" in path else "?") + f"cursor={cursor}" if cursor else ""))
+        if not isinstance(d, dict):
+            return out + d
+        out += d["results"]
+        cursor = d.get("next_cursor")
+        if not d.get("next_page_results") or not cursor:
+            return out
 
 
 def project_id():
-    for p in rows(call("GET", "/projects/")):
+    for p in rows("/projects/"):
         if p["identifier"] == PROJECT:
             return p["id"]
     sys.exit(f"No Plane project {PROJECT} in workspace {WORKSPACE}.")
 
 
 def by_name(pid, kind, name):
-    for x in rows(call("GET", f"/projects/{pid}/{kind}/")):
+    for x in rows(f"/projects/{pid}/{kind}/"):
         if x["name"].lower() == name.lower():
             return x["id"]
     sys.exit(f"Plane project {PROJECT} has no {kind[:-1]} named '{name}'.")
@@ -107,7 +116,7 @@ def main(a):
     cmd, a = a[0], a[1:]
     if cmd == "list":
         pid = project_id()
-        for i in sorted(rows(call("GET", f"/projects/{pid}/work-items/?expand=state,labels&per_page=100")),
+        for i in sorted(rows(f"/projects/{pid}/work-items/?expand=state,labels&per_page=100"),
                         key=lambda i: i["sequence_id"]):
             if isinstance(i["state"], dict) and i["state"].get("group") in ("completed", "cancelled"):
                 continue

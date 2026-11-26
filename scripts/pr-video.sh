@@ -1,5 +1,5 @@
 #!/bin/bash
-# Records one tour of the app on demo data and posts the video as a comment on the pull request.
+# Records one tour of the app on demo data, posts the video as a comment on the pull request and prints the video's link.
 # The app records itself, so no Screen Recording permission is needed. Nothing is added to the repo:
 # the files stay in artifacts/tmp/ (ignored) and GitHub hosts the video.
 #
@@ -55,4 +55,6 @@ ls -lh "$OUT" | awk '{print $NF ": " $5}'
 
 [ $POST -eq 1 ] || exit 0
 [ -n "$PR" ] || PR="$(gh pr view --json number --jq .number)"
-gh pr comment "$PR" --body "Video of the \`$TOUR\` tour, recorded by the app on demo data." --attach "$OUT"
+gh pr comment "$PR" --body "Video of the \`$TOUR\` tour, recorded by the app on demo data." --attach "$OUT" >/dev/null
+# GitHub plays this link as a video when it stands on a line of its own. Put it into the PR text: Luis reads only that.
+gh pr view "$PR" --json comments --jq '.comments[].body' | grep -o 'https://github.com/user-attachments/assets/[A-Za-z0-9-]*' | tail -1 || true

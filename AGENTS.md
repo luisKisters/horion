@@ -8,7 +8,7 @@ Horion is a macOS calendar app in Swift. Luis builds it with agents and does not
 2. One thread, one ticket, one PR.
 3. Every thread has a ticket. Tickets are in Plane, not in GitHub issues. `scripts/ticket.py` does it all: `list`, `show`, `new`, `start`.
     - Fix: if there is no ticket, create one yourself with `--path fix`.
-    - Visual change or Project: propose a title and two or three lines of content. Create the ticket when Luis says yes.
+    - Visual change or Project: propose a title and two or three lines of content. Create the ticket when Luis says yes (`--path visual` or `--path project`).
     - Run `scripts/ticket.py start HORION-<n>` when you begin. Put `Ticket: HORION-<n>` in the PR.
 
 ## The three paths
@@ -25,7 +25,7 @@ Horion is a macOS calendar app in Swift. Luis builds it with agents and does not
 **Project.** A big feature. It needs a plan before anyone builds.
 1. Say what it is, which milestone it belongs to and which area of the app it changes.
 2. Grill Luis with the grilling skill until the plan is clear: what it does, the cases at the edges, and the structure (which part owns what, what talks to what). Ask only about things that are expensive to change later. Swift patterns and types are your decision.
-3. Write the result into the project's ticket in Plane: `scripts/ticket.py new "<name>" --path project`, then `scripts/ticket.py body`.
+3. Write the result into the project's ticket: `scripts/ticket.py body HORION-<n> <file>`.
 4. Make mockups as in "Visual change", when the project has a visual part.
 5. Split the work into tickets under the project's ticket (`--parent HORION-<n>`). Start one new T3 Code thread per ticket, with the ticket as its brief. Luis works in those threads.
 6. This thread stays the project thread. Keep the project's ticket up to date as the tickets merge.
@@ -57,7 +57,7 @@ Luis reads only the PR. It must make sense without the thread.
 
 - Use the PR template. Use plain words and short sentences. Each block has at most 5 lines.
 - Something Luis can see changed: put a screenshot before and after into the PR text. Upload the pictures with `gh pr comment --attach <file>` and use their links in the PR text.
-- When motion matters (a drag, an animation, a row of key presses): add a video. `scripts/pr-video.sh <tour>` records the tour and posts the video on the PR. If no tour shows your change, add one.
+- When motion matters (a drag, an animation, a row of key presses): add a video. `scripts/pr-video.sh <tour>` records the tour, posts the video on the PR and prints its link. Put the link on a line of its own under "Before and after". If no tour shows your change, add one.
 - Do not commit screenshots or videos to the repo.
 - Say under "How it was checked" what you did not test.
 - Luis asks for changes in a new thread. After the change, rewrite the PR body so that it describes the PR as it is now.
