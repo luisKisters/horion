@@ -126,6 +126,8 @@ struct PanelCommitField: View {
 struct PanelSwitch: View {
     let label: String
     let isOn: Bool
+    /// The keyboard is on it: a 2 pt focus ring around the track, 2 pt out.
+    var focused = false
     let action: () -> Void
     @State private var hover = false
     /// v11 `.sw`: a 26 x 16 track, `surface` with a hairStrong edge when off, inverted ink when on; a 12 pt knob (fg3, then onAccent)
@@ -137,6 +139,7 @@ struct PanelSwitch: View {
                     Capsule().fill(isOn ? Theme.act : Theme.bg1)
                         .overlay(Capsule().strokeBorder(isOn ? Color.clear : Theme.hair2, lineWidth: 1))
                         .frame(width: 26, height: 16)
+                        .overlay { if focused { Capsule().strokeBorder(Theme.focus, lineWidth: 2).padding(-3) } }
                     Circle().fill(isOn ? Theme.onAct : Theme.fg3).frame(width: 12, height: 12).offset(x: isOn ? 12 : 2)
                 }
                 if !label.isEmpty { Text(label).font(.small).foregroundStyle(hover ? Theme.fg : Theme.fg2) }
@@ -234,5 +237,44 @@ struct CopyLinkButton: View {
         .animation(Motion.fast, value: hover)
         .animation(Motion.fast, value: copied)
         .accessibilityLabel(tip)
+    }
+}
+
+/// A keyboard stop of the panel (design/mockup-v20, `PanelTabOrder`): a switch, button or menu the keyboard is on gets the 2 pt
+/// focus ring (a text field shows its own focus); while Option is held every stop shows its jump letter.
+struct PanelStopMark: ViewModifier {
+    @Environment(AppModel.self) private var model
+    let stop: PanelStop
+    var radius: CGFloat = Radius.row
+    var inset: CGFloat = -3
+    /// False: the control draws its own ring (`PanelSwitch` rings only its track).
+    var drawsRing = true
+
+    func body(content: Content) -> some View {
+        let ring = drawsRing && model.panelMenus.stop == stop && !stop.isText
+        let letter = model.panelMenus.jumpLetters ? stop.jumpLetter : nil
+        content
+            .overlay {
+                if ring {
+                    RoundedRectangle(cornerRadius: radius).strokeBorder(Theme.focus, lineWidth: 2).padding(inset).allowsHitTesting(false)
+                }
+            }
+            .overlay(alignment: .topLeading) {
+                if let letter {
+                    Text(String(letter).uppercased()).font(.smallTabSemibold).foregroundStyle(Theme.bg)
+                        .padding(.horizontal, 4).frame(minWidth: 16, minHeight: 16)
+                        .background(RoundedRectangle(cornerRadius: Radius.mark).fill(Theme.fg))
+                        .offset(x: -10, y: -8)
+                        .allowsHitTesting(false)
+                        .transition(.opacity)
+                }
+            }
+            .animation(Motion.fast, value: letter != nil)
+    }
+}
+
+extension View {
+    func panelStop(_ s: PanelStop, radius: CGFloat = Radius.row, inset: CGFloat = -3, drawsRing: Bool = true) -> some View {
+        modifier(PanelStopMark(stop: s, radius: radius, inset: inset, drawsRing: drawsRing))
     }
 }

@@ -30,6 +30,7 @@ struct PanelCallRow: View {
                 LinkField(value: call.display, editable: canEdit, focus: focus, unsentAdded: base != nil && (base.map { CallLink.parse($0) == nil } ?? false),
                           copy: { model.copyCallLink(e) }, remove: canEdit ? { model.removeCall() } : nil) { model.setCallLink($0) }
                 JoinBigButton(call: call) { model.joinCall(e) }
+                    .panelStop(.join, radius: Radius.control, inset: -2)
                     .padding(.top, 4)
             } else if !link.isEmpty {
                 // a web address that is not a call: the link only
@@ -45,8 +46,9 @@ struct PanelCallRow: View {
                 .frame(minHeight: 20)
             } else if model.panelMenus.pastingLink {
                 PanelCommitField(value: "", placeholder: "Paste a Zoom, Teams or other link, then Return", editable: true, focusKey: .video, focus: focus,
-                                 commit: { model.setCallLink($0) })
+                                 commit: { model.setCallLink($0) }, onReturn: { model.movePanelStop(1) })
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .panelStop(.link)
                     .onAppear { after(0.02) { focus.wrappedValue = .video } }
             } else if canEdit {
                 Button { model.openPanelMenu(.call) } label: {
@@ -54,6 +56,7 @@ struct PanelCallRow: View {
                 }
                 .buttonStyle(.plain)
                 .editorField(focused: false, editable: true, key: "field:call", held: model.panelMenus.open == .call)
+                .panelStop(.addCall)
                 .panelMenuAnchor(.call)
             } else {
                 Text("No video call").foregroundStyle(Theme.fg3)
@@ -105,13 +108,14 @@ struct JoinKbd: View {
     var body: some View {
         Text(text).font(.smallTabMedium).foregroundStyle(Theme.onAct)
             .padding(.horizontal, 4).frame(minWidth: 18, minHeight: 18, maxHeight: 18)
-            .background(RoundedRectangle(cornerRadius: 4).fill(Theme.onAct.opacity(0.16)))
+            .background(RoundedRectangle(cornerRadius: Radius.mark).fill(Theme.onAct.opacity(0.16)))
             .fixedSize()
     }
 }
 
 /// `.cr`: the meeting link in fg text, click to edit; Remove (✕) and Copy always show on the right (design/call-link round 4).
 struct LinkField: View {
+    @Environment(AppModel.self) private var model
     let value: String
     let editable: Bool
     var focus: FocusState<PanelFocus?>.Binding
@@ -127,10 +131,11 @@ struct LinkField: View {
             TextField("", text: $text, prompt: nil)
                 .textFieldStyle(.plain).font(.text).foregroundStyle(Theme.fg).lineLimit(1)
                 .focused(focus, equals: .video).disabled(!editable)
-                .onSubmit { if !commit(text) { text = value }; focus.wrappedValue = nil }
+                .onSubmit { if !commit(text) { text = value }; model.movePanelStop(1) }
                 .panelPlaceholder("Meeting link", when: text.isEmpty, font: .text)
                 .frame(maxWidth: .infinity, minHeight: 20, alignment: .leading)
                 .editorField(focused: focused, editable: editable, key: "field:link")
+                .panelStop(.link)
                 .padding(.trailing, 8)
             if unsentAdded { UnsentDot(removed: false) }
             // Remove, then Copy on the right edge, in line with Join's.

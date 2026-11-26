@@ -6,7 +6,7 @@ import HorionKit
 /// The editor's menus (design/mockup-v4 `popHTML`): one open at a time, drawn by `PanelMenuLayer` over the window and anchored to
 /// the control that opened it.
 enum PanelMenu: String, Hashable, CaseIterable {
-    case calendar, reminders, maps, places, call, guests, send, inviteSend, deleteSend
+    case calendar, reminders, maps, places, call, guests, send, inviteSend, deleteSend, availability, visibility
 }
 
 /// Edits to an event with guests that are not sent yet (v4 Phase 7b): `base` is what the store has, `edited` what the editor shows.
@@ -39,6 +39,12 @@ final class PanelMenuState {
     /// A field the editor should focus (the walkthrough, and "Paste a link…").
     var focusRequest: PanelFocus?
     var focusTick = 0
+    /// Where the keyboard is in the panel (`PanelTabOrder`): a text field, or a switch, button or menu that shows the focus ring.
+    var stop: PanelStop?
+    /// The menu row the keyboard is on (its `PopItem` key); nil when the menu was opened with the pointer.
+    var highlight: String?
+    /// Option is held: the jump letters show.
+    var jumpLetters = false
 }
 
 /// Place search behind a protocol, so tests and snapshots never reach the network.
@@ -107,6 +113,7 @@ extension AppModel {
 
     func openPanelMenu(_ m: PanelMenu) {
         panelMenus.open = panelMenus.open == m ? nil : m
+        panelMenus.highlight = nil
     }
     func closePanelMenu() { panelMenus.open = nil }
 
@@ -118,6 +125,8 @@ extension AppModel {
         panelMenus.places = []
         panelMenus.placeQuery = ""
         panelMenus.pastingLink = false
+        panelMenus.stop = nil
+        panelMenus.highlight = nil
     }
 
     /// Moves the keyboard to an editor field.
