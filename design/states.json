@@ -113,6 +113,7 @@
     "readonly-event": {},
     "picker-end-time": {},
     "picker-date": {},
+    "picker-zone": {},
     "menubar-empty": {},
     "week-reference-size": {
       "state": "v4-week",

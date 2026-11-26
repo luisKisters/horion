@@ -125,7 +125,10 @@ public enum GoogleMapping {
         set(old.title, new.title) { g.summary = new.title }
         set(old.notes, placed.notes) { g.description = placed.notes }
         set(old.location, placed.location) { g.location = placed.location }
-        if old.start != new.start || old.end != new.end || old.isAllDay != new.isAllDay { (g.start, g.end) = times(new, zone: zone); any = true }
+        // a new time zone goes with the times (`start.timeZone`, `end.timeZone`)
+        if old.start != new.start || old.end != new.end || old.isAllDay != new.isAllDay || (!new.isAllDay && old.timeZoneID != new.timeZoneID) {
+            (g.start, g.end) = times(new, zone: zone); any = true
+        }
         let guests = { (e: CalendarEvent) in e.attendees.map { [$0.email.lowercased(), $0.name ?? "", "\($0.isOptional)"] } }
         if guests(old) != guests(new) {
             // my own entry keeps my reply as it is stored: the reply goes through `rsvp`

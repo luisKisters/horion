@@ -156,4 +156,53 @@ extension AppModel {
             return false
         }
     }
+
+    // MARK: Time zone
+
+    /// Every zone at the event's start (offsets with daylight saving), searched by `zoneQuery`.
+    var zoneChoices: [TimeZoneEntry] {
+        guard let e = selectedEvent else { return [] }
+        return TimeZoneList.filter(ZoneListCache.list(at: math.startOfDay(e.start)), panelMenus.zoneQuery)
+    }
+
+    /// The zone button: the menu opens on the event's zone, the keyboard drives it either way.
+    func openZonePicker(byKeyboard: Bool = false) {
+        if panelMenus.open == .timeZone && !byKeyboard { closePanelMenu(); return }
+        panelMenus.zoneQuery = ""
+        panelMenus.stop = .timeZone
+        openPanelMenuByKeyboard(.timeZone)
+    }
+
+    func zoneQueryChanged(_ q: String) {
+        panelMenus.zoneQuery = q
+        let keys = zoneChoices.map { "tz:\($0.id)" }
+        if let h = panelMenus.highlight, keys.contains(h), q.isEmpty { return }
+        panelMenus.highlight = keys.first
+    }
+
+    func setSelectedTimeZone(_ id: String) {
+        guard TimeZone(identifier: id) != nil else { return }
+        updateSelected { $0.timeZoneID = id }
+    }
+
+    /// The zone button's text: "Time zone" while the event is in the calendar's zone, else the city and the event's times there.
+    func zoneLabel(_ e: CalendarEvent) -> (city: String?, times: String?) {
+        guard e.timeZoneID != math.timeZone.identifier, let tz = TimeZone(identifier: e.timeZoneID) else { return (nil, nil) }
+        var c = Calendar(identifier: .gregorian)
+        c.timeZone = tz
+        func t(_ d: Date) -> String { let x = c.dateComponents([.hour, .minute], from: d); return fmt.time(minutes: (x.hour ?? 0) * 60 + (x.minute ?? 0)) }
+        let same = tz.secondsFromGMT(for: e.start) == math.timeZone.secondsFromGMT(for: e.start)
+        return (TimeZoneList.city(e.timeZoneID), same ? nil : "\(t(e.start))\u{2013}\(t(e.end))")
+    }
+}
+
+/// `TimeZoneList.all` names some 400 zones: made once per day it is asked for.
+@MainActor
+enum ZoneListCache {
+    private static var day: Date?
+    private static var cached: [TimeZoneEntry] = []
+    static func list(at d: Date) -> [TimeZoneEntry] {
+        if day != d { cached = TimeZoneList.all(at: d); day = d }
+        return cached
+    }
 }

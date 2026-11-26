@@ -82,9 +82,12 @@ struct PanelDetailView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     when(canEdit: canEdit)
                     if canEdit {
-                        PanelSwitch(label: "All day", isOn: e.isAllDay, focused: model.panelMenus.stop == .allDay) { model.setSelectedAllDay(!e.isAllDay) }
-                            .panelStop(.allDay, drawsRing: false)
-                            .frame(height: 20).padding(.top, 6).padding(.bottom, 4)
+                        HStack(spacing: 20) {
+                            PanelSwitch(label: "All day", isOn: e.isAllDay, focused: model.panelMenus.stop == .allDay) { model.setSelectedAllDay(!e.isAllDay) }
+                                .panelStop(.allDay, drawsRing: false)
+                            if !e.isAllDay { zoneButton() }
+                        }
+                        .frame(height: 20).padding(.top, 6).padding(.bottom, 4)
                     }
                 }
             }
@@ -151,6 +154,25 @@ struct PanelDetailView: View {
         }
         .fixedSize()
         .frame(height: 26)
+    }
+
+    /// The event's time zone (Notion's "Time zone"): fg3 while it is the calendar's own zone, else the city and the times there.
+    private func zoneButton() -> some View {
+        let label = model.zoneLabel(e)
+        return Button { model.openZonePicker() } label: {
+            HStack(spacing: 6) {
+                PanelIcon(name: .globe, size: 14, color: label.city == nil ? Theme.fg3 : Theme.fg2)
+                Text(label.city ?? "Time zone").font(.small).foregroundStyle(label.city == nil ? Theme.fg2 : Theme.fg).lineLimit(1)
+                if let t = label.times { Text(t).font(.smallTab).foregroundStyle(Theme.fg3).lineLimit(1).fixedSize() }
+            }
+            .frame(minHeight: 20)
+            .contentShape(Rectangle())
+            .editorField(focused: false, editable: true, key: "field:zone", held: model.panelMenus.open == .timeZone)
+        }
+        .buttonStyle(.plain)
+        .help(TimeZoneList.entry(e.timeZoneID, at: e.start).map { "\($0.offset) \($0.name)" } ?? "Time zone")
+        .panelStop(.timeZone)
+        .panelMenuAnchor(.timeZone)
     }
 
     /// The notes (Return adds a line), 18.75 pt lines. A text until clicked, then a field. Google's Meet block is hidden: one line says so.

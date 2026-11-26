@@ -10,7 +10,7 @@ struct PanelTabOrderTests {
     }
 
     @Test func everyControlTopToBottomWithoutDeleteAndClose() {
-        #expect(PanelTabOrder.stops(ctx()) == [.title, .date, .start, .end, .allDay, .guest, .addCall, .place, .notes,
+        #expect(PanelTabOrder.stops(ctx()) == [.title, .date, .start, .end, .allDay, .timeZone, .guest, .addCall, .place, .notes,
                                               .calendar, .busy, .visibility, .reminder(10), .addReminder])
         // all day hides the times; a call shows its link and Join
         #expect(PanelTabOrder.stops(ctx(allDay: true, call: .linkAndJoin, reminders: [])) == [.title, .date, .allDay, .guest, .link, .join, .place, .notes,

@@ -97,7 +97,7 @@ extension AppModel {
     }
 
     /// The menus the keyboard drives (the guest and place lists follow their fields' typing).
-    static let keyboardMenus: Set<PanelMenu> = [.calendar, .reminders, .call, .availability, .visibility]
+    static let keyboardMenus: Set<PanelMenu> = [.calendar, .reminders, .call, .availability, .visibility, .timeZone]
 
     func panelMenuChoices(_ m: PanelMenu) -> [PanelMenuChoice] {
         guard selectedEvent != nil else { return [] }
@@ -117,6 +117,8 @@ extension AppModel {
             return Availability.allCases.map { a in PanelMenuChoice(key: "menu:avail:\(a.rawValue)") { [weak self] in self?.updateSelected { $0.availability = a } } }
         case .visibility:
             return EventVisibility.allCases.map { v in PanelMenuChoice(key: "menu:vis:\(v.rawValue)") { [weak self] in self?.updateSelected { $0.visibility = v } } }
+        case .timeZone:
+            return zoneChoices.map { z in PanelMenuChoice(key: "tz:\(z.id)") { [weak self] in self?.setSelectedTimeZone(z.id) } }
         default:
             return []
         }
@@ -131,6 +133,7 @@ extension AppModel {
         case .availability: "menu:avail:\(e.availability.rawValue)"
         case .visibility: "menu:vis:\(e.visibility.rawValue)"
         case .reminders: e.reminders.first.map { "menu:rem\($0)" }
+        case .timeZone: "tz:\(e.timeZoneID)"
         default: nil
         }
         return current.flatMap { keys.contains($0) ? $0 : nil } ?? keys.first
@@ -141,6 +144,7 @@ extension AppModel {
         guard let e = selectedEvent else { return }
         switch s {
         case .allDay: setSelectedAllDay(!e.isAllDay)
+        case .timeZone: openZonePicker(byKeyboard: true)
         case .findTime: findNewTime()
         case .join: joinCall(e)
         case .addCall: openPanelMenuByKeyboard(.call)
@@ -217,7 +221,16 @@ extension AppModel {
                 return true
             case R.keyTab:
                 closePanelMenu()
+            case R.keyDelete where m == .timeZone:
+                if !panelMenus.zoneQuery.isEmpty { zoneQueryChanged(String(panelMenus.zoneQuery.dropLast())) }
+                return true
             default:
+                // the time zone list: typing searches it (Space too: "New York")
+                if m == .timeZone, !k.command && !k.control && !k.option, !k.characters.isEmpty,
+                   k.characters.unicodeScalars.allSatisfy({ !CharacterSet.controlCharacters.contains($0) && $0.value < 0xF700 }) {
+                    zoneQueryChanged(panelMenus.zoneQuery + k.characters)
+                    return true
+                }
                 if bare && k.characters == " " { pickPanelMenuChoice(choices, i); return true }
                 return bare
             }

@@ -60,6 +60,7 @@ struct PanelMenuLayer: View {
         case .startTime: 112
         case .endTime: 184
         case .datePicker: 236
+        case .timeZone: 420
         }
     }
 
@@ -69,7 +70,7 @@ struct PanelMenuLayer: View {
         let w = width(m), h = size.height
         var x: CGFloat, y: CGFloat
         switch m {
-        case .calendar, .guests:
+        case .calendar, .guests, .timeZone:
             x = win.width - PanelMetrics.width - w - 8
             y = r.minY - 6
         case .send, .inviteSend:
@@ -208,6 +209,7 @@ struct PanelMenuContent: View {
             case .guests: PanelGuestMenu()
             case .startTime, .endTime: PanelTimeList(menu: menu)
             case .datePicker: PanelDatePicker()
+            case .timeZone: PanelZoneList()
             case .send:
                 PopItem(key: "menu:discard", danger: true, action: { model.discardUnsent() }) { Text("Discard changes") }
                 PopItem(key: "menu:quiet", action: { model.sendUnsent(notify: false) }) { Text("Save without sending") } end: {

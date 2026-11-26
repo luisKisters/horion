@@ -102,3 +102,49 @@ struct PickerDay: View {
         .tourAnchor("day:\(model.math.day(day))-\(model.math.month(day))")
     }
 }
+
+/// The time zone list: what was typed on top (typing searches, Backspace takes a letter back), then "GMT+01:00  Central European
+/// Standard Time – Berlin" rows by offset, 10 tall, scrolled to the event's zone or the keyboard's row.
+struct PanelZoneList: View {
+    @Environment(AppModel.self) private var model
+    static let rows: CGFloat = 10
+
+    var body: some View {
+        let q = model.panelMenus.zoneQuery
+        let list = model.zoneChoices
+        let current = model.selectedEvent?.timeZoneID
+        let hl = model.panelMenus.highlight
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 10) {
+                ChromeIcon(name: .search, size: 14)
+                Text(q.isEmpty ? "Type to search time zones" : q).foregroundStyle(q.isEmpty ? Theme.fg3 : Theme.fg).lineLimit(1)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 10).frame(height: Dim.row)
+            PopSep().padding(.top, -4)
+            if list.isEmpty {
+                PopSection(text: "No time zone matches \u{201C}\(q)\u{201D}").padding(.bottom, 4)
+            }
+            ScrollViewReader { p in
+                ScrollView(.vertical, showsIndicators: false) {
+                    LazyVStack(spacing: 0) {
+                        ForEach(list, id: \.id) { z in
+                            PopItem(check: z.id == current, key: "tz:\(z.id)", highlighted: hl == "tz:\(z.id)", action: {
+                                model.closePanelMenu(); model.setSelectedTimeZone(z.id)
+                            }) {
+                                HStack(spacing: 8) {
+                                    Text(z.offset).font(.textTab).foregroundStyle(Theme.fg3).lineLimit(1).frame(width: 72, alignment: .leading)
+                                    (Text(z.name) + Text("  \u{2013}  ").foregroundColor(Theme.fg3) + Text(z.city)).lineLimit(1).truncationMode(.tail)
+                                }
+                            }
+                            .id(z.id)
+                        }
+                    }
+                }
+                .frame(height: min(CGFloat(list.count), Self.rows) * Dim.row)
+                .onAppear { if let h = hl { p.scrollTo(String(h.dropFirst(3)), anchor: .center) } }
+                .onChange(of: hl) { _, v in if let v { p.scrollTo(String(v.dropFirst(3)), anchor: .center) } }
+            }
+        }
+    }
+}

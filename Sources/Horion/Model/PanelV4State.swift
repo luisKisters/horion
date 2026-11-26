@@ -11,6 +11,8 @@ enum PanelMenu: String, Hashable, CaseIterable {
     case startTime, endTime
     /// The mini month under the date field.
     case datePicker
+    /// The event's time zone: a list searched by typing.
+    case timeZone
 }
 
 /// Edits to an event with guests that are not sent yet (v4 Phase 7b): `base` is what the store has, `edited` what the editor shows.
@@ -58,6 +60,8 @@ final class PanelMenuState {
     /// The date picker's day under the keyboard, and the month it shows.
     var pickDay: Date?
     var pickMonth: Date?
+    /// What was typed into the time zone list.
+    var zoneQuery = ""
 }
 
 /// Place search behind a protocol, so tests and snapshots never reach the network.

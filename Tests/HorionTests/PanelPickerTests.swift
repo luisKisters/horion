@@ -118,4 +118,54 @@ struct PanelPickerTests {
         m.pickDate(day)
         #expect(math.isSameDay(m.selectedEvent!.start, day) && m.panelMenus.open == nil)
     }
+
+    // MARK: Time zone
+
+    @Test func zoneListNamesAndSearch() {
+        #expect(TimeZoneList.offset(3600) == "GMT+01:00" && TimeZoneList.offset(-16200) == "GMT-04:30" && TimeZoneList.offset(19800) == "GMT+05:30")
+        #expect(TimeZoneList.city("America/Argentina/Buenos_Aires") == "Buenos Aires")
+        let winter = DemoDataV4.math.date(year: 2026, month: 11, day: 26)
+        let all = TimeZoneList.all(at: winter)
+        let berlin = all.first { $0.id == "Europe/Berlin" }
+        #expect(berlin?.offset == "GMT+01:00" && berlin?.name == "Central European Standard Time" && berlin?.city == "Berlin")
+        #expect(all.map(\.seconds) == all.map(\.seconds).sorted(), "by offset")
+        #expect(!all.contains { $0.id.hasPrefix("Etc/") || $0.name.hasPrefix("GMT") })
+        #expect(TimeZoneList.filter(all, "berlin").first?.id == "Europe/Berlin")
+        #expect(TimeZoneList.filter(all, "new york").first?.id == "America/New_York")
+        #expect(TimeZoneList.filter(all, "gmt+1").contains { $0.id == "Europe/Berlin" })
+        #expect(TimeZoneList.filter(all, "zürich").contains { $0.id == "Europe/Zurich" }, "accents do not matter")
+        let summer = DemoDataV4.math.date(year: 2026, month: 7, day: 1)
+        #expect(TimeZoneList.entry("Europe/Berlin", at: summer)?.offset == "GMT+02:00")
+    }
+
+    @Test func zonePickerByKeyboard() {
+        let m = makeModelV4()
+        let e = open(m)
+        #expect(m.panelStops.contains(.timeZone))
+        m.focusPanelStop(.timeZone)
+        #expect(key(m, "\r", ShortcutResolver.keyReturn))
+        #expect(m.panelMenus.open == .timeZone && m.panelMenus.highlight == "tz:\(e.timeZoneID)")
+        for c in "tokyo" { #expect(key(m, String(c), UInt16(0))) }
+        #expect(m.panelMenus.zoneQuery == "tokyo" && m.panelMenus.highlight == "tz:Asia/Tokyo")
+        #expect(key(m, "", ShortcutResolver.keyDelete) && m.panelMenus.zoneQuery == "toky")
+        #expect(key(m, "\r", ShortcutResolver.keyReturn))
+        #expect(m.selectedEvent?.timeZoneID == "Asia/Tokyo" && m.panelMenus.open == nil && m.panelMenus.stop == .timeZone)
+        #expect(m.selectedEvent?.start == e.start, "the moment stays; the zone says where it is kept")
+        #expect(m.zoneLabel(m.selectedEvent!).city == "Tokyo" && m.zoneLabel(m.selectedEvent!).times != nil)
+        // the mouse: the button opens the list, typing still searches it
+        m.panelMenus.stop = nil
+        m.openZonePicker()
+        #expect(m.panelMenus.open == .timeZone && m.panelMenus.zoneQuery.isEmpty)
+        #expect(key(m, "b", UInt16(11)) && m.panelMenus.zoneQuery == "b")
+        #expect(key(m, "\u{1b}", ShortcutResolver.keyEscape) && m.panelMenus.open == nil)
+    }
+
+    @Test func googleSendsTheNewZoneWithTheTimes() {
+        let zone = TimeZone(identifier: "Europe/Berlin")!
+        let old = CalendarEvent(calendarID: "c", title: "x", start: Date(timeIntervalSince1970: 1_800_000_000), end: Date(timeIntervalSince1970: 1_800_003_600))
+        var new = old
+        new.timeZoneID = "Asia/Tokyo"
+        let g = GoogleMapping.patch(old: old, new: new, zone: zone)
+        #expect(g?.start?.timeZone == "Asia/Tokyo" && g?.end?.timeZone == "Asia/Tokyo")
+    }
 }
