@@ -56,6 +56,7 @@ struct SidebarView: View {
         .frame(width: ChromeDim.sidebarWidth)
         .frame(maxHeight: .infinity, alignment: .top)
         .background(Theme.rail)
+        .shade(.sidebar)
         .overlay(alignment: .trailing) { Rectangle().fill(Theme.hair).frame(width: 1) }
     }
 }

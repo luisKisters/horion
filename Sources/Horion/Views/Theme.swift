@@ -53,6 +53,9 @@ struct InkRGB: Equatable {
     var segRing: RGB
     /// Fitted states on the other surfaces: hover on a selected rail row (the mini month's band), hover on raised and on pop.
     var selectedHover = RGB(0, 0, 0), raisedHover = RGB(0, 0, 0), popHover = RGB(0, 0, 0)
+    /// Primary button hover (the ink fill one hover step toward bg, as far as its label keeps fg1's floor), and the Danger button:
+    /// the danger colour darkened until a white label passes `Contrast.labelFloor`, and its hover (design/mockup-v21).
+    var actHover = RGB(0, 0, 0), dangerFill = RGB(0, 0, 0), dangerHover = RGB(0, 0, 0)
 
     static let dark = darkBase.fitted(dark: true)
     static let light = lightBase.fitted(dark: false)
@@ -81,24 +84,44 @@ struct InkRGB: Equatable {
     /// half that step (the square root of its ratio); edges reach `Contrast.edge`.
     func fitted(dark: Bool) -> InkRGB {
         var t = self
-        func fit(_ bg: RGB, _ target: Double) -> RGB { Contrast.fit(bg, target, lighter: dark) }
-        let floors = Contrast.textFloors(dark: dark)
-        func readable(_ fill: RGB) -> Bool { [fg, fg2, fg3].indices.allSatisfy { ColorMath.ok([fg, fg2, fg3][$0].c8, fill.c8, floors[$0]) } }
-        // The strongest selected ratio the text allows (binary search on the target).
-        var lo = 1.0, hi = Contrast.selected
-        if readable(fit(rail, hi)) { lo = hi } else { for _ in 0..<30 { let mid = (lo + hi) / 2; if readable(fit(rail, mid)) { lo = mid } else { hi = mid } } }
-        let selected = lo, hover = min(Contrast.hover, selected.squareRoot())
-        t.selected = fit(rail, selected)
-        t.hover = fit(bg, hover)
-        t.hoverRail = fit(rail, hover)
-        t.selectedHover = fit(t.selected, hover)
-        t.raisedHover = fit(bg2, hover)
-        t.popHover = fit(pop, hover)
-        t.segRing = fit(bg1, Contrast.edge)
-        t.todayTint = fit(bg, Contrast.todayTint)
+        let (_, hover) = stateRatios(dark: dark)
+        let sidebar = shadeInk(.sidebar, dark: dark)
+        t.selected = sidebar.selected
+        t.hover = shadeInk(.window, dark: dark).hover
+        t.hoverRail = sidebar.hover
+        t.selectedHover = sidebar.selectedHover
+        t.raisedHover = shadeInk(.raised, dark: dark).hover
+        t.popHover = Contrast.fit(pop, hover, lighter: dark)
+        t.segRing = Contrast.fit(bg1, Contrast.edge, lighter: dark)
+        t.todayTint = Contrast.fit(bg, Contrast.todayTint, lighter: dark)
+        let f1 = Contrast.textFloors(dark: dark)[0]
+        t.actHover = Contrast.fit(fg, Contrast.strongest(on: fg, texts: [bg], floors: [f1], upTo: hover, lighter: !dark), lighter: !dark)
+        var red = danger, step = 0.0
+        while step < 1 && !ColorMath.ok(Self.white.c8, red.c8, Contrast.labelFloor) { step += 0.01; red = danger.mixed(with: Self.black, step) }
+        t.dangerFill = red
+        t.dangerHover = red.mixed(with: Self.black, 0.1)
         return t
     }
-    static let black = RGB(0, 0, 0)
+
+    /// The system's two state steps: selected is the strongest fill, up to `Contrast.selected`, on the Sidebar on which fg1, fg2
+    /// and fg3 still pass their floors; hover is its square root, at most `Contrast.hover`.
+    func stateRatios(dark: Bool) -> (selected: Double, hover: Double) {
+        let sel = Contrast.strongest(on: rail, texts: [fg, fg2, fg3], floors: Contrast.textFloors(dark: dark), upTo: Contrast.selected, lighter: dark)
+        return (sel, min(Contrast.hover, sel.squareRoot()))
+    }
+
+    /// Everything that sits on one shade, solved from contrast (design/mockup-v21 round 1): hover and selected at the system's
+    /// steps (selected lowered where this shade's text needs it), hover inside a selected band one hover step back toward the
+    /// shade, the 3:1 edge, and the Secondary button (the hover step as its fill, a 1.5:1 edge, the selected step on hover).
+    func shadeInk(_ s: Shade, dark: Bool) -> ShadeInk {
+        let x = s.base(self), (selR, hovR) = stateRatios(dark: dark)
+        let cap = Contrast.strongest(on: x, texts: [fg, fg2, fg3], floors: Contrast.textFloors(dark: dark), upTo: selR, lighter: dark)
+        let selected = Contrast.fit(x, cap, lighter: dark)
+        return ShadeInk(base: x, hover: Contrast.fit(x, hovR, lighter: dark), selected: selected,
+                        selectedHover: Contrast.fit(selected, hovR, lighter: !dark),
+                        edge: Contrast.fit(x, Contrast.edge, lighter: dark), softEdge: Contrast.fit(x, Contrast.softEdge, lighter: dark))
+    }
+    static let black = RGB(0, 0, 0), white = RGB(1, 1, 1)
     /// The neutral shadow on Paper (`rgba(20, 20, 30, …)` in the mockup's `--shadow-pop`).
     static let paperShadow = RGB(hex: "#14141E")
     /// The warm shadow of a selected segment in Paper (`0 1px 2px rgba(60,50,35,.10)`).
@@ -118,8 +141,22 @@ struct InkRGB: Equatable {
 enum Contrast {
     /// Upper targets: hover 1.15:1, selected 1.45:1 (lowered where the text floors need it), edges 3:1 (WCAG non-text), today column.
     static let hover = 1.15, selected = 1.45, edge = 3.0, todayTint = 1.05
-    /// The soft-surface text floors of foundations.md (WCAG ratio, APCA Lc) for fg1, fg2, fg3: text on a hover or selected fill.
-    static func textFloors(dark: Bool) -> [ColorMath.Floor] { dark ? [(12, 85), (7, 63), (5.5, 45)] : [(12, 88), (7, 75), (5, 65)] }
+    /// The faint edge of a Secondary button (design/mockup-v21).
+    static let softEdge = 1.5
+    /// The text floors of foundations.md (WCAG ratio, APCA Lc) for fg1, fg2, fg3, on every shade and every state fill. Paper uses
+    /// WCAG AA plus a margin (design/mockup-v21 round 1, "Relax Paper's floors"), so its selected band can reach about 1.24:1.
+    static func textFloors(dark: Bool) -> [ColorMath.Floor] { dark ? [(12, 85), (7, 63), (5.5, 45)] : [(10, 80), (6, 68), (4.5, 60)] }
+    /// A label on a coloured fill (the Danger button).
+    static let labelFloor: ColorMath.Floor = (4.5, 60)
+
+    /// The strongest neutral fill on `x`, up to `upTo`, on which every text in `texts` still passes its floor (binary search).
+    static func strongest(on x: RGB, texts: [RGB], floors: [ColorMath.Floor], upTo: Double, lighter: Bool) -> Double {
+        func readable(_ r: Double) -> Bool { let f = fit(x, r, lighter: lighter); return texts.indices.allSatisfy { ColorMath.ok(texts[$0].c8, f.c8, floors[$0]) } }
+        if readable(upTo) { return upTo }
+        var lo = 1.0, hi = upTo
+        for _ in 0..<30 { let mid = (lo + hi) / 2; if readable(mid) { lo = mid } else { hi = mid } }
+        return lo
+    }
 
     static func luminance(_ c: RGB) -> Double {
         func lin(_ v: Double) -> Double { v <= 0.04045 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4) }
@@ -143,6 +180,45 @@ enum Contrast {
 }
 
 /// Horion v5 tokens. Dark first.
+/// The four background shades (design/mockup-v21 round 1). Menus, dialogs and toasts are Window (`pop` has the canvas's hex).
+/// Every shade has the same three text greys; what sits on it (`ShadeInk`) is solved from contrast. A control reads the shade it
+/// sits on from the environment (`.shade(_:)`).
+enum Shade: CaseIterable, Sendable {
+    /// Left sidebar, right column, editor foot, settings sidebar.
+    case sidebar
+    /// Grid, header, menus, dialogs, toasts.
+    case window
+    /// Search, the view-switch track, the all-day lane, cards, settings groups.
+    case inset
+    /// Fields and popover cards.
+    case raised
+    func base(_ t: InkRGB) -> RGB {
+        switch self { case .sidebar: t.rail; case .window: t.bg; case .inset: t.bg1; case .raised: t.bg2 }
+    }
+}
+
+/// What sits on one shade (`InkRGB.shadeInk`).
+struct ShadeInk: Equatable {
+    let base, hover, selected, selectedHover, edge, softEdge: RGB
+    /// The Secondary button on this shade: the hover step as its fill, a 1.5:1 edge, the selected step on hover.
+    var secondary: RGB { hover }
+    var secondaryEdge: RGB { softEdge }
+    var secondaryHover: RGB { selected }
+}
+
+/// One shade's colours in both appearances.
+struct ShadeColors {
+    let base, hover, selected, selectedHover, edge, secondary, secondaryEdge, secondaryHover: Color
+    init(_ s: Shade) {
+        let d = InkRGB.darkBase.shadeInk(s, dark: true), l = InkRGB.lightBase.shadeInk(s, dark: false)
+        func c(_ k: KeyPath<ShadeInk, RGB>) -> Color { Color.dyn(d[keyPath: k].color, l[keyPath: k].color) }
+        base = c(\.base); hover = c(\.hover); selected = c(\.selected); selectedHover = c(\.selectedHover); edge = c(\.edge)
+        secondary = c(\.secondary); secondaryEdge = c(\.secondaryEdge); secondaryHover = c(\.secondaryHover)
+    }
+    nonisolated(unsafe) private static let all: [Shade: ShadeColors] = Dictionary(uniqueKeysWithValues: Shade.allCases.map { ($0, ShadeColors($0)) })
+    static func of(_ s: Shade) -> ShadeColors { all[s]! }
+}
+
 enum Theme {
     static let bg = Color.ink(\.bg)
     /// Sidebar and right column.
@@ -208,7 +284,7 @@ enum Theme {
     static let onAct = bg
     static let actWash = Color.ink(\.fg, 0.09, 0.09)
     /// Hover of a filled `act` control: act 88 percent over the window colour.
-    static let actHover = Color.dyn(InkRGB.dark.fg.mixed(with: InkRGB.dark.bg, 0.12).color, InkRGB.light.fg.mixed(with: InkRGB.light.bg, 0.12).color)
+    static let actHover = Color.ink(\.actHover)
     static let ring = Color.ink(\.fg, 0.82, 0.82)
     /// The 2 px focus ring.
     static let focus = Color.ink(\.focus)
@@ -247,6 +323,8 @@ enum Dim {
     static let iconGlyphSmall: CGFloat = 14
     /// One `Segmented` segment.
     static let segment: CGFloat = 22
+    /// Every text button, of every kind (design/mockup-v21 round 1: "One height: 26 everywhere"), = `iconButton`.
+    static let button: CGFloat = 26
 }
 
 /// Event block shape (v11 locked: bar + tint). The bar is flush with the block's left edge, full height, and the block's
@@ -515,7 +593,8 @@ extension Theme {
     static let replyMaybe = Color.ink(\.warn)
     static let replyNo = Color.ink(\.danger)
     /// Destructive actions: the red split button of the delete dialog, "Discard changes" in a menu.
-    static let danger = Color(hex: "#D9645A")
+    static let danger = Color.ink(\.dangerFill)
+    static let dangerHover = Color.ink(\.dangerHover)
     static let onDanger = Color(hex: "#FFFFFF")
 }
 
@@ -523,9 +602,20 @@ extension Theme {
 
 /// The hover wash of the surface a control sits on: `hover` on the canvas, `hoverPop` inside menus and dialogs (set by `surface()`).
 private struct HoverWashKey: EnvironmentKey { static let defaultValue: Color = Theme.hover }
+private struct ShadeKey: EnvironmentKey { static let defaultValue: Shade = .window }
 extension EnvironmentValues {
+    /// The background shade a control sits on (default Window). Set it with `.shade(_:)` where a shade is painted.
+    var shade: Shade {
+        get { self[ShadeKey.self] }
+        set { self[ShadeKey.self] = newValue }
+    }
     var hoverWash: Color {
         get { self[HoverWashKey.self] }
         set { self[HoverWashKey.self] = newValue }
     }
+}
+
+extension View {
+    /// Marks this view as sitting on `s`: buttons and rows inside read its hover, selected and Secondary colours.
+    func shade(_ s: Shade) -> some View { environment(\.shade, s).environment(\.hoverWash, ShadeColors.of(s).hover) }
 }

@@ -155,41 +155,27 @@ struct PanelSwitch: View {
 /// `kbd`: a shortcut hint (now plain grey text, see `Keycap`).
 typealias PanelKbd = Keycap
 
-/// `.btn--fill`: ink on the window, 28 pt (24 pt small).
+/// A Primary `HButton` with one keycap (the editor foot's Save).
 struct PanelFillButton: View {
     let title: String
     var small = false
     var key: String?
     var fullWidth = false
     let action: () -> Void
-    @State private var hover = false
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 6) {
-                Text(title).font(.textSemibold)
-                if let key { PanelKbd(text: key, onAct: true) }
-            }
-            .foregroundStyle(Theme.onAct)
-            .padding(.horizontal, small ? 8 : 10).frame(maxWidth: fullWidth ? .infinity : nil).frame(height: small ? Dim.row : Dim.field)
-            .background(RoundedRectangle(cornerRadius: Radius.control).fill(hover ? Theme.actHover : Theme.act))
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(PressStyle(scale: 0.97))
-        .onHover { hover = $0 }
-        .animation(Motion.fast, value: hover)
-    }
+    var body: some View { HButton(title: title, kind: .primary, keys: key.map { [$0] } ?? [], fullWidth: fullWidth, action: action) }
 }
 
-/// `.ibtn`: 26 pt square, radius 6, fg2, wash on hover.
+/// `.ibtn`: 26 pt square, radius 6, fg2, a Ghost: the hover fill of the shade it sits on.
 struct PanelIconButton: View {
     let icon: PanelIcon.Name
     let action: () -> Void
     @State private var hover = false
+    @Environment(\.hoverWash) private var wash
     var body: some View {
         Button(action: action) {
             PanelIcon(name: icon, size: Dim.iconGlyph, color: hover ? Theme.fg : Theme.fg2)
                 .frame(width: Dim.iconButton, height: Dim.iconButton)
-                .background(RoundedRectangle(cornerRadius: Radius.small).fill(hover ? Theme.hoverRail : Color.clear))
+                .background(RoundedRectangle(cornerRadius: Radius.small).fill(hover ? wash : Color.clear))
                 .contentShape(Rectangle())
         }
         .buttonStyle(PressStyle())
@@ -203,6 +189,7 @@ struct PanelIconButton: View {
 struct CopyLinkButton: View {
     let copy: () -> Bool
     @State private var hover = false
+    @Environment(\.hoverWash) private var wash
     @State private var copiedAt: Date?
     static let feedback: TimeInterval = 1.5
 
@@ -217,7 +204,7 @@ struct CopyLinkButton: View {
         } label: {
             PanelIcon(name: copied ? .check : .copy, size: Dim.iconGlyphSmall, color: hover || copied ? Theme.fg : Theme.fg3)
                 .frame(width: Dim.iconButtonSmall, height: Dim.iconButtonSmall)
-                .background(RoundedRectangle(cornerRadius: Radius.small).fill(hover ? Theme.hoverRail : Color.clear))
+                .background(RoundedRectangle(cornerRadius: Radius.small).fill(hover ? wash : Color.clear))
                 .contentShape(Rectangle())
         }
         .buttonStyle(PressStyle())

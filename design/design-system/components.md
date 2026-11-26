@@ -48,7 +48,7 @@ Each spec uses the tokens in `foundations.md`. Sizes are in points.
 | Month title | `title` 15 / 600 `fg1`, the year in 400 `fg3` |
 | Height | 48, padding 0 12 0 20, gap 10. No week label (the ISO week is the title's tooltip). |
 | View switch | Segmented control, 26 high: `surface` track (padding 2, radius 8), segments 22 high, radius 6; the selected one `raised` with `fg1` 500 and a 1 px `segRing` edge. Hover only turns the text `fg1` (no fill). |
-| Buttons | Icon buttons 26 (radius 6, `fg3` glyph, hover wash + `fg1`); Today 26 high, radius 8, on `raised`. ‹ Today › 4 apart, then the right-column button. |
+| Buttons | Icon buttons 26 (Ghost: `fg3` glyph, the shade's hover + `fg1`); Today is a Secondary button. ‹ Today › 4 apart, then the right-column button. |
 
 ## Sidebar
 | Part | Spec |
@@ -64,6 +64,23 @@ Each spec uses the tokens in `foundations.md`. Sizes are in points.
 |---|---|
 | Lead (Now) | Label 11 / 500 `fg3` + countdown in `live`; a 36 pt time column (start `fg2`, end `fg3`), a 3 pt bar in the calendar mark, title 12 / 600 `fg1`, meta `small` `fg2`. Join 30 high on `raised` with a 1 px edge, 12 / 500 `fg1`, ⌘J in `fg3` (a ghost with a `hairStrong` edge on Up next). A pane edge under the lead card. No "Today" heading, no shortcut list. |
 | List rows | "Later today" label; rows 26 high, time 11 `fg2` tabular right-aligned in 36, a 3 × 14 bar in the calendar mark, title `body` 12 |
+
+## Buttons (mockup-v21 round 1, locked)
+Four kinds, one height, the same on every shade. `HButton` (`Components.swift`) draws them; `ButtonFace` / `.buttonFace(_:)` draws the face around any label (Join). The older names (`PrimaryButton`, `SecondaryButton`, `TextButton`, `GhostButton`, `PlainButton`, `PanelFillButton`, `TodayButton`) wrap `HButton`.
+
+| Kind | Rest | Hover | Label | Use |
+|---|---|---|---|---|
+| Primary | `accent` fill (fg1) | one hover step toward `bg`, as far as the label keeps fg1's floor (`actHover`) | `onAccent` 600 | One per place: Save, Join, Send, the split send button |
+| Secondary | the shade's hover step as fill, a 1.5:1 edge | the shade's selected step | `fg1` 500 | Today, Cancel in dialogs |
+| Ghost | no fill | the shade's hover fill | `fg2` 500 → `fg1` | Discard in the editor foot, icon buttons |
+| Danger | the danger colour, darkened until a white label passes 4.5 / Lc 60 (Dark `#B85952`, Paper `#B4382D`) | 10 % darker | white 600 | Only to confirm a delete (the delete dialog's split button) |
+
+| Part | Spec |
+|---|---|
+| Height | 26 for every text button (`Dim.button`), Join included. Icon buttons 26 (22 small). |
+| Shape | Radius 9 (`Radius.control`), 12 pt sides, 6 between icon, label and keycaps. Keycaps on Primary and Danger take the label colour at 62 % (edge 30 %). |
+| Disabled | Label `fg4`. Primary and Danger lose their fill for the shade's selected fill; Secondary keeps its fill and edge. |
+| Split button | One button in two parts (action, 28 pt chevron) with a 25 % label-colour line between; each part takes the kind's hover fill. |
 
 ## Keycap
 Locked in `design/mockup-v12-keycaps` round 1 (2026-11-21). `Keycap` / `Keycaps` in `Components.swift`; nothing draws a key by hand.
@@ -84,3 +101,4 @@ Locked in `design/mockup-v12-keycaps` round 1 (2026-11-21). `Keycap` / `Keycaps`
 - Avoid opacity on text or on text-like marks such as checkboxes.
 - Avoid sizes other than 15, 12 and 11, and weights other than 400, 500 and 600.
 - Avoid a second hue in the chrome. Colour belongs to calendars.
+- Avoid a hover, selected or button colour picked for one place. Say which shade a view paints (`.shade(_:)`) and use its tokens.

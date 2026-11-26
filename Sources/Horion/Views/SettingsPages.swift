@@ -66,6 +66,7 @@ struct SettingsNav: View {
         .frame(width: 200, alignment: .topLeading)
         .frame(maxHeight: .infinity, alignment: .top)
         .background(Theme.rail)
+        .shade(.sidebar)
         .overlay(alignment: .trailing) { Rectangle().fill(Theme.hair).frame(width: 1) }
         .tourAnchor("settings:pages")
     }

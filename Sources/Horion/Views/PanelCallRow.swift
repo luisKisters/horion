@@ -65,7 +65,7 @@ struct PanelCallRow: View {
     }
 }
 
-/// `.joinbig`: the whole width, 32 pt, radius 8. design/call-link round 3: the filled ink Join (act fill, onAct 600 text, the call
+/// `.joinbig`: the whole width, a Primary button (`Dim.button`). design/call-link round 3: the filled ink Join (act fill, onAct 600 text, the call
 /// logo, "Join Google Meet") with the ⌘ J keycaps tinted into the fill.
 struct JoinBigButton: View {
     let call: CallLink
@@ -74,7 +74,7 @@ struct JoinBigButton: View {
     var body: some View {
         let h = hover || HoverProbe.shared.target == "joinbig"
         Button(action: action) {
-            JoinFillLabel(call: call, height: Dim.field, hot: h)
+            JoinFillLabel(call: call, hot: h)
         }
         .buttonStyle(PressStyle(scale: 0.98))
         .onHover { hover = $0 }
@@ -87,7 +87,7 @@ struct JoinBigButton: View {
 /// The filled ink Join's face, shared by the event's Join and the right column's (design/call-link `.btn--fill.jw`).
 struct JoinFillLabel: View {
     let call: CallLink
-    var height: CGFloat = Dim.field
+    var height: CGFloat = Dim.button
     var hot = false
     var body: some View {
         HStack(spacing: 7) {
@@ -95,10 +95,7 @@ struct JoinFillLabel: View {
             Text(call.kind == .other ? "Join call" : "Join \(call.name)").font(.textSemibold).tracking(TypeTrack.text)
             HStack(spacing: 3) { JoinKbd(text: "\u{2318}"); JoinKbd(text: "J") }.padding(.leading, 2)
         }
-        .foregroundStyle(Theme.onAct)
-        .frame(maxWidth: .infinity).frame(height: height)
-        .background(RoundedRectangle(cornerRadius: Radius.control).fill(hot ? Theme.actHover : Theme.act))
-        .contentShape(Rectangle())
+        .buttonFace(.primary, hot: hot, fullWidth: true, height: height)
     }
 }
 
