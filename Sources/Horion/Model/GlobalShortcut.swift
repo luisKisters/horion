@@ -59,9 +59,26 @@ struct GlobalShortcut: Codable, Equatable {
 
     /// The menu item key equivalent for this shortcut ("" for a key a menu cannot show).
     var keyEquivalent: String {
-        if key.count == 1 { return key.lowercased() }
+        if key.count == 1 { return Self.character(for: keyCode) ?? key.lowercased() }
         if let c = Self.functionKeys[Int(keyCode)] { return String(Character(UnicodeScalar(UInt16(c))!)) }
         return [kVK_Space: " ", kVK_Return: "\r", kVK_Tab: "\t", kVK_Delete: "\u{8}"][Int(keyCode)] ?? ""
+    }
+
+    /// What the key types in the current keyboard layout: the hot key goes by key code, so the menu item that takes the
+    /// key while the menu is open must too, also after a layout change.
+    private static func character(for keyCode: UInt16) -> String? {
+        guard let source = TISCopyCurrentKeyboardLayoutInputSource()?.takeRetainedValue(),
+              let ptr = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData) else { return nil }
+        let layout = Unmanaged<CFData>.fromOpaque(ptr).takeUnretainedValue() as Data
+        var dead: UInt32 = 0, length = 0
+        var chars = [UniChar](repeating: 0, count: 4)
+        let status = layout.withUnsafeBytes { raw in
+            UCKeyTranslate(raw.bindMemory(to: UCKeyboardLayout.self).baseAddress!, keyCode, UInt16(kUCKeyActionDisplay), 0,
+                           UInt32(LMGetKbdType()), OptionBits(kUCKeyTranslateNoDeadKeysBit), &dead, chars.count, &length, &chars)
+        }
+        guard status == noErr, length > 0 else { return nil }
+        let c = String(utf16CodeUnits: chars, count: length).lowercased()
+        return c.unicodeScalars.allSatisfy { !CharacterSet.controlCharacters.contains($0) } ? c : nil
     }
 
     private static let functionKeys: [Int: Int] = [
