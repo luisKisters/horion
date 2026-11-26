@@ -1,0 +1,878 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Horion v21 · panel pickers</title>
+<style>
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; overflow: hidden; background: #08080a; color: #d8d8dc; font: 13px/1.4 -apple-system, system-ui, sans-serif; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; text-align: inherit; padding: 0; }
+input { font: inherit; color: inherit; background: none; border: 0; outline: 0; }
+#root { display: flex; height: 100%; }
+#stage { flex: 1; position: relative; overflow: hidden; }
+.shot #picker { display: none; }
+
+/* ---------- picker (outside the app) ---------- */
+#picker { width: 380px; flex: none; border-left: 1px solid #222; background: #111113; overflow-y: auto; padding: 18px 18px 84px; }
+#picker h1 { font-size: 15px; font-weight: 650; color: #f2f2f4; margin: 0; }
+#picker h2 { font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: #6c6c74; font-weight: 600; margin: 22px 0 8px; }
+#picker .lede { color: #8a8a92; font-size: 12px; margin: 4px 0 14px; }
+.pk-btn { padding: 5px 9px; border-radius: 7px; background: #1b1b1f; color: #b4b4bb; font-size: 12px; border: 1px solid #26262b; }
+.pk-btn:hover { background: #222227; color: #eee; }
+.pk-btn.on { background: #ececf0; color: #111; border-color: #ececf0; }
+.pk-scenes { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.pk-notes { padding: 10px 12px; border-radius: 9px; background: #17171a; border: 1px solid #222226; color: #a6a6ae; font-size: 12px; }
+.pk-notes ul { margin: 0; padding-left: 15px; }
+.pk-ba { display: flex; gap: 4px; align-items: center; margin-bottom: 10px; }
+.pk-ba span { color: #6c6c74; font-size: 11px; margin-left: 4px; }
+.pk-tog { display: flex; gap: 8px; align-items: center; color: #a6a6ae; font-size: 12px; margin-top: 6px; }
+.pk-tog i { width: 24px; height: 14px; border-radius: 7px; background: #2a2a30; position: relative; flex: none; }
+.pk-tog i::after { content: ""; position: absolute; left: 2px; top: 2px; width: 10px; height: 10px; border-radius: 50%; background: #8a8a92; transition: transform .15s; }
+.pk-tog.on i { background: #ececf0; } .pk-tog.on i::after { transform: translateX(10px); background: #111; }
+.pk-audit { margin-top: 8px; color: #8a8a92; font-size: 11.5px; }
+.pk-audit b { color: #eee; }
+.pk-dec { margin-bottom: 14px; }
+.pk-dec > b { color: #f2f2f4; font-size: 12.5px; }
+.pk-dec p { color: #8a8a92; font-size: 12px; margin: 3px 0 6px; }
+.pk-new { color: #a6a6ae; font-size: 12px; margin: 3px 0 6px; }
+.pk-new q { color: #e6e6ea; }
+.pk-opt { display: flex; align-items: center; gap: 8px; width: 100%; padding: 5px 8px; border-radius: 7px; color: #b4b4bb; font-size: 12px; }
+.pk-opt:hover { background: #1b1b1f; color: #eee; }
+.pk-opt.on { color: #f4f4f6; background: #1d1d22; }
+.pk-opt .r { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid #4a4a52; flex: none; }
+.pk-opt.on .r { border-color: #f4f4f6; background: radial-gradient(#f4f4f6 0 2.5px, transparent 3px); }
+.pk-opt .end { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+.pk-opt .rec, .pk-opt .lk { font-size: 10.5px; color: #6c6c74; }
+.pk-opt .hq { width: 16px; height: 16px; border-radius: 50%; border: 1px solid #3a3a42; color: #8a8a92; font-size: 10px; display: inline-grid; place-items: center; position: relative; }
+.pk-opt .hq:hover::after { content: attr(data-help); position: absolute; right: -4px; top: 22px; width: 270px; padding: 8px 10px; border-radius: 8px; background: #26262c; border: 1px solid #3a3a42; color: #e6e6ea; font-size: 11.5px; line-height: 1.45; white-space: normal; z-index: 10; }
+.pk-lock { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; padding: 3px 0; color: #8a8a92; }
+.pk-lock b { font-weight: 500; color: #c4c4cb; }
+.pk-foot { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 22px; }
+/* Agentation toolbar: bottom right of the app, not over the picker. */
+.agt-host { right: 396px !important; bottom: 16px !important; }
+#picker .read { color: #a6a6ae; font-size: 12px; margin: -6px 0 14px; padding-left: 10px; border-left: 2px solid #2a2a30; }
+#picks { margin-top: 10px; width: 100%; height: 150px; background: #141417; color: #bdbdc4; border: 1px solid #25252a; border-radius: 8px; padding: 8px; font: 11px/1.45 ui-monospace, Menlo, monospace; resize: vertical; }
+
+/* ---------- preview: crossfade, short glow, alignment guides ---------- */
+.ghost { pointer-events: none; z-index: 140; transition: opacity 140ms ease; }
+.pvhl { animation: pvpulse 900ms ease-out forwards; }
+@keyframes pvpulse { 0% { box-shadow: 0 0 0 0 rgba(90,160,255,.9), 0 0 0 1.5px rgba(90,160,255,.9); } 60% { box-shadow: 0 0 0 8px rgba(90,160,255,0), 0 0 0 1.5px rgba(90,160,255,.9); } 100% { box-shadow: 0 0 0 8px rgba(90,160,255,0), 0 0 0 1.5px transparent; } }
+#guides { position: absolute; inset: 0; pointer-events: none; z-index: 150; }
+#guides .gv { position: absolute; width: 0; border-left: 1px solid rgba(64, 214, 120, .55); }
+#guides .gv.r { border-left-color: rgba(90, 160, 255, .55); }
+#guides .gv span { position: absolute; top: 2px; left: 2px; font: 9px ui-monospace, Menlo, monospace; color: rgba(64, 214, 120, .95); background: rgba(0,0,0,.6); padding: 0 2px; }
+#guides .bx { position: absolute; outline: 1px solid rgba(255, 70, 90, .95); background: rgba(255, 70, 90, .12); }
+#guides .bx span { position: absolute; top: -12px; left: 0; font: 9px ui-monospace, Menlo, monospace; color: #fff; background: rgba(220, 40, 60, .9); padding: 0 3px; white-space: nowrap; }
+#guides .ol { position: absolute; outline: 1px dashed rgba(255, 255, 255, .14); }
+#guides .legend { position: absolute; left: 12px; bottom: 12px; padding: 8px 10px; border-radius: 8px; background: rgba(10,10,12,.88); border: 1px solid rgba(255,255,255,.12); font: 11px/1.5 -apple-system, system-ui; color: #ddd; }
+
+/* ================= the app: Horion v21 ================= */
+@font-face { font-family: Geist; src: url("../../Sources/Horion/Resources/Fonts/Geist%5Bwght%5D.ttf") format("truetype"); font-weight: 100 900; }
+/* Tokens (Theme.swift InkRGB.dark, Dim, Radius). Every value in the app CSS below is a token. */
+.desk { --bg: #0B0B0C; --rail: #070708; --bg1: #151516; --bg2: #1D1D1E; --bg3: #2A2A2C; --pop: #0B0B0C;
+  --fg: #EBEBED; --fg2: #CCCCCE; --fg3: #A8A8AA; --fg4: #4E4E50; --hover: #161617; --sel: #1E1E1F; --popHover: #1D1D1E;
+  --grid: #212123; --gridV: #1B1B1C; --hair: #1C1C1D; --hair2: #2A2A2C; --live: #FF6B5F; --focus: #6E9BF5; --ok: #6CC58A; --warn: #E5B44A; --danger: #FF7B72;
+  --font: Geist, -apple-system, system-ui, sans-serif; --fs-title: 15px; --fs-ui: 12px; --fs-small: 11px;
+  --w-side: 236px; --w-panel: 320px; --h-tool: 48px; --h-dayhead: 32px; --gutter: 56px; --h-hour: 46px;
+  --h-row: 28px; --h-field: 32px; --r-ev: 4.5px; --r-row: 6px; --r-ctl: 8px; --r-pop: 10px;
+  --s-xs: 4px; --s-s: 8px; --s-m: 12px; --s-l: 16px;
+  --c-personal: #5B8DEF; --c-family: #E8804A; --c-tasks: #A8A8AA; --c-run: #D9B24A; --c-work: #4FA3E0; --c-flat: #3FB46A; }
+.desk { position: absolute; left: 0; top: 0; transform-origin: 0 0; overflow: hidden; background: var(--bg); color: var(--fg); font: var(--fs-ui)/1.4 var(--font); display: flex; -webkit-font-smoothing: antialiased; font-variant-numeric: tabular-nums; }
+.desk button { font: inherit; }
+.desk .mono { font-variant-numeric: tabular-nums; }
+.desk svg.i { width: 16px; height: 16px; fill: none; stroke: var(--fg3); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.desk svg.i.s { width: 14px; height: 14px; }
+/* sidebar */
+.side { width: var(--w-side); flex: none; background: var(--rail); border-right: 1px solid var(--hair); padding: var(--s-s) var(--s-l); display: flex; flex-direction: column; }
+.lights { display: flex; gap: 8px; height: 32px; align-items: center; }
+.lights i { width: 12px; height: 12px; border-radius: 50%; background: #FF5F57; } .lights i:nth-child(2) { background: #FEBC2E; } .lights i:nth-child(3) { background: #28C840; }
+.mm-title { display: flex; align-items: center; justify-content: space-between; height: var(--h-row); margin-top: var(--s-s); font-weight: 500; }
+.mm-title span { color: var(--fg3); font-weight: 400; }
+.smm { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: var(--fs-small); row-gap: 2px; margin-top: var(--s-xs); }
+.smm b { font-weight: 400; color: var(--fg3); height: 22px; line-height: 22px; }
+.smm i { font-style: normal; height: 24px; line-height: 24px; color: var(--fg2); border-radius: var(--r-row); }
+.smm i.o { color: var(--fg4); } .smm i.wk { background: var(--bg1); } .smm i.t { background: var(--fg); color: var(--bg); font-weight: 600; }
+.grp { color: var(--fg3); font-weight: 500; margin: var(--s-l) 0 var(--s-xs); height: var(--h-row); line-height: var(--h-row); }
+.cal { display: flex; align-items: center; gap: var(--s-s); height: 26px; color: var(--fg); }
+.cal i { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+.side .foot { margin-top: auto; color: var(--fg2); height: var(--h-row); line-height: var(--h-row); }
+/* center */
+.center { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.tool { height: var(--h-tool); flex: none; display: flex; align-items: center; padding: 0 var(--s-l); gap: var(--s-s); }
+.tool h1 { font-size: var(--fs-title); font-weight: 600; margin: 0; } .tool h1 span { color: var(--fg3); font-weight: 400; }
+.seg { margin-left: auto; display: flex; background: var(--bg1); border-radius: var(--r-ctl); padding: 2px; }
+.seg span { padding: 0 10px; height: 24px; line-height: 24px; border-radius: var(--r-row); color: var(--fg2); }
+.seg span.on { background: var(--fg); color: var(--bg); font-weight: 500; }
+.tbtn { height: 28px; padding: 0 10px; line-height: 28px; border-radius: var(--r-ctl); background: var(--bg1); color: var(--fg); }
+.dayhead { display: grid; grid-template-columns: var(--gutter) repeat(7, 1fr); height: var(--h-dayhead); align-items: center; flex: none; }
+.dayhead div { padding-left: var(--s-s); color: var(--fg2); } .dayhead b { color: var(--fg); font-weight: 500; margin-left: 4px; }
+.dayhead .td b { background: var(--fg); color: var(--bg); border-radius: 4px; padding: 0 4px; font-weight: 600; }
+.allday { display: grid; grid-template-columns: var(--gutter) repeat(7, 1fr); gap: 0; padding: 2px 0 6px; border-bottom: 1px solid var(--hair2); flex: none; }
+.allday .lab { color: var(--fg3); font-size: var(--fs-small); text-align: right; padding-right: var(--s-s); }
+.chipev { margin: 1px 3px; height: 20px; line-height: 20px; padding: 0 6px; border-radius: var(--r-ev); background: color-mix(in oklab, var(--c) 30%, var(--bg)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+.body { flex: 1; position: relative; overflow: hidden; display: grid; grid-template-columns: var(--gutter) repeat(7, 1fr); }
+.hours { position: relative; }
+.hours span { position: absolute; right: var(--s-s); font-size: var(--fs-small); color: var(--fg2); transform: translateY(-50%); }
+.col { position: relative; border-left: 1px solid var(--gridV); }
+.hl { position: absolute; left: 0; right: 0; border-top: 1px solid var(--grid); }
+.ev { position: absolute; left: 3px; right: 4px; border-radius: var(--r-ev); padding: 3px 6px 3px 8px; background: color-mix(in oklab, var(--c) 24%, var(--bg)); overflow: hidden; }
+.ev::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3.5px; background: var(--c); }
+.ev b { display: block; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ev span { color: var(--fg2); font-size: var(--fs-small); }
+.ev.sel { box-shadow: 0 0 0 1.5px var(--bg), 0 0 0 3px var(--c); }
+.now { position: absolute; left: var(--gutter); right: 0; border-top: 1px solid var(--live); opacity: .5; }
+.nowlab { position: absolute; left: 4px; background: var(--live); color: var(--bg); font-size: var(--fs-small); padding: 0 4px; border-radius: 4px; transform: translateY(-50%); font-weight: 500; }
+/* panel */
+.panel { width: var(--w-panel); flex: none; border-left: 1px solid var(--hair); background: var(--bg); display: flex; flex-direction: column; position: relative; }
+.search { margin: var(--s-s) var(--s-m) var(--s-s); height: var(--h-field); border-radius: var(--r-ctl); background: var(--bg1); display: flex; align-items: center; gap: var(--s-s); padding: 0 6px; color: var(--fg3); }
+.search kbd { margin-left: auto; font: var(--fs-small) var(--font); border: 1px solid var(--hair2); border-radius: 4px; padding: 0 4px; }
+.pb { padding: var(--s-s) var(--s-m) 0 var(--s-m); position: relative; }
+.prow { display: flex; align-items: center; gap: var(--s-m); min-height: var(--h-field); position: relative; }
+.prow > svg.i { margin-top: 0; }
+.prow.top { align-items: flex-start; } .prow.top > svg.i { margin-top: 8px; }
+.prow .pad { width: 16px; flex: none; }
+.ttl { display: flex; align-items: center; gap: var(--s-m); height: 36px; }
+.ttl .bar { width: 3.5px; height: 22px; border-radius: 2px; background: var(--c-flat); margin: 0 6px; }
+.ttl b { font-size: var(--fs-title); font-weight: 600; flex: 1; }
+.fld { background: transparent; border: 0; color: var(--fg); font: var(--fs-ui) var(--font); height: 24px; padding: 0 6px; margin-left: -6px; border-radius: var(--r-row); outline: none; min-width: 0; font-variant-numeric: tabular-nums; }
+.fld:hover { background: var(--hover); }
+.fld:focus { background: var(--bg1); box-shadow: inset 0 0 0 1px var(--fg3); }
+.fld.d { width: 92px; } .fld.t { width: 48px; text-align: center; margin-left: 6px; }
+.arr { color: var(--fg3); }
+.dur { flex: none; margin-left: auto; color: var(--fg3); font-size: var(--fs-small); }
+.anc { position: relative; display: inline-flex; }
+.tog { width: 26px; height: 16px; border-radius: 8px; background: var(--bg3); position: relative; flex: none; border: 0; padding: 0; cursor: pointer; }
+.tog::after { content: ""; position: absolute; left: 2px; top: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--fg3); }
+.tog.on { background: var(--fg); } .tog.on::after { left: 12px; background: var(--bg); }
+.lbtn { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 6px; margin-left: -6px; border-radius: var(--r-row); border: 0; background: none; color: var(--fg); cursor: pointer; white-space: nowrap; outline: none; }
+.lbtn:hover { background: var(--hover); }
+.lbtn:focus-visible, .lbtn.open { box-shadow: 0 0 0 1.5px var(--focus); }
+.lbtn.ph { color: var(--fg2); }
+.lbtn .sub { color: var(--fg3); }
+.dim { color: var(--fg3); }
+.guest { display: flex; align-items: center; gap: var(--s-s); height: 26px; }
+.guest .st { width: 14px; text-align: center; font-size: var(--fs-small); }
+.st.y { color: var(--ok); } .st.m { color: var(--warn); } .st.n { color: var(--danger); } .st.w { color: var(--fg3); }
+.gfield { width: 100%; height: var(--h-field); border: 1px solid var(--hair2); border-radius: var(--r-ctl); padding: 0 var(--s-s); margin: var(--s-xs) 0 0 -8px; background: none; color: var(--fg); font: var(--fs-ui) var(--font); outline: none; }
+.gfield:focus { border-color: var(--fg3); }
+.gfield[readonly] { color: var(--fg4); }
+.why { display: flex; align-items: center; gap: var(--s-s); color: var(--fg3); font-size: var(--fs-small); margin: var(--s-xs) 0 0 0; }
+.why button, .card button { border: 0; background: none; color: var(--focus); cursor: pointer; padding: 0; font-size: var(--fs-small); }
+.card { margin: var(--s-xs) 0 0 -12px; padding: var(--s-s) var(--s-m); border-radius: var(--r-ctl); background: var(--bg1); color: var(--fg2); }
+.card b { display: block; color: var(--fg); font-weight: 500; }
+.going { display: flex; background: var(--bg1); border-radius: var(--r-ctl); padding: 2px; } .going span { padding: 0 10px; height: 22px; line-height: 22px; color: var(--fg3); border-radius: var(--r-row); } .going span.on { background: var(--bg3); color: var(--fg); }
+.join { margin: var(--s-xs) 0 0 28px; height: var(--h-field); border-radius: var(--r-ctl); background: var(--fg); color: var(--bg); display: grid; place-items: center; font-weight: 500; }
+.gap { height: var(--s-s); }
+.toast { position: absolute; left: var(--s-m); right: var(--s-m); bottom: var(--s-m); background: var(--bg2); border: 1px solid var(--hair2); border-radius: var(--r-ctl); padding: var(--s-s) var(--s-m); color: var(--fg2); z-index: 60; }
+/* pickers */
+.pop { position: absolute; z-index: 50; background: var(--pop); border: 1px solid var(--hair2); border-radius: var(--r-pop); padding: var(--s-xs); box-shadow: 0 12px 32px rgba(0,0,0,.5); outline: none; }
+.pop.under { top: calc(100% + 4px); left: -13px; }
+.pop.right { top: calc(100% + 4px); right: -4px; }
+.pop.sheet { position: fixed; }
+.plist { max-height: 252px; overflow: auto; scrollbar-width: none; }
+.mi { display: flex; align-items: center; gap: var(--s-s); height: 28px; padding: 0 var(--s-s); border-radius: var(--r-row); white-space: nowrap; cursor: pointer; color: var(--fg); }
+.mi:hover { background: var(--hover); }
+.mi.act { background: var(--popHover); }
+.mi .ck { width: 14px; flex: none; color: var(--fg2); font-size: var(--fs-small); }
+.mi .len { margin-left: auto; padding-left: var(--s-m); color: var(--fg3); font-size: var(--fs-small); overflow: hidden; text-overflow: ellipsis; }
+.mi .lead { color: var(--fg3); font-size: var(--fs-small); width: 40px; flex: none; }
+.mi .off { color: var(--fg3); width: 76px; flex: none; }
+.mi .zn { overflow: hidden; text-overflow: ellipsis; } .mi .zn em { font-style: normal; color: var(--fg3); }
+.sep { height: 1px; background: var(--hair2); margin: var(--s-xs) var(--s-s); }
+.keys { display: flex; gap: var(--s-m); flex-wrap: wrap; padding: var(--s-xs) var(--s-s) 2px; color: var(--fg3); font-size: var(--fs-small); }
+.zs { display: flex; align-items: center; gap: var(--s-s); height: var(--h-field); padding: 0 6px; border-bottom: 1px solid var(--hair2); margin-bottom: var(--s-xs); }
+.zs input { flex: 1; background: none; border: 0; outline: none; color: var(--fg); font: var(--fs-ui) var(--font); }
+.empty { padding: var(--s-s); color: var(--fg3); }
+.pmm { width: 228px; padding: 2px var(--s-xs); }
+.pmm .h { display: flex; align-items: center; justify-content: space-between; height: var(--h-row); font-weight: 500; }
+.pmm .h button { width: 24px; height: 24px; border-radius: var(--r-row); border: 0; background: none; color: var(--fg2); cursor: pointer; }
+.pmm .h button:hover { background: var(--hover); }
+.pmm .g { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: var(--fs-small); row-gap: 2px; }
+.pmm .g b { font-weight: 400; color: var(--fg3); height: 22px; line-height: 22px; }
+.pmm .g i { font-style: normal; height: 26px; line-height: 26px; border-radius: var(--r-row); cursor: pointer; color: var(--fg2); }
+.pmm .g i:hover { background: var(--hover); }
+.pmm .g i.o { color: var(--fg4); } .pmm .g i.t { color: var(--live); font-weight: 600; } .pmm .g i.c { background: var(--fg); color: var(--bg); font-weight: 600; } .pmm .g i.k { box-shadow: inset 0 0 0 1.5px var(--focus); }
+.crow { display: flex; align-items: center; gap: var(--s-s); height: 30px; padding: 0 var(--s-s); border-radius: var(--r-row); cursor: pointer; }
+.crow.act { background: var(--popHover); }
+.crow .k { color: var(--fg3); width: 44px; flex: none; }
+.crow .v { flex: 1; text-align: center; }
+.crow button { width: 22px; height: 22px; border: 0; background: none; color: var(--fg2); border-radius: var(--r-row); cursor: pointer; }
+.crow button:hover { background: var(--hover); }
+.wds { flex: 1; display: flex; justify-content: center; gap: 3px; }
+.wds span { width: 22px; height: 22px; line-height: 22px; text-align: center; border-radius: 50%; background: var(--bg1); color: var(--fg3); font-size: var(--fs-small); font-weight: 500; cursor: pointer; }
+.wds span.on { background: var(--fg); color: var(--bg); } .wds span.k { box-shadow: 0 0 0 1.5px var(--focus); }
+.sent { padding: var(--s-s); line-height: 26px; color: var(--fg2); }
+.sent .tk { display: inline-block; line-height: 20px; padding: 0 6px; border-radius: var(--r-row); background: var(--bg1); color: var(--fg); cursor: pointer; }
+.sent .tk.act { box-shadow: 0 0 0 1.5px var(--focus); }
+.q { padding: var(--s-s); color: var(--fg2); }
+</style>
+</head>
+<body>
+<div id="root"><div id="stage"><div class="desk" id="desk"></div></div><aside id="picker"></aside></div>
+<script>
+// ================= edit for each round =================
+const PRODUCT = 'Horion', VERSION = 'v21', ROUND = 1;
+const DESK = { w: 1440, h: 900 };
+const SCENES = [['event', 'Panel at rest'], ['end', 'End time list'], ['date', 'Mini month'], ['zone', 'Time zone list'], ['repeat', 'Repeat menu'], ['custom', 'Custom repeat'], ['guests', 'Guests on macOS Calendar']];
+const HOWTO = ['The panel works like the app. Click or Tab into the date and times. Use ↑ ↓ ← → ⇞ ⇟ ↩ esc, or type “930”, “3 oct”, “fri”.', 'Time zone and Repeat open with a click, ↓ or space. In the zone list, type to search.', 'Click the calendar row (Personal) to move the event to a macOS Calendar calendar and back.', 'Outside a field: G alignment guides. Notes on one element: Agentation, ⌘⇧F.'];
+const READ = 'Reading this as: a native macOS calendar tool for one keyboard-heavy user, with a calm, dense dark language, leaning toward the locked Horion v11 tokens and Geist. Dials: variance 3 · motion 2 · density 6.';
+const LOCKED = { nav: 'flat', arrive: 'select', ret: 'next', wrap: 'wrap', jump: 'on' };
+const BEFORE = {};
+const DECISIONS = [
+  { g: 'Round 1', id: 'endList', name: 'The end time list', fb: 'Time list: 15-minute steps, scrolled to the current value. The end list shows lengths.', note: 'Click the end time (20:00).', scene: 'end', hl: '[data-p="end"]', opts: [
+    ['len', 'Time, then the length (20:30 · 1 h 30)', 'Each row shows the end time and, in grey on the right, how long the event is then. This is built.'],
+    ['lenfirst', 'Length first (1 h 30 · 20:30)', 'The length leads in grey, the time follows. Good when you think in “one hour”, not in clock times.'],
+    ['plain', 'Times only', 'The end list looks like the start list. The length shows only next to the fields (1 h).'],
+  ] },
+  { id: 'step', name: 'Steps in the time lists', fb: 'Time list: 15-minute steps.', note: 'Open the start or end list.', scene: 'end', hl: '[data-p="end"]', opts: [
+    ['15', 'Every 15 min', '96 rows a day. Typing “19:05” still works and keeps the exact time. This is built.'],
+    ['30', 'Every 30 min', '48 rows a day. Faster to scroll, but 15-minute meetings need typing.'],
+  ] },
+  { id: 'open', name: 'When the time list and mini month open', fb: 'Each must work by mouse and by keyboard. Typing still works and moves the list.', note: 'Click into the date or a time, then Tab between them.', scene: 'event', hl: '.when', opts: [
+    ['focus', 'As soon as the field has focus', 'Click or Tab into the field and the picker is there. Esc closes it and keeps you in the field. This is built.'],
+    ['down', 'Only on a click or ↓', 'Tab through the fields with no popups. A click or ↓ opens the picker.'],
+  ] },
+  { id: 'dayArrows', name: '← → in the date field', fb: 'Mini month with today marked, the chosen day marked, ‹ › for months, arrow keys move days, Return picks.', note: 'Click the date, then press ← → and ↑ ↓.', scene: 'date', hl: '[data-p="date"]', opts: [
+    ['after', 'Move days once ↑ or ↓ started picking', '← → move the text caret first. After ↑ or ↓ they move one day. This is built.'],
+    ['always', 'Always move days', '← → always move one day while the mini month is open. To move the caret, close it with esc.'],
+    ['caret', 'Only move the text caret', 'Only ↑ ↓ (weeks) and ⇞ ⇟ (months) move in the mini month.'],
+  ] },
+  { id: 'zonePlace', name: 'Where the time zone list opens', fb: 'Per-event time zone picker: searchable list, “GMT+01:00 Central European Standard Time – Berlin”.', note: 'Click “Time zone” next to All day.', scene: 'zone', hl: '[data-p="zone"]', opts: [
+    ['wide', 'Wide, over the grid, right edge on the button', '580 pt wide, so the full zone names fit. It covers the grid while open. This is built.'],
+    ['panel', 'Inside the panel, names cut', 'Stays inside the 320 pt panel. Long names end in “…”.'],
+    ['sheet', 'Takes over the panel until you pick', 'The search and list fill the panel. Esc or a pick brings the event back.'],
+  ] },
+  { id: 'zoneLabel', name: 'What the zone button says', fb: 'Per-event time zone picker.', note: 'Pick New York in the zone list, then look at the button.', scene: 'zone', hl: '[data-f="zone"]', opts: [
+    ['city', '“Time zone”, then the city and its times', 'Grey “Time zone” while the event is in your zone. Then “New York 13:00–14:00”: the same moment, in that city. This is built.'],
+    ['offset', '“Time zone”, then the offset and city', 'Then “GMT−4 New York”. Shorter, but you do the sum.'],
+    ['always', 'Always the zone', '“GMT+2 Berlin” even when the event is in your zone.'],
+  ] },
+  { id: 'custom', name: 'Custom repeat', fb: 'Make Repeat editable … offer a menu of common rules plus custom/until.', note: 'Open Repeat, then “Custom…”.', scene: 'custom', hl: '[data-p="repeat"]', opts: [
+    ['rows', 'Rows with ‹ ›', 'Every, Unit, On (weekly) and Ends are rows. ↑ ↓ pick a row, ← → or ‹ › change it. This is built.'],
+    ['sentence', 'One sentence', '“Every 2 weeks on Sun, until Sun 3 Jan.” ← → pick a part, ↑ ↓ change it, or click a part.'],
+  ] },
+  { id: 'ends', name: 'How a custom repeat ends', fb: 'Offer a menu of common rules plus custom/until.', note: 'In Custom repeat, go to Ends.', scene: 'custom', hl: '[data-p="repeat"]', opts: [
+    ['months', 'Never, or in 1, 2, 3 … months', 'One row. Each step adds a month. This is built.'],
+    ['full', 'Never, on a date, or after a count', 'Ends picks the kind. A second row sets the date (a week a step) or the count.'],
+  ] },
+  { id: 'scope', name: 'A new rule on a repeating event', fb: 'Make Repeat editable.', note: 'Open Repeat and pick “Every 2 weeks on Sun”.', scene: 'repeat', hl: '[data-p="repeat"]', opts: [
+    ['all', 'Changes the whole series, no question', 'Like Google Calendar’s “All events”. This is built.'],
+    ['ask', 'Asks: all events, or this and following', 'One more step. “This and following” ends the old series the day before.'],
+  ] },
+  { id: 'guestOff', name: 'Participants on a macOS Calendar event', fb: 'Participants: find out what fails and give a way to test adding guests without Google.', note: 'macOS Calendar can’t add guests. The scene puts the event in iCloud.', scene: 'guests', hl: '[data-p="guests"]', opts: [
+    ['hint', 'Field stays, one grey line says why', '“macOS Calendar can’t invite guests. Use Google.” Use Google opens Settings → Accounts. This is built.'],
+    ['card', 'A card instead of the field', 'A small card explains it and links Accounts. No field you can’t type in.'],
+    ['hide', 'No participants field', 'The row is gone for these events. Nothing explains why.'],
+  ] },
+  { g: 'v20', id: 'nav', lock: true, name: 'Moving through the panel', opts: [['flat', 'Flat Tab: every control, top to bottom'], ['rows', 'Rows'], ['grid', 'Grid']] },
+  { g: 'v20', id: 'arrive', lock: true, name: 'Arriving in a text field by keyboard', opts: [['select', 'Selects all'], ['end', 'Caret at end']] },
+  { g: 'v20', id: 'ret', lock: true, name: 'Return in a one-line field', opts: [['next', 'Saves and moves on'], ['stay', 'Saves, stays']] },
+  { g: 'v20', id: 'wrap', lock: true, name: 'Tab past the last control', opts: [['wrap', 'Wraps to the top'], ['out', 'Back to the grid']] },
+  { g: 'v20', id: 'jump', lock: true, name: 'Jump letters (hold ⌥)', opts: [['on', 'On'], ['off', 'Off']] },
+];
+
+// ================= demo data (invented) =================
+const TODAY = new Date(2026, 9, 4), NOWMIN = 15 * 60 + 10, LOCAL = 'Europe/Berlin';
+const CONTACTS = [['Mara Hoffmann', 'mara@example.com'], ['Malik Osei', 'malik@example.org'], ['Ines Duarte', 'ines@example.com'], ['Jonas Weber', 'jonas@example.org'], ['Lena Park', 'lena.park@example.com']];
+function fresh() {
+  return { scene: null, pop: null, focus: null, text: {}, toast: '', ev: {
+    title: 'Flat dinner', date: new Date(2026, 9, 4), start: 1140, end: 1200, allDay: false, tz: LOCAL, series: true,
+    rule: { freq: 'weekly', n: 1, wd: [0], end: 'never', until: null, count: 10 }, store: 'google',
+    guests: [['Sam Rivera', 'y', 'organizer · you'], ['Mara Hoffmann', 'y'], ['Jonas Weber', 'm'], ['dion.k@example.com', 'n'], ['sam@example.net', 'w']] } };
+}
+const WEEK = [ // day 0 = Mon 28 Sep
+  [[480, 585, 'Deep work', 'work'], [720, 820, 'Team lunch', 'personal'], [840, 960, 'Design review', 'personal'], [1140, 1230, 'Family dinner', 'family'], [1260, 1320, 'Evening walk', 'personal']],
+  [[480, 585, 'Deep work', 'work'], [600, 630, 'Standup', 'work'], [720, 820, 'Team lunch', 'personal'], [875, 970, 'Research interviews', 'personal'], [990, 1110, 'Focus block', 'work']],
+  [[720, 795, 'Reading', 'personal'], [840, 960, 'Lunch with Theo', 'personal'], [1140, 1200, 'Dinner', 'family'], [1260, 1320, 'Evening walk', 'personal']],
+  [[480, 570, 'Deep work', 'work'], [660, 720, 'Club committee', 'run'], [780, 840, 'Lunch', 'family'], [1020, 1080, 'Office hours', 'run'], [1260, 1320, 'Evening walk', 'personal']],
+  [[480, 585, 'Deep work', 'work'], [600, 690, 'Usability test', 'work'], [900, 990, 'Pitch rehearsal', 'run'], [1140, 1320, 'Cinema', 'family']],
+  [[660, 750, 'Brunch', 'family'], [780, 870, 'Flea market', 'family'], [900, 1020, 'Prepare the talk', 'personal'], [1200, 1380, 'Birthday party', 'family']],
+  [[585, 690, 'Long run', 'flat'], [885, 945, 'Test', 'personal'], [-1, 0, 'Flat dinner', 'flat'], [1260, 1320, 'Evening walk', 'personal']],
+];
+
+// ================= helpers =================
+const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+const pad = n => String(n).padStart(2, '0');
+const fmtT = m => m >= 1440 ? '24:00' : pad(Math.floor(m / 60)) + ':' + pad(m % 60);
+const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MOL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const fmtD = d => `${WD[d.getDay()]} ${d.getDate()} ${MO[d.getMonth()]}`;
+const len = m => { const h = Math.floor(m / 60), x = m % 60; return h ? h + ' h' + (x ? ' ' + x : '') : x + ' min'; };
+const addD = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+const addM = (d, n) => { const r = new Date(d.getFullYear(), d.getMonth() + n, 1); r.setDate(Math.min(d.getDate(), new Date(r.getFullYear(), r.getMonth() + 1, 0).getDate())); return r; };
+const same = (a, b) => !!a && !!b && a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+function parseT(v) { v = v.trim().replace('.', ':'); if (/^\d{3,4}$/.test(v)) v = v.slice(0, -2) + ':' + v.slice(-2);
+  const m = v.match(/^(\d{1,2})(?::(\d{0,2}))?$/); if (!m) return null; const h = +m[1], mi = m[2] ? +m[2].padEnd(2, '0') : 0;
+  if (h > 24 || mi > 59 || (h === 24 && mi)) return null; return h * 60 + mi; }
+function parseDay(v) { v = v.trim().toLowerCase(); if (!v) return null;
+  if (v === 'today') return TODAY; if (v === 'tomorrow') return addD(TODAY, 1);
+  if (!/\d/.test(v)) { const wi = WD.findIndex(w => v.startsWith(w.toLowerCase())); if (wi < 0) return null; let d = addD(TODAY, 1); while (d.getDay() !== wi) d = addD(d, 1); return d; }
+  const n = v.match(/(\d{1,2})[./](\d{1,2})/), m = v.match(/(\d{1,2})/), mo = MO.findIndex(x => v.includes(x.toLowerCase()));
+  const day = n ? +n[1] : +m[1], month = n ? +n[2] - 1 : mo >= 0 ? mo : A.ev.date.getMonth();
+  if (day < 1 || day > 31 || month < 0 || month > 11) return null; let d = new Date(2026, month, day); if (d < addD(TODAY, -60)) d = new Date(2027, month, day); return d; }
+const slot = (m, l) => { let r = l[0]; for (const x of l) if (x <= m) r = x; return r; };
+const fold = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+// ---------- time zones ----------
+let ZONES = null;
+function zones() {
+  if (ZONES) return ZONES;
+  const at = new Date(2026, 9, 4, 12), ids = (Intl.supportedValuesOf ? Intl.supportedValuesOf('timeZone') : [LOCAL, 'America/New_York', 'Europe/London', 'Asia/Tokyo']).filter(z => z.includes('/') && !z.startsWith('Etc/'));
+  if (!ids.includes(LOCAL)) ids.push(LOCAL);
+  ZONES = ids.map(id => {
+    const part = o => { try { return new Intl.DateTimeFormat('en-US', { timeZone: id, ...o }).formatToParts(at).find(p => p.type === 'timeZoneName')?.value || ''; } catch (e) { return ''; } };
+    let off = part({ timeZoneName: 'longOffset' }); if (!off || off === 'GMT') off = 'GMT+00:00';
+    let name = part({ timeZoneName: 'long' }); if (!name || name.startsWith('GMT')) { const g = part({ timeZoneName: 'longGeneric' }); name = g && !g.startsWith('GMT') ? g : id.split('/')[0]; }
+    const sm = off.match(/([+-])(\d\d):(\d\d)/), sec = sm ? (sm[1] === '-' ? -1 : 1) * (+sm[2] * 3600 + +sm[3] * 60) : 0;
+    return { id, off, name, city: id.split('/').pop().replace(/_/g, ' '), sec };
+  }).sort((a, b) => a.sec - b.sec || a.name.localeCompare(b.name) || a.city.localeCompare(b.city));
+  return ZONES;
+}
+function filterZones(q) {
+  const w = fold(q).split(/\s+/).filter(Boolean); if (!w.length) return zones();
+  const c = [], wd = [], r = [];
+  for (const e of zones()) { const short = e.off.replace(':00', '').replace('+0', '+').replace('-0', '-'); const hay = fold(`${e.city} ${e.name} ${e.id} ${e.off} ${short}`);
+    if (!w.every(x => hay.includes(x))) continue; const tk = hay.split(/[ /_-]/);
+    if (fold(e.city).startsWith(w.join(' '))) c.push(e); else if (w.every(x => tk.some(t => t.startsWith(x)))) wd.push(e); else r.push(e); }
+  return [...c, ...wd, ...r];
+}
+const zoneOf = id => zones().find(z => z.id === id);
+const shortOff = o => o.replace(':00', '').replace('+0', '+').replace('-0', '−').replace('-', '−');
+function timesIn(id) { const z = zoneOf(id), l = zoneOf(LOCAL); if (!z || !l) return ''; const d = (z.sec - l.sec) / 60, w = m => ((m % 1440) + 1440) % 1440; return fmtT(w(A.ev.start + d)) + '–' + fmtT(w(A.ev.end + d)); }
+
+// ---------- repeat ----------
+function common() { const d = A.ev.date, w = WD[d.getDay()]; return [
+  ['none', 'Does not repeat', null], ['daily', 'Every day', { freq: 'daily', n: 1, wd: [] }], ['weekdays', 'Every weekday (Mon–Fri)', { freq: 'weekly', n: 1, wd: [1, 2, 3, 4, 5] }],
+  ['weekly', `Every week on ${w}`, { freq: 'weekly', n: 1, wd: [d.getDay()] }], ['biweekly', `Every 2 weeks on ${w}`, { freq: 'weekly', n: 2, wd: [d.getDay()] }],
+  ['monthly', `Every month on day ${d.getDate()}`, { freq: 'monthly', n: 1, wd: [] }], ['yearly', `Every year on ${d.getDate()} ${MO[d.getMonth()]}`, { freq: 'yearly', n: 1, wd: [] }]]; }
+const UNITS = ['daily', 'weekly', 'monthly', 'yearly'], UNAME = { daily: ['day', 'days'], weekly: ['week', 'weeks'], monthly: ['month', 'months'], yearly: ['year', 'years'] };
+function choiceOf(r) { if (!r) return 'none'; const c = common().find(([, , x]) => x && x.freq === r.freq && x.n === r.n && String(x.wd) === String(r.wd)); return c ? c[0] : null; }
+function endText(r) { return r.end === 'until' ? 'until ' + fmtD(r.until) : r.end === 'count' ? r.count + ' times' : ''; }
+function ruleText(r) { if (!r) return 'Does not repeat'; const c = choiceOf(r); let t;
+  if (c) t = common().find(x => x[0] === c)[1]; else { const u = UNAME[r.freq]; t = `Every ${r.n > 1 ? r.n + ' ' + u[1] : u[0]}`; if (r.freq === 'weekly') t += ' on ' + r.wd.map(i => WD[i]).join(', '); }
+  const e = endText(r); return e ? t + ', ' + e : t; }
+function untilMonths(r) { if (r.end !== 'until' || !r.until) return 0; for (let i = 1; i <= 240; i++) if (addD(addM(A.ev.date, i), 1) > r.until) return i; return 240; }
+
+// ---------- scenes ----------
+function startScene(id) {
+  const keep = A; A = fresh(); A.scene = id; ZONES = null;
+  const e = A.ev;
+  if (id === 'end') { A.pop = { kind: 'end', scroll: true }; A.focus = { id: 'end', all: true }; }
+  if (id === 'date') { A.pop = { kind: 'date', day: e.date }; A.focus = { id: 'date', all: true }; }
+  if (id === 'zone') { A.pop = { kind: 'zone', q: '', hi: -1, scroll: true }; A.focus = { id: 'zq' }; }
+  if (id === 'repeat') { A.pop = { kind: 'repeat', hi: 4 }; A.focus = { id: 'pop' }; }
+  if (id === 'custom') { A.pop = { kind: 'repeat', custom: true, ci: 0, draft: { ...e.rule, wd: [...e.rule.wd], n: 2 } }; A.focus = { id: 'pop' }; }
+  if (id === 'guests') { e.store = 'eventkit'; e.guests = []; }
+  if (keep && keep.toast) A.toast = '';
+}
+
+// ================= the app =================
+const I = {
+  clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>', globe: '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5a13 13 0 0 1 0 17M12 3.5a13 13 0 0 0 0 17"/>',
+  rep: '<path d="M17 3l3 3-3 3"/><path d="M4 11V9a3 3 0 0 1 3-3h13"/><path d="M7 21l-3-3 3-3"/><path d="M20 13v2a3 3 0 0 1-3 3H4"/>', spark: '<path d="M12 3v5M12 16v5M3 12h5M16 12h5"/>',
+  ppl: '<circle cx="9" cy="8" r="3.2"/><path d="M3 19.5a6 6 0 0 1 12 0"/><path d="M15.5 5a3.2 3.2 0 0 1 0 6.2M17.5 14a6 6 0 0 1 3.5 5.5"/>', going: '<circle cx="10" cy="8" r="3.2"/><path d="M4 19.5a6 6 0 0 1 9.5-4.9"/><path d="M15 18l2 2 4-4"/>',
+  video: '<rect x="3" y="6.5" width="12.5" height="11" rx="2"/><path d="M15.5 10.5l5-3v9l-5-3"/>', pin: '<path d="M12 21s-6.5-5.8-6.5-11a6.5 6.5 0 0 1 13 0c0 5.2-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/>',
+  notes: '<path d="M5 7h14M5 12h14M5 17h9"/>', cal: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>', bell: '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>',
+  search: '<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/>', trash: '<path d="M5 7h14M10 7V5h4v2M7 7l1 13h8l1-13"/>', x: '<path d="M6 6l12 12M18 6L6 18"/>', mail: '<rect x="3.5" y="6" width="17" height="12" rx="2"/><path d="M4 7l8 6 8-6"/>',
+};
+const ic = (n, s) => `<svg class="i${s ? ' s' : ''}" viewBox="0 0 24 24">${I[n]}</svg>`;
+const CC = { personal: '--c-personal', family: '--c-family', tasks: '--c-tasks', run: '--c-run', work: '--c-work', flat: '--c-flat' };
+function deskClass() { return ''; }
+function app() {
+  if (A.scene !== S.scene) startScene(S.scene);
+  queueMicrotask(afterPaint);
+  return side() + center() + panel();
+}
+function side() {
+  const first = new Date(2026, 8, 28); let g = '';
+  for (let i = 0; i < 42; i++) { const d = addD(first, i); g += `<i class="${d.getMonth() !== 9 ? 'o' : ''}${same(d, TODAY) ? ' t' : i < 7 ? ' wk' : ''}">${d.getDate()}</i>`; }
+  const cal = (n, c) => `<div class="cal"><i style="background:var(${c})"></i>${n}</div>`;
+  return `<div class="side" data-area="sidebar"><div class="lights" data-os><i></i><i></i><i></i></div>
+    <div class="mm-title">October <span>2026</span></div><div class="smm">${['M', 'T', 'W', 'T', 'F', 'S', 'S'].map(x => `<b>${x}</b>`).join('')}${g}</div>
+    <div class="grp">sam.rivera</div>${cal('Personal', '--c-personal')}${cal('Family', '--c-family')}${cal('Tasks', '--c-tasks')}${cal('Running club', '--c-run')}
+    <div class="grp">iCloud</div>${cal('Home', '--c-flat')}${cal('Work', '--c-work')}<div class="foot">Settings</div></div>`;
+}
+function center() {
+  const e = A.ev, H0 = 8, PH = 46, top = m => (m / 60 - H0) * PH;
+  const days = [...Array(7)].map((_, i) => addD(new Date(2026, 8, 28), i));
+  const head = days.map((d, i) => `<div class="${same(d, TODAY) ? 'td' : ''}">${WD[d.getDay()]}<b>${d.getDate()}</b></div>`).join('');
+  const hours = [...Array(16)].map((_, i) => `<span style="top:${i * PH}px">${pad(H0 + i)}:00</span>`).join('');
+  const lines = [...Array(16)].map((_, i) => `<div class="hl" style="top:${i * PH}px"></div>`).join('');
+  const evIdx = Math.round((e.date - new Date(2026, 8, 28)) / 864e5);
+  const cols = WEEK.map((list, i) => {
+    let h = lines;
+    list.forEach(([s, en, t, c]) => { if (s < 0) return; h += `<div class="ev" style="--c:var(${CC[c]});top:${top(s)}px;height:${(en - s) / 60 * PH - 2}px"><b>${esc(t)}</b><span>${fmtT(s)}–${fmtT(en)}</span></div>`; });
+    if (i === evIdx && !e.allDay) h += `<div class="ev sel" style="--c:var(${e.store === 'google' ? '--c-flat' : '--c-flat'});top:${top(e.start)}px;height:${Math.max(18, (e.end - e.start) / 60 * PH - 2)}px"><b>${esc(e.title)}</b><span>${fmtT(e.start)}–${fmtT(e.end)}</span></div>`;
+    return `<div class="col">${h}</div>`;
+  }).join('');
+  const ad = `<div class="lab">all-day</div><div style="grid-column:span 4"><div class="chipev" style="--c:var(--c-tasks)">Send the invoices</div></div><div style="grid-column:span 3"><div class="chipev" style="--c:var(--c-personal)">Trip (maybe)</div>${e.allDay && evIdx >= 0 && evIdx < 7 ? `<div class="chipev" style="--c:var(--c-flat)">${esc(e.title)}</div>` : ''}</div>`;
+  return `<div class="center"><div class="tool" data-area="header"><h1>October <span>2026</span></h1><div class="seg"><span>Day</span><span class="on">Week</span><span>Month</span></div><span class="tbtn">Today</span></div>
+    <div class="dayhead">${'<div></div>' + head}</div><div class="allday">${ad}</div>
+    <div class="body"><div class="hours">${hours}</div>${cols}<div class="now" style="top:${top(NOWMIN)}px"></div><span class="nowlab" style="top:${top(NOWMIN)}px">15:10</span></div></div>`;
+}
+function panel() {
+  const e = A.ev, p = A.pop, local = e.tz === LOCAL, z = zoneOf(e.tz);
+  const val = (id, f) => esc(A.text[id] ?? f);
+  let zl;
+  if (C('zoneLabel') === 'always' || (!local && C('zoneLabel') === 'offset')) zl = `<span class="sub">${shortOff(z.off)}</span> ${esc(z.city)}`;
+  else if (local) zl = 'Time zone'; else zl = `${esc(z.city)} <span class="sub">${timesIn(e.tz)}</span>`;
+  const zph = local && C('zoneLabel') !== 'always';
+  const when = `<div class="prow when">${ic('clock')}<span class="anc" data-p="date"><input class="fld d" data-f="date" value="${val('date', fmtD(e.date))}" autocomplete="off">${p?.kind === 'date' ? datePop() : ''}</span>
+    ${e.allDay ? '' : `<span class="anc" data-p="start"><input class="fld t" data-f="start" value="${val('start', fmtT(e.start))}" autocomplete="off">${p?.kind === 'start' ? timePop('start') : ''}</span><span class="arr">→</span>
+    <span class="anc" data-p="end"><input class="fld t" data-f="end" value="${val('end', fmtT(e.end))}" autocomplete="off">${p?.kind === 'end' ? timePop('end') : ''}</span><span class="dur" data-centred>${len(e.end - e.start)}</span>`}</div>
+    <div class="prow"><span class="pad"></span><button class="tog ${e.allDay ? 'on' : ''}" data-a="allday" data-f="allday"></button><span>All day</span>
+    ${e.allDay ? '' : `<span class="anc" data-p="zone" style="margin-left:var(--s-m)"><button class="lbtn ${zph ? 'ph' : ''} ${p?.kind === 'zone' ? 'open' : ''}" data-a="zone" data-f="zone">${ic('globe', 1)}${zl}</button>${p?.kind === 'zone' && C('zonePlace') !== 'sheet' ? zonePop() : ''}</span>`}</div>`;
+  const rep = `<div class="prow">${ic('rep')}<span class="anc" data-p="repeat"><button class="lbtn ${e.rule ? '' : 'ph'} ${p?.kind === 'repeat' || p?.kind === 'scope' ? 'open' : ''}" data-a="repeat" data-f="repeat">${esc(ruleText(e.rule))}</button>${p?.kind === 'repeat' ? repeatPop() : p?.kind === 'scope' ? scopePop() : ''}</span></div>
+    <div class="prow">${ic('spark')}<span>Find a new time</span></div>`;
+  const can = e.store !== 'eventkit', gm = C('guestOff');
+  let guests = '';
+  if (can || gm !== 'hide') {
+    const n = e.guests.length;
+    const list = e.guests.map(([g, s, x]) => `<div class="guest"><span class="st ${s}">${{ y: '✓', m: '?', n: '✕', w: '◷' }[s]}</span>${esc(g)}${x ? `<span class="dim">${esc(x)}</span>` : ''}</div>`).join('');
+    const field = can || gm === 'hint' ? `<span class="anc" data-p="guests" style="display:block"><input class="gfield" data-f="guest" placeholder="Add participant" value="${val('guest', '')}" ${can ? '' : 'readonly'} autocomplete="off">${p?.kind === 'guests' ? guestPop() : ''}</span>` : '';
+    const why = !can && gm === 'hint' ? `<div class="why">macOS Calendar can’t invite guests.<button data-a="google">Use Google</button></div>` : '';
+    const card = !can && gm === 'card' ? `<div class="card"><b>No guests on macOS Calendar</b>Apple’s calendar API can’t send invitations. Move the event to a Google calendar to invite people. <button data-a="google">Open Accounts</button></div>` : '';
+    guests = `<div class="gap"></div><div class="prow top" data-p="guests">${ic('ppl')}<div style="flex:1;min-width:0"><div style="height:var(--h-field);display:flex;align-items:center;font-weight:500">${n ? n + ' participants' : 'Participants'}</div>${list}${field}${why}${card}</div></div>`;
+  }
+  const rest = `${can ? `<div class="prow">${ic('going')}<span class="dim">Going?</span><span class="going"><span class="on">Yes</span><span>Maybe</span><span>No</span></span></div>
+    <div class="prow">${ic('video')}<span>meet.example.com/cmv-hjhb</span></div><div class="join">Join meeting</div>` : ''}
+    <div class="prow">${ic('pin')}<span>Kitchen, 12 Harbour Street</span></div>
+    <div class="prow top">${ic('notes')}<span style="padding-top:7px">Everyone brings something to eat.</span></div><div class="gap"></div>
+    <div class="prow"><span class="pad" style="display:grid;place-items:center"><i style="width:12px;height:12px;border-radius:3px;background:var(--c-flat)"></i></span><button class="lbtn" data-a="cal" data-f="cal">${can ? 'Personal <span class="sub" data-centred>Google · sam.rivera</span>' : 'Home <span class="sub" data-centred>macOS Calendar · iCloud</span>'}</button></div>
+    <div class="prow"><span class="pad"></span><span>Busy · <span class="dim" data-centred>Default visibility</span></span></div>
+    <div class="prow">${ic('bell')}<span>10 min before</span></div>`;
+  const sheet = p?.kind === 'zone' && C('zonePlace') === 'sheet';
+  return `<div class="panel" data-area="panel"><div class="search">${ic('search', 1)}Search events<kbd data-centred>/</kbd></div>
+    <div class="pb">${sheet ? `<div class="pop" data-p="zone" style="position:static;box-shadow:none;border:0;padding:0">${zoneInner(true)}</div>` : `<div class="ttl"><span class="bar"></span><b>${esc(e.title)}</b>${ic('trash')}${ic('x')}</div>${when}${rep}${guests}${rest}`}</div>
+    ${A.toast ? `<div class="toast">${esc(A.toast)}</div>` : ''}</div>`;
+}
+function timeList(k) { const st = +C('step'), a = []; if (k === 'start') { for (let m = 0; m < 1440; m += st) a.push(m); return a; } for (let m = (Math.floor(A.ev.start / st) + 1) * st; m <= 1440; m += st) a.push(m); return a; }
+function timePop(k) {
+  const p = A.pop, l = timeList(k), cur = k === 'start' ? A.ev.start : A.ev.end; if (p.val == null) p.val = slot(cur, l);
+  const mode = k === 'end' ? C('endList') : 'plain';
+  return `<div data-area="menu" class="pop under" style="width:${mode === 'plain' ? 96 : 150}px"><div class="plist">${l.map(m => `<div class="mi${m === p.val ? ' act' : ''}" data-a="time" data-v="${m}"><span class="ck">${m === cur ? '✓' : ''}</span>${mode === 'lenfirst' ? `<span class="lead" data-centred>${len(m - A.ev.start)}</span>${fmtT(m)}` : fmtT(m)}${mode === 'len' ? `<span class="len">${len(m - A.ev.start)}</span>` : ''}</div>`).join('')}</div></div>`;
+}
+function datePop() {
+  const p = A.pop, d = p.day, first = new Date(d.getFullYear(), d.getMonth(), 1);
+  let g = addD(first, -((first.getDay() + 6) % 7)), cells = '';
+  for (let i = 0; i < 42; i++) { cells += `<i class="${g.getMonth() !== d.getMonth() ? 'o' : ''}${same(g, TODAY) ? ' t' : ''}${same(g, A.ev.date) ? ' c' : ''}${same(g, d) && p.picking ? ' k' : ''}" data-a="day" data-v="${+g}">${g.getDate()}</i>`; g = addD(g, 1); }
+  return `<div data-area="menu" class="pop under"><div class="pmm"><div class="h"><button data-centred data-a="month" data-v="-1">‹</button>${MOL[d.getMonth()]} ${d.getFullYear()}<button data-centred data-a="month" data-v="1">›</button></div>
+    <div class="g">${['M', 'T', 'W', 'T', 'F', 'S', 'S'].map(x => `<b>${x}</b>`).join('')}${cells}</div>
+    <div class="keys" data-centred><span>↑↓ week</span>${C('dayArrows') === 'caret' ? '' : '<span>←→ day</span>'}<span>⇞⇟ month</span><span>↩ pick</span></div></div></div>`;
+}
+function zoneInner(sheet) {
+  const p = A.pop, list = filterZones(p.q || ''); p.list = list;
+  if (p.hi < 0) p.hi = Math.max(0, list.findIndex(z => z.id === A.ev.tz)); p.hi = Math.min(p.hi, Math.max(0, list.length - 1));
+  const narrow = C('zonePlace') !== 'wide';
+  return `<div class="zs">${ic('search', 1)}<input data-f="zq" placeholder="Search a city, zone or GMT+1" value="${esc(p.q || '')}" autocomplete="off"></div>
+    <div class="plist" style="max-height:${sheet ? 700 : 300}px">${list.length ? list.map((z, i) => `<div class="mi${i === p.hi ? ' act' : ''}" data-a="zrow" data-v="${i}"><span class="ck">${z.id === A.ev.tz ? '✓' : ''}</span><span class="off">${z.off}</span><span class="zn">${narrow ? `${esc(z.city)} <em data-centred>${esc(z.name)}</em>` : `${esc(z.name)} <em data-centred>– ${esc(z.city)}</em>`}</span></div>`).join('') : `<div class="empty">No zone matches “${esc(p.q)}”.</div>`}</div>
+    <div class="keys" data-centred><span>↑↓ move</span><span>↩ pick</span><span>esc close</span></div>`;
+}
+function zonePop() { const w = C('zonePlace') === 'wide' ? 580 : 296; return `<div data-area="menu" class="pop right" style="width:${w}px">${zoneInner()}</div>`; }
+function repeatPop() {
+  const p = A.pop, c = common(), cur = choiceOf(A.ev.rule); p.n = c.length + 1;
+  if (p.custom) return `<div data-area="menu" class="pop under" data-f="pop" tabindex="-1" style="width:272px">${customInner()}</div>`;
+  return `<div data-area="menu" class="pop under" data-f="pop" tabindex="-1" style="width:264px">${c.map(([k, t], i) => `<div class="mi${i === p.hi ? ' act' : ''}" data-a="rrow" data-v="${i}"><span class="ck">${k === cur ? '✓' : ''}</span>${t}</div>${i === 0 ? '<div class="sep"></div>' : ''}`).join('')}
+    <div class="sep"></div><div class="mi${p.hi === c.length ? ' act' : ''}" data-a="rrow" data-v="${c.length}"><span class="ck">${cur === null ? '✓' : ''}</span>Custom…<span class="len">›</span></div>
+    ${A.ev.rule && A.ev.rule.end !== 'never' ? `<div class="keys" data-centred><span>Keeps the end: ${endText(A.ev.rule)}</span></div>` : ''}</div>`;
+}
+function customRows(r) { const full = C('ends') === 'full'; return ['every', 'unit', ...(r.freq === 'weekly' ? ['on'] : []), 'ends', ...(full && r.end === 'until' ? ['until'] : []), ...(full && r.end === 'count' ? ['count'] : [])]; }
+function customInner() {
+  const p = A.pop, r = p.draft, u = UNAME[r.freq], full = C('ends') === 'full';
+  p.rows = customRows(r); p.ci = Math.min(p.ci, p.rows.length - 1); const cur = p.rows[p.ci];
+  const endV = r.end === 'never' ? 'Never' : full ? { until: 'On a date', count: 'After a count' }[r.end] : 'Until ' + fmtD(r.until);
+  const head = `<div class="mi" data-a="back"><span class="ck">‹</span>Custom repeat</div><div class="sep"></div>`;
+  const foot = `<div class="sep"></div><div class="mi" data-a="done"><span class="ck"></span>Done<span class="len">${esc(ruleText(r))}</span></div>`;
+  if (C('custom') === 'rows') {
+    const lab = { every: ['Every', r.n], unit: ['Unit', r.n > 1 ? u[1] : u[0]], ends: ['Ends', endV], until: ['Date', r.until ? fmtD(r.until) : ''], count: ['Count', r.count + ' times'] };
+    return head + p.rows.map((k, i) => `<div class="crow${i === p.ci ? ' act' : ''}" data-a="crow" data-v="${i}"><span class="k">${k === 'on' ? 'On' : lab[k][0]}</span>${k === 'on'
+      ? `<div class="wds" data-centred>${[1, 2, 3, 4, 5, 6, 0].map(d => `<span class="${r.wd.includes(d) ? 'on' : ''}${i === p.ci && p.wdi === d ? ' k' : ''}" data-a="wd" data-v="${d}">${WD[d][0]}</span>`).join('')}</div>`
+      : `<button data-centred data-a="step" data-v="-1" data-i="${i}">‹</button><span class="v" data-centred>${lab[k][1]}</span><button data-centred data-a="step" data-v="1" data-i="${i}">›</button>`}</div>`).join('') + foot +
+      `<div class="keys" data-centred><span>↑↓ row</span><span>←→ change</span>${cur === 'on' ? '<span>space day</span>' : ''}<span>↩ done</span><span>esc back</span></div>`;
+  }
+  const tk = (k, t) => `<span class="tk${cur === k ? ' act' : ''}" data-a="tok" data-v="${k}">${t}</span>`;
+  const endT = r.end === 'never' ? tk('ends', 'forever') : r.end === 'until' ? (full ? tk('ends', 'until') + ' ' + tk('until', fmtD(r.until)) : tk('ends', 'until ' + fmtD(r.until))) : tk('ends', 'for') + ' ' + tk('count', r.count + ' times');
+  return head + `<div class="sent" data-centred>Every ${tk('every', r.n)} ${tk('unit', r.n > 1 ? u[1] : u[0])}${r.freq === 'weekly' ? ' on ' + tk('on', r.wd.map(d => WD[d]).join(', ')) : ''}, ${endT}.</div>` + foot +
+    `<div class="keys" data-centred><span>←→ part</span><span>↑↓ change</span>${cur === 'on' ? '<span>space day</span>' : ''}<span>↩ done</span></div>`;
+}
+function scopePop() { const p = A.pop; return `<div data-area="menu" class="pop under" data-f="pop" tabindex="-1" style="width:264px"><div class="q">“${esc(A.ev.title)}” repeats. Use the new rule for:</div>
+  <div class="mi${p.hi === 0 ? ' act' : ''}" data-a="scope" data-v="0">All events</div><div class="mi${p.hi === 1 ? ' act' : ''}" data-a="scope" data-v="1">This and following events</div><div class="keys" data-centred><span>↑↓ ↩</span><span>esc cancel</span></div></div>`; }
+function guestList() { const q = fold((A.text.guest || '').trim()); return q ? CONTACTS.filter(([n, m]) => !A.ev.guests.some(g => g[0] === n) && (fold(n).split(' ').some(w => w.startsWith(q)) || m.startsWith(q))) : []; }
+function guestPop() { const p = A.pop, l = guestList(); p.list = l; if (!l.length) return ''; p.hi = Math.min(p.hi || 0, l.length - 1);
+  return `<div data-area="menu" class="pop under" style="width:290px;left:-2px">${l.map(([n, m], i) => `<div class="mi${i === p.hi ? ' act' : ''}" data-a="sugg" data-v="${i}">${esc(n)}<span class="len">${esc(m)}</span></div>`).join('')}<div class="keys" data-centred><span>↑↓ move</span><span>↩ add</span></div></div>`; }
+
+// ================= behaviour =================
+let PAINTING = false;
+function paint() { PAINTING = true; render(); }
+function afterPaint() {
+  const f = A.focus; let el = null;
+  if (f) el = f.id === 'pop' ? desk.querySelector('[data-f="pop"]') : desk.querySelector(`[data-f="${f.id}"]`);
+  if (el) { el.focus({ preventScroll: true }); if (el.setSelectionRange) { if (f.all) el.select(); else if (f.s != null) el.setSelectionRange(f.s, f.e); } }
+  const act = desk.querySelector('.pop .plist .mi.act'), li = act?.parentElement;
+  if (act && li) { if (A.pop?.scroll) { li.scrollTop = act.offsetTop - li.clientHeight / 2 + act.offsetHeight / 2; A.pop.scroll = false; } else if (act.offsetTop < li.scrollTop || act.offsetTop + act.offsetHeight > li.scrollTop + li.clientHeight) li.scrollTop = act.offsetTop - li.clientHeight / 2; }
+  PAINTING = false;
+}
+function toast(m) { A.toast = m; clearTimeout(toast.t); toast.t = setTimeout(() => { A.toast = ''; const t = desk.querySelector('.toast'); t && t.remove(); }, 2600); }
+function openFor(id) { if (id === 'date') A.pop = { kind: 'date', day: A.ev.date }; else A.pop = { kind: id, scroll: true }; }
+function commit(id) {
+  const v = A.text[id]; delete A.text[id]; if (v == null) return;
+  const e = A.ev;
+  if (id === 'date') { const d = parseDay(v); if (d) e.date = d; }
+  else if (id === 'start' || id === 'end') { const m = parseT(v); if (m == null) return;
+    if (id === 'start') { const d = e.end - e.start; e.start = Math.min(m, 1439); e.end = Math.min(1440, e.start + d); } else if (m > e.start) e.end = m; else toast('The end must be after the start.'); }
+}
+function pickTime(k, m) { const e = A.ev; delete A.text[k]; if (k === 'start') { const d = e.end - e.start; e.start = m; e.end = Math.min(1440, m + d); } else e.end = m; A.pop = null; A.focus = { id: k, all: true }; }
+function pickDate(d) { delete A.text.date; A.ev.date = d; A.pop = null; A.focus = { id: 'date', all: true }; }
+function pickZone(z) { if (!z) return; A.ev.tz = z.id; A.pop = null; A.focus = { id: 'zone' }; }
+function setRule(r) {
+  if (A.ev.series && C('scope') === 'ask') { A.pop = { kind: 'scope', rule: r, hi: 0 }; A.focus = { id: 'pop' }; return; }
+  A.ev.rule = r; A.pop = null; A.focus = { id: 'repeat' }; toast('Repeat: ' + ruleText(r) + '. All events in the series.');
+}
+function repeatPick() {
+  const p = A.pop, c = common();
+  if (p.hi === c.length) { const r = A.ev.rule; p.custom = true; p.ci = 0; p.draft = r ? { ...r, wd: [...r.wd] } : { freq: 'weekly', n: 1, wd: [A.ev.date.getDay()], end: 'never', until: null, count: 10 }; p.draft.count = p.draft.count || 10; A.focus = { id: 'pop' }; return; }
+  const x = c[p.hi][2], o = A.ev.rule; setRule(x ? { ...x, end: o?.end || 'never', until: o?.until || null, count: o?.count || 10 } : null);
+}
+function step(d) {
+  const p = A.pop, r = p.draft, k = p.rows[p.ci];
+  if (k === 'every') r.n = Math.min(99, Math.max(1, r.n + d));
+  else if (k === 'unit') { r.freq = UNITS[(UNITS.indexOf(r.freq) + d + 4) % 4]; r.wd = r.freq === 'weekly' ? [A.ev.date.getDay()] : []; }
+  else if (k === 'on') { const o = [1, 2, 3, 4, 5, 6, 0]; p.wdi = o[(o.indexOf(p.wdi ?? A.ev.date.getDay()) + d + 7) % 7]; }
+  else if (k === 'ends') { if (C('ends') === 'months') { const n = Math.max(0, untilMonths(r) + d); if (!n) { r.end = 'never'; r.until = null; } else { r.end = 'until'; r.until = addM(A.ev.date, n); } }
+    else { const m = ['never', 'until', 'count']; r.end = m[(m.indexOf(r.end) + d + 3) % 3]; if (!r.until) r.until = addM(A.ev.date, 3); } }
+  else if (k === 'count') r.count = Math.min(999, Math.max(2, r.count + d));
+  else if (k === 'until') { const x = addD(r.until, d * 7); if (x > A.ev.date) r.until = x; }
+}
+function toggleWd(d) { const r = A.pop.draft; if (r.wd.includes(d)) { if (r.wd.length > 1) r.wd = r.wd.filter(x => x !== d); } else r.wd = [...r.wd, d].sort(); A.pop.wdi = d; }
+function addGuest(n) { A.ev.guests.push([n, 'w']); delete A.text.guest; A.pop = null; A.focus = { id: 'guest' }; }
+const FIELDS = ['date', 'start', 'end'];
+document.getElementById('desk').addEventListener('focusin', ev => {
+  if (PAINTING) return; const f = ev.target.dataset?.f; if (!f) return;
+  const prev = A.focus?.id; A.focus = { id: f, all: FIELDS.includes(f) || f === 'guest' };
+  if (FIELDS.includes(f) && C('open') === 'focus' && A.pop?.kind !== f) { openFor(f); paint(); }
+  else if (prev && prev !== f && A.pop && !['zq', 'pop'].includes(f)) { if (A.pop.kind !== f) { A.pop = null; paint(); } }
+});
+document.getElementById('desk').addEventListener('focusout', ev => {
+  if (PAINTING) return; const f = ev.target.dataset?.f; if (!f) return;
+  const tgt = ev.target; setTimeout(() => { if (PAINTING || !tgt.isConnected) return; const a = document.activeElement, nf = desk.contains(a) ? a.dataset?.f : null; if (nf === f) return;
+    if (A.text[f] != null) { commit(f); }
+    if (A.pop && (A.pop.kind === f || (f === 'zq' && nf !== 'zq') || (f === 'pop' && nf !== 'pop') || (f === 'guest'))) { if (!(nf && A.pop.kind === nf)) A.pop = null; }
+    A.focus = nf ? { id: nf } : null; paint(); }, 0);
+});
+document.getElementById('desk').addEventListener('input', ev => {
+  const t = ev.target, f = t.dataset?.f; if (!f) return;
+  A.focus = { id: f, s: t.selectionStart, e: t.selectionEnd };
+  if (f === 'zq') { A.pop.q = t.value; A.pop.hi = 0; paint(); return; }
+  A.text[f] = t.value;
+  if (f === 'guest') { if (A.ev.store === 'eventkit') return; A.pop = { kind: 'guests', hi: 0 }; paint(); return; }
+  if (!A.pop || A.pop.kind !== f) openFor(f);
+  if (f === 'date') { const d = parseDay(t.value); if (d) { A.pop.day = d; A.pop.picking = false; } }
+  else { const m = parseT(t.value); if (m != null) { A.pop.val = slot(m, timeList(f)); A.pop.typed = true; A.pop.scroll = true; } }
+  paint();
+});
+document.getElementById('desk').addEventListener('keydown', ev => {
+  const t = ev.target, f = t.dataset?.f, k = ev.key, p = A.pop; if (!f) return;
+  const stop = () => { ev.preventDefault(); ev.stopPropagation(); };
+  const keepCaret = () => { if (t.selectionStart != null) A.focus = { id: f, s: t.selectionStart, e: t.selectionEnd }; else A.focus = { id: f }; };
+  if (f === 'start' || f === 'end') {
+    const open = p?.kind === f;
+    if (k === 'ArrowDown' || k === 'ArrowUp') { stop(); keepCaret(); if (!open) { openFor(f); return paint(); } const l = timeList(f), i = l.indexOf(p.val); p.val = l[Math.min(l.length - 1, Math.max(0, i + (k === 'ArrowDown' ? 1 : -1)))]; p.typed = false; return paint(); }
+    if (k === 'Enter') { stop(); if (open && !p.typed) pickTime(f, p.val); else { commit(f); A.pop = null; A.focus = { id: f, all: true }; } return paint(); }
+    if (k === 'Escape' && open) { stop(); A.pop = null; keepCaret(); return paint(); }
+  } else if (f === 'date') {
+    const open = p?.kind === 'date';
+    const mv = n => { stop(); if (!open) openFor('date'); A.pop.day = addD(A.pop.day, n); A.pop.picking = true; keepCaret(); paint(); };
+    if (k === 'ArrowDown') return mv(7); if (k === 'ArrowUp') return mv(-7);
+    if ((k === 'ArrowLeft' || k === 'ArrowRight') && open && (C('dayArrows') === 'always' || (C('dayArrows') === 'after' && p.picking))) return mv(k === 'ArrowLeft' ? -1 : 1);
+    if ((k === 'PageUp' || k === 'PageDown') && open) { stop(); p.day = addM(p.day, k === 'PageDown' ? 1 : -1); p.picking = true; keepCaret(); return paint(); }
+    if (k === 'Enter') { stop(); const d = open && p.picking ? p.day : parseDay(A.text.date ?? t.value); if (d) pickDate(d); else { A.pop = null; A.focus = { id: 'date', all: true }; } return paint(); }
+    if (k === 'Escape' && open) { stop(); A.pop = null; keepCaret(); return paint(); }
+  } else if (f === 'zq') {
+    if (k === 'ArrowDown' || k === 'ArrowUp') { stop(); p.hi = Math.min(p.list.length - 1, Math.max(0, p.hi + (k === 'ArrowDown' ? 1 : -1))); keepCaret(); return paint(); }
+    if (k === 'Enter') { stop(); pickZone(p.list[p.hi]); return paint(); }
+    if (k === 'Escape' || k === 'Tab') { stop(); A.pop = null; A.focus = { id: 'zone' }; return paint(); }
+  } else if (f === 'zone' || f === 'repeat') {
+    if ((k === 'ArrowDown' || k === ' ' || k === 'Enter') && !p) { stop(); return open1(f); }
+  } else if (f === 'pop' && p?.kind === 'repeat' && !p.custom) {
+    if (k === 'ArrowDown' || k === 'ArrowUp') { stop(); p.hi = (p.hi + (k === 'ArrowDown' ? 1 : -1) + p.n) % p.n; return paint(); }
+    if (k === 'Enter' || k === ' ' || (k === 'ArrowRight' && p.hi === p.n - 1)) { stop(); repeatPick(); return paint(); }
+    if (k === 'Escape' || k === 'Tab') { stop(); A.pop = null; A.focus = { id: 'repeat' }; return paint(); }
+  } else if (f === 'pop' && p?.kind === 'repeat') {
+    const nav = d => { stop(); p.ci = (p.ci + d + p.rows.length) % p.rows.length; paint(); }, chg = d => { stop(); step(d); paint(); };
+    if (k === 'Escape') { stop(); p.custom = false; p.hi = p.n - 1; return paint(); }
+    if (k === 'Enter') { stop(); setRule(p.draft); return paint(); }
+    if (k === ' ' && p.rows[p.ci] === 'on') { stop(); toggleWd(p.wdi ?? A.ev.date.getDay()); return paint(); }
+    if (C('custom') === 'rows') { if (k === 'ArrowDown') nav(1); else if (k === 'ArrowUp') nav(-1); else if (k === 'ArrowRight') chg(1); else if (k === 'ArrowLeft') chg(-1); else if (k === 'Tab') nav(ev.shiftKey ? -1 : 1); }
+    else { if (k === 'ArrowRight' || (k === 'Tab' && !ev.shiftKey)) nav(1); else if (k === 'ArrowLeft' || k === 'Tab') nav(-1); else if (k === 'ArrowUp') chg(1); else if (k === 'ArrowDown') chg(-1); }
+  } else if (f === 'pop' && p?.kind === 'scope') {
+    if (k === 'ArrowDown' || k === 'ArrowUp') { stop(); p.hi = 1 - p.hi; return paint(); }
+    if (k === 'Enter' || k === ' ') { stop(); scopePick(p.hi); return paint(); }
+    if (k === 'Escape') { stop(); A.pop = null; A.focus = { id: 'repeat' }; toast('Nothing changed.'); return paint(); }
+  } else if (f === 'guest') {
+    if (A.ev.store === 'eventkit') { if (k.length === 1) { toast('macOS Calendar can’t invite guests. Use Google, or the demo account (Horion --demo).'); paint(); } return; }
+    const open = p?.kind === 'guests' && p.list?.length;
+    if (open && (k === 'ArrowDown' || k === 'ArrowUp')) { stop(); p.hi = Math.min(p.list.length - 1, Math.max(0, p.hi + (k === 'ArrowDown' ? 1 : -1))); keepCaret(); return paint(); }
+    if (k === 'Enter') { stop(); if (open) addGuest(p.list[p.hi][0]); else if (/\S+@\S+\.\S+/.test(t.value)) addGuest(t.value.trim()); return paint(); }
+    if (k === 'Escape' && open) { stop(); A.pop = null; keepCaret(); return paint(); }
+  }
+}, true);
+function scopePick(i) { const r = A.pop.rule; A.ev.rule = r; A.pop = null; A.focus = { id: 'repeat' }; toast(i === 0 ? 'Repeat changed for all events.' : 'The series splits here. This and following events get the new rule.'); }
+function open1(f) {
+  if (f === 'zone') { A.pop = { kind: 'zone', q: '', hi: -1, scroll: true }; A.focus = { id: 'zq' }; }
+  else { const c = choiceOf(A.ev.rule); A.pop = { kind: 'repeat', hi: c === null ? common().length : common().findIndex(x => x[0] === c) }; A.focus = { id: 'pop' }; }
+  paint();
+}
+document.getElementById('desk').addEventListener('mousedown', ev => {
+  const t = ev.target;
+  if (t.closest('.pop .mi, .pop button, .pop .crow, .pop .tk, .pmm i, .wds span')) ev.preventDefault();
+  if (A.pop && !t.closest('.pop') && !t.closest(`[data-p="${A.pop.kind === 'scope' ? 'repeat' : A.pop.kind}"]`)) { A.pop = null; setTimeout(paint); }
+});
+document.getElementById('desk').addEventListener('click', ev => {
+  const t = ev.target.closest('[data-a]'), fld = ev.target.closest('input[data-f]');
+  if (!t) { if (fld && C('open') === 'down' && FIELDS.includes(fld.dataset.f) && A.pop?.kind !== fld.dataset.f) { openFor(fld.dataset.f); A.focus = { id: fld.dataset.f, all: true }; paint(); } return; }
+  const a = t.dataset.a, v = t.dataset.v, p = A.pop;
+  if (a === 'time') pickTime(p.kind, +v);
+  else if (a === 'day') pickDate(new Date(+v));
+  else if (a === 'month') { p.day = addM(p.day, +v); }
+  else if (a === 'zrow') pickZone(p.list[+v]);
+  else if (a === 'zone' || a === 'repeat') { if (p && (p.kind === a || (a === 'repeat' && p.kind === 'scope'))) { A.pop = null; A.focus = { id: a }; } else return open1(a); }
+  else if (a === 'rrow') { p.hi = +v; repeatPick(); }
+  else if (a === 'crow') { p.ci = +v; A.focus = { id: 'pop' }; }
+  else if (a === 'step') { p.ci = +t.dataset.i; step(+v); A.focus = { id: 'pop' }; ev.stopPropagation(); }
+  else if (a === 'wd') { p.ci = p.rows.indexOf('on'); toggleWd(+v); A.focus = { id: 'pop' }; }
+  else if (a === 'tok') { p.ci = p.rows.indexOf(v); step(1); A.focus = { id: 'pop' }; }
+  else if (a === 'back') { p.custom = false; p.hi = p.n - 1; A.focus = { id: 'pop' }; }
+  else if (a === 'done') setRule(p.draft);
+  else if (a === 'scope') scopePick(+v);
+  else if (a === 'sugg') addGuest(p.list[+v][0]);
+  else if (a === 'allday') A.ev.allDay = !A.ev.allDay;
+  else if (a === 'cal') { A.ev.store = A.ev.store === 'google' ? 'eventkit' : 'google'; toast(A.ev.store === 'google' ? 'Moved to Personal (Google).' : 'Moved to Home (macOS Calendar, iCloud).'); }
+  else if (a === 'google') { A.ev.store = 'google'; toast('The app opens Settings → Accounts here. The mockup moves the event to Google.'); }
+  else return;
+  paint();
+});
+function appClick() { return false; }
+
+// ================= picker machinery: keep =================
+const KEY = `designr-${PRODUCT}-${VERSION}`;
+let S = null;
+try { S = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
+S = S || { c: {}, scene: SCENES[0][0], hover: true };
+DECISIONS.forEach(d => { if (!(d.id in S.c)) S.c[d.id] = d.lock ? LOCKED[d.id] : d.opts[0][0]; });
+let A = fresh(), PV = null;
+const C = id => (S.before && id in BEFORE ? BEFORE[id] : S.c[id]);
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(PV ? { ...S, c: { ...S.c, [PV.id]: PV.orig } } : S)); } catch (e) {} };
+const desk = document.getElementById('desk'), picker = document.getElementById('picker');
+const shot = location.hash.includes('&shot');
+if (shot) document.body.classList.add('shot');
+
+function fit() {
+  const st = document.getElementById('stage').getBoundingClientRect();
+  // Scale so the real window fits, then grow the app to fill the stage: no empty space.
+  // Shots (#scene&shot) keep the exact DESK size.
+  const k = shot ? 1 : Math.min(st.width / DESK.w, st.height / DESK.h, 1);
+  desk.style.width = (shot ? DESK.w : st.width / k) + 'px'; desk.style.height = (shot ? DESK.h : st.height / k) + 'px';
+  desk.style.transform = `scale(${k})`;
+}
+// fade: the old frame stays on top and fades out in 140 ms (hover previews only).
+function render(fade) {
+  if (fade && !shot) {
+    const g = desk.cloneNode(true); g.removeAttribute('id'); g.classList.add('ghost'); g.querySelector('#guides')?.remove();
+    desk.after(g); requestAnimationFrame(() => requestAnimationFrame(() => { g.style.opacity = 0; })); setTimeout(() => g.remove(), 200);
+  }
+  desk.className = 'desk ' + deskClass();
+  desk.innerHTML = app();
+  markPreview(); audit(); drawGuides();
+}
+function preset(id) { S.scene = id; A.sel = null; save(); renderPicker(); }
+
+const optLabel = d => (d.opts.find(o => o[0] === C(d.id)) || [0, C(d.id)])[1];
+function renderPicker() {
+  const open = DECISIONS.filter(d => !d.lock), locked = DECISIONS.filter(d => d.lock);
+  const radios = d => d.opts.map(([v, l, help], i) => {
+    const tag = d.lock ? (LOCKED[d.id] === v ? '<span class="lk">locked</span>' : '') : i === 0 ? '<span class="rec">recommended</span>' : '';
+    return `<button class="pk-opt ${C(d.id) === v ? 'on' : ''}" data-d="${d.id}" data-v="${v}"><span class="r"></span>${esc(l)}<span class="end">${tag}${help ? `<span class="hq" data-help="${esc(help)}">?</span>` : ''}</span></button>`;
+  }).join('');
+  let h = `<h1>${PRODUCT} ${VERSION} · round ${ROUND}</h1><p class="lede">${open.length} open. Hover an option to see it. ? explains it.</p>${READ ? `<p class="read">${esc(READ)}</p>` : ''}`;
+  if (Object.keys(BEFORE).length) h += `<div class="pk-ba"><button class="pk-btn ${S.before ? 'on' : ''}" data-a="before">Before</button><button class="pk-btn ${S.before ? '' : 'on'}" data-a="after">After</button><span>B</span></div>`;
+  h += `<div class="pk-notes"><ul>${HOWTO.map(n => `<li>${n}</li>`).join('')}</ul></div>`;
+  h += `<h2>Jump to</h2><div class="pk-scenes">${SCENES.map(([id, n]) => `<button class="pk-btn ${S.scene === id ? 'on' : ''}" data-scene="${id}">${n}</button>`).join('')}</div>`;
+  h += `<button class="pk-tog ${S.hover !== false ? 'on' : ''}" data-a="hover"><i></i>Preview on hover</button><button class="pk-tog ${S.guides ? 'on' : ''}" data-a="guides"><i></i>Alignment guides (G)</button><button class="pk-tog ${S.agt !== false ? 'on' : ''}" data-a="agt"><i></i>Notes on elements (Agentation)</button><div class="pk-audit" id="agt-state">${esc(AGT_MSG)}</div><div class="pk-audit" id="audit"></div>`;
+  h += `<h2>Open</h2>${open.length ? '' : '<p class="lede">Nothing open.</p>'}`;
+  open.forEach(d => { h += `<div class="pk-dec"><b>${esc(d.name)}</b>${d.fb ? `<div class="pk-new">You said: <q>${esc(d.fb)}</q></div>` : ''}${d.note ? `<p>${esc(d.note)}</p>` : ''}${radios(d)}</div>`; });
+  h += `<h2>Locked (${locked.length})</h2>`;
+  if (!S.unlock) {
+    h += locked.map(d => `<div class="pk-lock"><b>${esc(d.name)}</b><span>${esc(optLabel(d))}${C(d.id) !== LOCKED[d.id] ? ' · changed' : ''}</span></div>`).join('');
+    if (locked.length) h += `<button class="pk-btn" style="margin-top:8px" data-a="unlock">Unlock to compare</button>`;
+  } else {
+    h += `<button class="pk-btn" data-a="unlock">Hide the locked options</button>`;
+    locked.forEach(d => { h += `${d.g ? `<h2>${esc(d.g)}</h2>` : ''}<div class="pk-dec"><b>${esc(d.name)}</b>${radios(d)}</div>`; });
+  }
+  h += `<div class="pk-foot"><button class="pk-btn" data-a="copy">Copy my picks</button><button class="pk-btn" data-a="reset">Back to locked picks</button><button class="pk-btn" data-a="demo">Reset demo data</button></div><textarea id="picks" readonly></textarea>`;
+  const top = picker.scrollTop; picker.innerHTML = h; picker.scrollTop = top;
+  document.getElementById('picks').value = picksText();
+  render();
+}
+function picksText() {
+  const line = d => `- ${d.name}: ${optLabel(d)}${d.lock ? (C(d.id) !== LOCKED[d.id] ? ' (changed from the locked pick)' : '') : C(d.id) === d.opts[0][0] ? '' : ' (not the recommendation)'}`;
+  const scene = id => (SCENES.find(x => x[0] === id) || [0, id])[1];
+  const notes = (S.notes || []).map(n => `- ${scene(n.scene)} · \`${n.path}\`${n.text ? ` ("${n.text}")` : ''}: ${n.comment}`).join('\n');
+  return `# ${PRODUCT} ${VERSION} round ${ROUND} picks\n## Open\n${DECISIONS.filter(d => !d.lock).map(line).join('\n') || '- Nothing open'}\n## Locked\n${DECISIONS.filter(d => d.lock).map(line).join('\n')}${notes ? `\n## Notes on elements\n${notes}` : ''}\n## Notes\n- `;
+}
+// Agentation state line in the picker. The module script at the end sets it.
+let AGT_MSG = '';
+function agtMsg(m) { AGT_MSG = m; const el = document.getElementById('agt-state'); if (el) el.textContent = m; }
+// Notes from Agentation (the module script at the end). They go into the picks text.
+const NOTES = {
+  set(a) { const old = (S.notes || []).find(n => n.id === a.id); S.notes = (S.notes || []).filter(n => n.id !== a.id).concat({ id: a.id, scene: old ? old.scene : S.scene, path: a.elementPath, text: NOTES.text(a), comment: a.comment }); NOTES.done(); },
+  text(a) { let el = null; try { el = document.querySelector(a.elementPath); } catch (e) {} while (el && el !== desk && !el.innerText.trim()) el = el.parentElement; return (a.selectedText || el?.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 60); },
+  del(a) { S.notes = (S.notes || []).filter(n => n.id !== a.id); NOTES.done(); },
+  clear() { S.notes = []; NOTES.done(); },
+  done() { save(); const p = document.getElementById('picks'); if (p) p.value = picksText(); },
+};
+// Hover preview: the option applies while hovered, its scene opens, and the hl elements glow once.
+// Leaving goes back to the pick and to the scene you were on. A click keeps the option and the scene.
+// Only the app renders again, never the picker, so the picker does not move.
+function previewOn(id, v) {
+  if (S.hover === false) return;
+  const d = DECISIONS.find(x => x.id === id); if (!d) return;
+  if (PV && PV.id !== id) previewOff(true);
+  if (!PV) PV = { id, orig: S.c[id], scene: S.scene };
+  if (PV.v === v) return;
+  PV.v = v; S.c[id] = v;
+  if (d.scene && S.scene !== d.scene) S.scene = d.scene;
+  render(true);
+}
+function previewOff(silent) { if (!PV) return; S.c[PV.id] = PV.orig; S.scene = PV.scene; PV = null; save(); if (!silent) render(true); }
+function markPreview() {
+  const d = PV && DECISIONS.find(x => x.id === PV.id);
+  if (d && d.hl) desk.querySelectorAll(d.hl).forEach(el => el.classList.add('pvhl'));
+}
+// Counter: text sizes, colours and weights in view.
+function audit() {
+  const box = document.getElementById('audit'); if (!box) return;
+  const sz = new Set(), co = new Set(), wt = new Set(), n = {};
+  for (const el of desk.querySelectorAll('*')) {
+    if (el.closest('#guides, [data-os]')) continue;
+    const own = [...el.childNodes].some(x => x.nodeType === 3 && x.textContent.trim()) || (el.matches('input, textarea') && el.value);
+    if (!own) continue;
+    const r = el.getBoundingClientRect(); if (!r.width || !r.height) continue;
+    const cs = getComputedStyle(el); if (cs.visibility === 'hidden' || +cs.opacity === 0) continue;
+    const f = parseFloat(cs.fontSize); sz.add(f); n[f] = (n[f] || 0) + 1; co.add(cs.color); wt.add(cs.fontWeight);
+  }
+  box.innerHTML = `In view: <b>${sz.size}</b> sizes · <b>${co.size}</b> text colours · <b>${wt.size}</b> weights<br>${[...sz].sort((a, b) => b - a).map(f => `${f} px ×${n[f]}`).join(' · ')}`;
+}
+// Alignment guides (G). Areas: [data-area]. Centred items: [data-centred] or .btn.
+// Green: a left edge that 3 or more items share. Blue: a shared right edge. Red: 1 to 5 px off a line.
+const CENTRED = '[data-centred], .btn';
+function drawGuides() {
+  desk.querySelector('#guides')?.remove(); window.__guides = null;
+  if (!S.guides) return;
+  const k = desk.getBoundingClientRect().width / desk.offsetWidth, dr = desk.getBoundingClientRect();
+  const X = x => (x - dr.left) / k, Y = y => (y - dr.top) / k;
+  let out = '', misses = [], cols = 0;
+  desk.querySelectorAll('[data-area]').forEach(area => {
+    const ar = area.getBoundingClientRect(), L = [], R = [];
+    const vis = r => r.width > 0 && r.height > 0 && r.bottom > ar.top && r.top < ar.bottom;
+    const push = (arr, x, r, what) => arr.push({ x: Math.round(X(x) * 2) / 2, t: Y(r.top), b: Y(r.bottom), l: X(r.left), w: r.width / k, what });
+    const tw = document.createTreeWalker(area, NodeFilter.SHOW_TEXT, { acceptNode: x => x.textContent.trim() ? 1 : 2 });
+    for (let t; (t = tw.nextNode());) {
+      const el = t.parentElement; if (!el || el.closest(CENTRED)) continue;
+      const cs = getComputedStyle(el); if (cs.textAlign === 'center' || cs.textAlign === 'right' || cs.marginLeft === 'auto') continue;
+      const rg = document.createRange(); rg.selectNodeContents(t); const r = rg.getClientRects()[0];
+      if (r && vis(r)) push(L, r.left, r, t.textContent.trim().slice(0, 24));
+    }
+    area.querySelectorAll('input, textarea').forEach(el => {
+      const r = el.getBoundingClientRect(); if (!vis(r) || el.closest(CENTRED)) return;
+      const cs = getComputedStyle(el); push(L, r.left + parseFloat(cs.paddingLeft) + parseFloat(cs.borderLeftWidth), r, (el.value || el.placeholder || '').slice(0, 24));
+    });
+    area.querySelectorAll('.ic, svg').forEach(el => {
+      const r = el.getBoundingClientRect(); if (!vis(r) || el.closest(CENTRED)) return;
+      if (!el.previousElementSibling) push(L, r.left, r, 'icon');
+      if (!el.nextElementSibling && !el.nextSibling?.textContent?.trim()) push(R, r.right, r, 'icon');
+    });
+    const group = arr => { const g = []; arr.sort((a, b) => a.x - b.x).forEach(e => { const last = g[g.length - 1]; if (last && e.x - last.x0 <= .75) last.items.push(e); else g.push({ x0: e.x, items: [e] }); }); g.forEach(c => { c.x = c.items.reduce((a, b) => a + b.x, 0) / c.items.length; }); return g; };
+    const lines = (arr, cls) => {
+      const g = group(arr), strong = g.filter(c => c.items.length >= 3);
+      strong.forEach(c => { cols++; out += `<div class="gv ${cls}" style="left:${c.x}px;top:${Y(ar.top)}px;height:${ar.height / k}px"><span>${Math.round(c.x - X(ar.left))}</span></div>`; });
+      g.filter(c => c.items.length < 3).forEach(c => {
+        const near = strong.find(s2 => Math.abs(s2.x - c.x) >= 1 && Math.abs(s2.x - c.x) <= 5); if (!near) return;
+        c.items.forEach(it => { const d = (it.x - near.x).toFixed(1); misses.push({ area: area.dataset.area, what: it.what, x: it.x, off: +d }); out += `<div class="bx" style="left:${it.l}px;top:${it.t}px;width:${Math.max(it.w, 2)}px;height:${it.b - it.t}px"><span>${d > 0 ? '+' : ''}${d}</span></div>`; });
+      });
+    };
+    lines(L, ''); lines(R, 'r');
+    out += `<div class="ol" style="left:${X(ar.left)}px;top:${Y(ar.top)}px;width:${ar.width / k}px;height:${ar.height / k}px"></div>`;
+  });
+  window.__guides = misses;
+  desk.insertAdjacentHTML('beforeend', `<div id="guides">${out}<div class="legend"><b>Alignment guides</b> · G to hide<br>green: shared left edge (3+) · blue: shared right edge<br>red: ${misses.length} item${misses.length === 1 ? '' : 's'} 1 to 5 px off a line · ${cols} lines</div></div>`);
+}
+
+picker.addEventListener('click', ev => {
+  const t = ev.target.closest('button'); if (!t) return;
+  const a = t.dataset.a;
+  if (t.dataset.scene) return preset(t.dataset.scene);
+  if (t.dataset.d) { clearTimeout(PT); PV = null; S.c[t.dataset.d] = t.dataset.v; S.before = false; }
+  else if (a === 'before' || a === 'after') S.before = a === 'before';
+  else if (a === 'hover') S.hover = S.hover === false;
+  else if (a === 'guides') S.guides = !S.guides;
+  else if (a === 'agt') { S.agt = S.agt === false; save(); window.AGT?.set(S.agt, true); }
+  else if (a === 'unlock') S.unlock = !S.unlock;
+  else if (a === 'copy') { navigator.clipboard?.writeText(picksText()); t.textContent = 'Copied'; return; }
+  else if (a === 'reset') { DECISIONS.forEach(d => { S.c[d.id] = d.lock ? LOCKED[d.id] : d.opts[0][0]; }); S.before = false; }
+  else if (a === 'demo') A = fresh();
+  else return;
+  save(); renderPicker();
+});
+// Hover intent: show an option after 90 ms. The gaps inside one decision keep the preview, so nothing flickers.
+let PT = null;
+picker.addEventListener('mouseover', ev => {
+  const o = ev.target.closest('.pk-opt[data-d]'), blk = ev.target.closest('.pk-dec');
+  clearTimeout(PT);
+  if (o) PT = setTimeout(() => previewOn(o.dataset.d, o.dataset.v), 90);
+  else if (PV && blk && blk.querySelector(`[data-d="${PV.id}"]`)) return;
+  else if (PV) PT = setTimeout(() => previewOff(), 140);
+});
+picker.addEventListener('mouseleave', () => { clearTimeout(PT); previewOff(); });
+document.getElementById('desk').addEventListener('click', ev => { const t = ev.target.closest('button'); if (t && appClick(t)) { save(); renderPicker(); } });
+document.addEventListener('keydown', ev => {
+  if (ev.target.closest?.('input, textarea') || ev.metaKey || ev.ctrlKey) return;
+  if (ev.key === 'g' || ev.key === 'G') { S.guides = !S.guides; save(); renderPicker(); }
+  else if ((ev.key === 'b' || ev.key === 'B') && Object.keys(BEFORE).length) { S.before = !S.before; save(); renderPicker(); }
+});
+window.addEventListener('resize', () => { fit(); drawGuides(); });
+window.addEventListener('hashchange', () => { const id = location.hash.slice(1).split('&')[0]; if (id) preset(id); });
+fit();
+const scene0 = location.hash.slice(1).split('&')[0];
+if (scene0 && SCENES.some(s => s[0] === scene0)) preset(scene0); else renderPicker();
+document.fonts?.ready.then(() => { fit(); drawGuides(); });
+</script>
+<div id="agentation"></div>
+<script type="module">
+// Agentation (agentation.com): click any element, write a note. The picker toggle turns it on and off.
+// It loads from esm.sh, so it needs the network. The mockup works without it. Its notes go into "Copy my picks".
+const deps = '?deps=react@18.3.1,react-dom@18.3.1';
+let lib = null, root = null;
+async function set(on, open) {
+  if (!on) { root?.unmount(); root = null; agtMsg('Off.'); return; }
+  if (root) return;
+  agtMsg('Loading from esm.sh …');
+  try {
+    lib = lib || await Promise.all([import('https://esm.sh/react@18.3.1'), import('https://esm.sh/react-dom@18.3.1/client' + deps), import('https://esm.sh/agentation@3.1.2' + deps)]);
+    const [React, { createRoot }, { Agentation }] = lib;
+    root = createRoot(document.getElementById('agentation'));
+    root.render(React.createElement(Agentation, {
+      appName: `${PRODUCT} ${VERSION} round ${ROUND}`, className: 'agt-host',
+      identifyingAttributes: ['data-area', 'data-k', 'data-d', 'data-v', 'data-go', 'data-open'],
+      onAnnotationAdd: NOTES.set, onAnnotationUpdate: NOTES.set, onAnnotationDelete: NOTES.del, onAnnotationsClear: NOTES.clear,
+    }));
+    agtMsg('On. ⌘⇧F or the button at the bottom right of the app opens it. Then click an element and write.');
+    // After a click on the toggle, open the toolbar at once.
+    if (open) setTimeout(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'F', code: 'KeyF', metaKey: true, shiftKey: true, bubbles: true })), 250);
+  } catch (e) { root = null; agtMsg('Did not load (no network?). The mockup works without it.'); console.info('Agentation did not load.', e); }
+}
+window.AGT = { set };
+if (!shot) set(S.agt !== false); else agtMsg('');
+</script>
+</body>
+</html>
