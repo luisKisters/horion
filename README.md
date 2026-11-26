@@ -96,14 +96,13 @@ AppKit is used only where SwiftUI cannot: window chrome, the key event monitor, 
 
 ## Build configuration
 
-Per-machine build settings live outside the repository, in `~/.config/horion/build.env` (override the path with `HORION_BUILD_ENV`). Set up each Mac you build on once:
+The Google client ID lives in a gitignored `.env` in the main checkout, which its worktrees share:
 
 ```sh
-mkdir -p ~/.config/horion
-echo 'HORION_GOOGLE_CLIENT_ID=<id>.apps.googleusercontent.com' > ~/.config/horion/build.env
+echo 'HORION_GOOGLE_CLIENT_ID=<id>.apps.googleusercontent.com' > .env
 ```
 
-`scripts/build-app.sh` (and so `install.sh`, `make-dmg.sh` and `verify.sh`) takes the Google client ID from, in order: the `HORION_GOOGLE_CLIENT_ID` environment variable, `build.env`, the installed `/Applications/Horion.app`. Without one it prints a note and builds without Google sign-in. `HORION_REQUIRE_GOOGLE=1`, and any build with `SIGNING_IDENTITY`, fails instead. CI (`.github/workflows/ci.yml`) takes it from the repository variable `HORION_GOOGLE_CLIENT_ID` (Settings → Secrets and variables → Actions → Variables) and requires it.
+`scripts/build-app.sh` reads it when `HORION_GOOGLE_CLIENT_ID` is not already in the environment; without either it prints a note and builds without Google sign-in. CI sets it from the repository variable `HORION_GOOGLE_CLIENT_ID`.
 
 ## Verify
 

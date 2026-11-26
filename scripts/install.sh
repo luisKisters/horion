@@ -2,7 +2,7 @@
 # Builds Horion and installs it to /Applications, replacing and restarting the running instance.
 #   scripts/install.sh        the current checkout (including uncommitted changes)
 #   scripts/install.sh main   the latest origin/main, built in a temporary worktree
-# The Google client ID comes from wherever build-app.sh finds it (environment, ~/.config/horion/build.env, the installed app).
+# The Google client ID comes from the environment or .env (see build-app.sh).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 REPO="$PWD"

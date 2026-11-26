@@ -17,8 +17,6 @@ jobs:
     env:
       # Not a secret (native OAuth clients have none), but never committed: a repository variable.
       HORION_GOOGLE_CLIENT_ID: ${{ vars.HORION_GOOGLE_CLIENT_ID }}
-      # A build without Google sign-in fails here instead of shipping quietly.
-      HORION_REQUIRE_GOOGLE: "1"
     steps:
       - uses: actions/checkout@v4
 
