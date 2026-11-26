@@ -63,7 +63,7 @@ struct PanelPickerTests {
         #expect(m.panelMenus.open == .endTime)
         let start = m.math.minutesSinceMidnight(e.start)
         #expect(m.timeChoices(.endTime).first == (start / 15 + 1) * 15)
-        #expect(m.timeLength(start + 180) == "3 h" && m.timeLength(start + 195) == "3 h 15 min" && m.timeLength(start + 45) == "45 min")
+        #expect(m.timeLength(start + 180) == "3 h" && m.timeLength(start + 195) == "3 h 15" && m.timeLength(start + 45) == "45 min")
         m.fieldPickerTyped(.end, "2210")
         #expect(m.highlightedMinutes == 22 * 60 + 0)
         m.fieldPickerTyped(.end, "22:20")
@@ -286,10 +286,10 @@ struct PanelPickerTests {
         #expect(m.repeatSpan == .all)
     }
 
-    @Test func fieldPickersOpenLeftOfThePanel() {
+    @Test func everyPanelMenuOpensLeftOfThePanel() {
         let win = CGSize(width: 1440, height: 900)
         let field = CGRect(x: 1200, y: 300, width: 80, height: 20)
-        for m in [PanelMenu.startTime, .endTime, .datePicker, .timeZone, .repeats] {
+        for m in PanelMenu.allCases {
             let w = PanelMenuLayer.width(m)
             let o = PanelMenuLayer.origin(m, anchor: field, size: CGSize(width: w, height: 200), in: win)
             #expect(o.width == win.width - PanelMetrics.width - w - 8 && o.height == field.minY - 6, "\(m): over the grid, level with the field")
@@ -300,6 +300,7 @@ struct PanelPickerTests {
         // a narrow window: the menu stays 8 pt inside on the left
         let narrow = PanelMenuLayer.origin(.timeZone, anchor: field, size: CGSize(width: 296, height: 200), in: CGSize(width: PanelMetrics.width + 100, height: 600))
         #expect(narrow.width == 8)
+        #expect(PanelMenuLayer.width(.startTime) == 96 && PanelMenuLayer.width(.endTime) == 150, "the mockup's list widths")
     }
 
     @Test func storesWriteTheRule() {

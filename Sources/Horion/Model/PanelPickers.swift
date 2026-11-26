@@ -64,7 +64,7 @@ extension AppModel {
     /// "3 h 15 min" after an end time in the end list.
     func timeLength(_ endMinutes: Int) -> String? {
         guard let e = selectedEvent else { return nil }
-        return PanelText.editorDuration(endMinutes - math.minutesSinceMidnight(e.start))
+        return PanelText.listLength(endMinutes - math.minutesSinceMidnight(e.start))
     }
 
     /// A row clicked, or Return on the highlighted one.

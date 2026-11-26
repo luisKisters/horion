@@ -21,7 +21,8 @@ struct PanelTimeList: View {
                             HStack(spacing: 6) {
                                 Text(model.fmt.time(minutes: m)).font(.textTab)
                                 if menu == .endTime, let len = model.timeLength(m) {
-                                    Text(len).font(.smallTab).foregroundStyle(Theme.fg3).lineLimit(1)
+                                    Spacer(minLength: 0)
+                                    Text(len).font(.smallTab).foregroundStyle(Theme.fg3).lineLimit(1).fixedSize()
                                 }
                             }
                         }

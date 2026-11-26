@@ -57,45 +57,21 @@ struct PanelMenuLayer: View {
         case .call: 280
         case .send, .inviteSend: 260
         case .deleteSend: 300
-        case .startTime: 112
-        case .endTime: 184
+        case .startTime: 96
+        case .endTime: 150
         case .datePicker: 236
         case .timeZone: 296
         case .repeats: 264
         }
     }
 
-    /// Mockup `place()`: "left" menus end 8 pt to the left of the right column, 6 above the anchor; "below" menus line their text up
-    /// with the field's text, 4 under it; "above" menus end with the anchor, 6 over it. Always 8 pt inside the window.
+    /// Every panel menu opens left of the panel, over the grid (v21 `popPlace: left`): it ends 8 pt left of the right column,
+    /// 6 above its anchor, so its first row is level with the field or button. Always 8 pt inside the window.
     static func origin(_ m: PanelMenu, anchor r: CGRect, size: CGSize, in win: CGSize) -> CGSize {
         let w = width(m), h = size.height
-        var x: CGFloat, y: CGFloat
-        switch m {
-        case .calendar, .guests, .timeZone, .startTime, .endTime, .datePicker, .repeats:
-            // v21: the field pickers open left of the panel too, over the grid, level with their field
-            x = win.width - PanelMetrics.width - w - 8
-            y = r.minY - 6
-        case .send, .inviteSend:
-            x = r.maxX - w
-            y = r.minY - h - 6
-        case .deleteSend:
-            x = r.minX - 8
-            y = r.maxY + 4
-        case .maps, .places, .reminders, .call, .availability, .visibility:
-            // `r` is the field's text frame. The menu's first row text sits 16 in (6 padding, 10 row padding), 40 after a check column,
-            // 42 after a 16 pt logo (the maps and call menus line up the item text, not the section heading).
-            let menuText: CGFloat = switch m {
-            case .reminders, .availability, .visibility: 40
-            case .places: 39
-            default: 42
-            }
-            x = r.minX - menuText
-            y = r.maxY + 4
-            if y + h > win.height - 8 { y = r.minY - h - 4 }
-        }
-        x = max(8, min(x, win.width - w - 8))
-        y = max(8, min(y, win.height - h - 8))
-        return CGSize(width: x, height: y)
+        let x = win.width - PanelMetrics.width - w - 8
+        let y = r.minY - 6
+        return CGSize(width: max(8, min(x, win.width - w - 8)), height: max(8, min(y, win.height - h - 8)))
     }
 }
 

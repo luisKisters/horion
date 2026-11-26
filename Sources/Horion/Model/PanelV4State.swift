@@ -536,6 +536,12 @@ extension PanelText {
         return m >= 60 ? "\(m / 60) h" + (m % 60 > 0 ? " \(m % 60) min" : "") : "\(m) min"
     }
 
+    /// The end list's length (v21 `endList: len`): "15 min", "1 h", "1 h 30" (no "min" after hours: the list is 150 pt wide).
+    static func listLength(_ minutes: Int) -> String {
+        let m = max(0, minutes)
+        return m >= 60 ? "\(m / 60) h" + (m % 60 > 0 ? " \(m % 60)" : "") : "\(m) min"
+    }
+
     /// The editor's repeat line: "Every week on Sun" for one weekday, else the general text.
     static func editorRepeats(_ e: CalendarEvent, _ fmt: Fmt) -> String? {
         guard let t = repeats(e, fmt) else { return nil }
