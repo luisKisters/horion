@@ -92,11 +92,7 @@ struct PanelDetailView: View {
                 }
             }
         case .repeats:
-            EditorRowBox(icon: .repeats) {
-                let text = PanelText.editorRepeats(e, model.fmt)
-                Text(text ?? EditorRow.repeats.placeholder!).foregroundStyle(text == nil ? Theme.fg3 : Theme.fg).lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
+            EditorRowBox(icon: .repeats) { repeats(canEdit: canEdit) }
         case .findTime:
             EditorRowBox(icon: .sparkle) {
                 Button { model.findNewTime() } label: {
@@ -154,6 +150,26 @@ struct PanelDetailView: View {
         }
         .fixedSize()
         .frame(height: 26)
+    }
+
+    /// The rule ("Every week on Sun") or the placeholder; a click (or Return on its stop) opens the Repeat menu.
+    @ViewBuilder
+    private func repeats(canEdit: Bool) -> some View {
+        let text = PanelText.editorRepeats(e, model.fmt)
+        let label = Text(text ?? EditorRow.repeats.placeholder!).foregroundStyle(text == nil ? Theme.fg3 : Theme.fg).lineLimit(1)
+            .frame(maxWidth: .infinity, minHeight: 20, alignment: .leading)
+        if canEdit {
+            Button { model.openRepeatMenu() } label: {
+                label.contentShape(Rectangle())
+                    .editorField(focused: false, editable: true, key: "field:repeats", held: model.panelMenus.open == .repeats)
+            }
+            .buttonStyle(.plain)
+            .panelStop(.repeats)
+            .panelMenuAnchor(.repeats)
+            .task(id: e.id) { model.store.loadRecurrence(e) }
+        } else {
+            label.task(id: e.id) { model.store.loadRecurrence(e) }
+        }
     }
 
     /// The event's time zone (Notion's "Time zone"): fg3 while it is the calendar's own zone, else the city and the times there.

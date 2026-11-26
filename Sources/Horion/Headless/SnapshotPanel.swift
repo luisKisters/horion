@@ -9,7 +9,7 @@ enum SnapshotPanel {
     /// The other panel states: a new event, the recurring delete question, an event on a read-only calendar.
     static let states = ["create-event", "delete-recurring", "readonly-event", "call-link", "call-link-card"]
     /// The field pickers (`PanelPickers.swift`): the end time list with lengths.
-    static let pickerStates = ["picker-end-time", "picker-date", "picker-zone"]
+    static let pickerStates = ["picker-end-time", "picker-date", "picker-zone", "picker-repeat"]
 
     /// Puts the model into the named state. Returns false for names this area does not define.
     static func apply(_ state: String, _ m: AppModel) -> Bool {
@@ -63,6 +63,7 @@ enum SnapshotPanel {
             SnapshotV4.scroll(m, to: 18 * DemoDataV4.hourHeight - 160)
             return true
         case "picker-end-time": open("wg"); m.openFieldPicker(.end)
+        case "picker-repeat": open("wg"); m.openRepeatMenu(byKeyboard: true); m.panelMenus.highlight = "rep:until"
         case "picker-zone":
             open("wg"); m.setSelectedTimeZone("America/New_York"); m.openZonePicker(byKeyboard: true); m.zoneQueryChanged("eu")
         case "picker-date":

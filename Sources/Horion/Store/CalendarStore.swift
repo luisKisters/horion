@@ -54,6 +54,8 @@ protocol CalendarStore: AnyObject {
     func canUndoSeriesDelete(calendarID: String) -> Bool
     /// The in-memory demo store (made-up call links, demo place suggestions, teammate overlays).
     var isDemo: Bool { get }
+    /// Google instances do not carry their series' rule: the store reads it (the Repeat row asks), then reports a change.
+    func loadRecurrence(_ event: CalendarEvent)
 }
 
 extension CalendarStore {
@@ -62,6 +64,7 @@ extension CalendarStore {
     var canSendUpdates: Bool { false }
     var canRespond: Bool { false }
     var isDemo: Bool { false }
+    func loadRecurrence(_ event: CalendarEvent) {}
     func canSendUpdates(calendarID: String) -> Bool { canSendUpdates }
     func canRespond(calendarID: String) -> Bool { canRespond }
     func canEditParticipants(calendarID: String) -> Bool { canEditParticipants }

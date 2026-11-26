@@ -97,7 +97,7 @@ extension AppModel {
     }
 
     /// The menus the keyboard drives (the guest and place lists follow their fields' typing).
-    static let keyboardMenus: Set<PanelMenu> = [.calendar, .reminders, .call, .availability, .visibility, .timeZone]
+    static let keyboardMenus: Set<PanelMenu> = [.calendar, .reminders, .call, .availability, .visibility, .timeZone, .repeats]
 
     func panelMenuChoices(_ m: PanelMenu) -> [PanelMenuChoice] {
         guard selectedEvent != nil else { return [] }
@@ -117,6 +117,8 @@ extension AppModel {
             return Availability.allCases.map { a in PanelMenuChoice(key: "menu:avail:\(a.rawValue)") { [weak self] in self?.updateSelected { $0.availability = a } } }
         case .visibility:
             return EventVisibility.allCases.map { v in PanelMenuChoice(key: "menu:vis:\(v.rawValue)") { [weak self] in self?.updateSelected { $0.visibility = v } } }
+        case .repeats:
+            return repeatChoices
         case .timeZone:
             return zoneChoices.map { z in PanelMenuChoice(key: "tz:\(z.id)") { [weak self] in self?.setSelectedTimeZone(z.id) } }
         default:
@@ -134,6 +136,7 @@ extension AppModel {
         case .visibility: "menu:vis:\(e.visibility.rawValue)"
         case .reminders: e.reminders.first.map { "menu:rem\($0)" }
         case .timeZone: "tz:\(e.timeZoneID)"
+        case .repeats: repeatKey(e)
         default: nil
         }
         return current.flatMap { keys.contains($0) ? $0 : nil } ?? keys.first
@@ -145,6 +148,7 @@ extension AppModel {
         switch s {
         case .allDay: setSelectedAllDay(!e.isAllDay)
         case .timeZone: openZonePicker(byKeyboard: true)
+        case .repeats: openRepeatMenu(byKeyboard: true)
         case .findTime: findNewTime()
         case .join: joinCall(e)
         case .addCall: openPanelMenuByKeyboard(.call)
@@ -221,6 +225,9 @@ extension AppModel {
                 return true
             case R.keyTab:
                 closePanelMenu()
+            case R.keyLeft where m == .repeats, R.keyRight where m == .repeats:
+                if let h = panelMenus.highlight { stepCustomRepeat(h, by: k.keyCode == R.keyRight ? 1 : -1) }
+                return true
             case R.keyDelete where m == .timeZone:
                 if !panelMenus.zoneQuery.isEmpty { zoneQueryChanged(String(panelMenus.zoneQuery.dropLast())) }
                 return true

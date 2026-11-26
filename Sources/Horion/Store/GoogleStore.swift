@@ -50,6 +50,8 @@ final class GoogleStore: CalendarStore {
     private var waiting: [String: Waiting] = [:]
     /// Our writes that landed while a sync round ran: the round read the server before them, so they are applied again on top.
     private var writesDuringSync: [(cal: String, gid: String, event: GEvent?)] = []
+    /// The rules of series whose main event was read (`loadRecurrence`), by "<calendar>/<main event id>": instances do not carry it.
+    private var seriesRules: [String: Recurrence?] = [:]
     /// The full-sync window around "now".
     var window: () -> DateInterval = { DateInterval(start: Date().addingTimeInterval(-400 * 86400), end: Date().addingTimeInterval(800 * 86400)) }
 
@@ -198,7 +200,8 @@ final class GoogleStore: CalendarStore {
             let defaults = s.defaultReminders.isEmpty ? (c.defaultReminders ?? []).map(\.minutes) : s.defaultReminders
             for (gid, g) in s.items {
                 let id = aliases["\(c.id)/\(gid)"] ?? eventID(c.id, gid)
-                guard let e = GoogleMapping.event(g, id: id, calendarID: calendarKey(c.id), defaultReminders: defaults, zone: zone, seriesPrefix: calendarKey(c.id) + "/") else { continue }
+                guard var e = GoogleMapping.event(g, id: id, calendarID: calendarKey(c.id), defaultReminders: defaults, zone: zone, seriesPrefix: calendarKey(c.id) + "/") else { continue }
+                if e.recurrence == nil, let sid = g.recurringEventId, let r = seriesRules["\(c.id)/\(sid)"] { e.recurrence = r }
                 out.append(e)
                 refs[id] = (c.id, gid)
             }
@@ -279,6 +282,7 @@ final class GoogleStore: CalendarStore {
         pendingInserts.insert(tempID)
         local(temp)
         let api = api
+        if body.recurrence != nil { after(1) { [weak self] in self?.sync() } }
         run({ try await api.insert(calendarID: cal, body, notify: notify, conference: meet) },
             done: { [weak self] g in
                 guard let self else { return }
@@ -349,11 +353,16 @@ final class GoogleStore: CalendarStore {
             if span != .this { scheduleResync() }
             return event
         }
+        if old.recurrence != event.recurrence, let master = syncs[cal]?.items[ref.gid]?.recurringEventId {
+            seriesRules["\(cal)/\(master)"] = .some(event.recurrence)
+        }
         let meet = event.conferencing == GoogleMapping.newMeetLink && old.conferencing != event.conferencing
         guard var body = GoogleMapping.patch(old: old, new: event, zone: zone, meetRequestID: meet ? UUID().uuidString : nil, resources: resources) else { return event }
         if span == .this || old.seriesID == nil {
             let patch = body
             run({ try await api.patch(calendarID: cal, eventID: ref.gid, patch, notify: notify, conference: meet) }, done: store, failed: restore)
+            // a new rule: the next round brings the occurrences
+            if body.recurrence != nil { scheduleResync() }
         } else if span == .future {
             // this and following: a new series from this occurrence with the change, then the old one ends the second before it
             let master = syncs[cal]?.items[ref.gid]?.recurringEventId ?? ref.gid
@@ -424,6 +433,21 @@ final class GoogleStore: CalendarStore {
                 for e in removed { if let r = self.refs[e.id] { self.removeG(cal, r.gid) } }
             }, failed: restore)
         }
+    }
+
+    /// The Repeat row of an instance: its rule is on the series' main event, read once.
+    func loadRecurrence(_ event: CalendarEvent) {
+        guard event.recurrence == nil, let ref = refs[event.id], let master = syncs[ref.cal]?.items[ref.gid]?.recurringEventId else { return }
+        let key = "\(ref.cal)/\(master)"
+        guard seriesRules[key] == nil else { return }
+        seriesRules[key] = .some(nil)       // asked: not again while the answer is on the way
+        let api = api, cal = ref.cal
+        run({ try await api.get(calendarID: cal, eventID: master) }, done: { [weak self] g in
+            guard let self else { return }
+            self.seriesRules[key] = (g.recurrence ?? []).lazy.compactMap(RRule.parse).first
+            self.rebuild()
+            self.onChange?()
+        }, failed: { [weak self] in self?.seriesRules[key] = nil })
     }
 
     /// A series change: the next round brings the changed instances.

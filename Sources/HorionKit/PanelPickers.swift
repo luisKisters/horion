@@ -91,3 +91,118 @@ public enum TimeZoneList {
         return city + word + rest
     }
 }
+
+/// The panel's Repeat menu: the common rules for an event's start, and the custom ones (every N days, weeks, months, years; an end).
+public enum RepeatChoice: String, CaseIterable, Hashable, Sendable {
+    case none, daily, weekdays, weekly, biweekly, monthly, yearly
+}
+
+public enum RepeatRules {
+    /// The rule a choice makes for an event starting at `start`. `until` (a custom end) is kept.
+    public static func rule(_ c: RepeatChoice, start: Date, math: CalendarMath, until: Date? = nil) -> Recurrence? {
+        let wd = math.calendar.component(.weekday, from: start)
+        switch c {
+        case .none: return nil
+        case .daily: return Recurrence(frequency: .daily, until: until)
+        case .weekdays: return Recurrence(frequency: .weekly, weekdays: [2, 3, 4, 5, 6], until: until)
+        case .weekly: return Recurrence(frequency: .weekly, weekdays: [wd], until: until)
+        case .biweekly: return Recurrence(frequency: .weekly, interval: 2, weekdays: [wd], until: until)
+        case .monthly: return Recurrence(frequency: .monthly, until: until)
+        case .yearly: return Recurrence(frequency: .yearly, until: until)
+        }
+    }
+
+    /// Which common rule `r` is (its end left aside), nil for a custom one.
+    public static func choice(of r: Recurrence?, start: Date, math: CalendarMath) -> RepeatChoice? {
+        guard var r else { return RepeatChoice.none }
+        r.until = nil
+        let wd = math.calendar.component(.weekday, from: start)
+        if r.frequency == .weekly && r.weekdays.isEmpty { r.weekdays = [wd] }
+        return RepeatChoice.allCases.first { $0 != .none && rule($0, start: start, math: math) == r }
+    }
+
+    /// "Does not repeat", "Every day", "Every weekday (Mon–Fri)", "Weekly on Thu", "Every 2 weeks on Thu", "Monthly on day 26",
+    /// "Yearly on 26 Nov"
+    public static func label(_ c: RepeatChoice, start: Date, fmt: Fmt) -> String {
+        switch c {
+        case .none: "Does not repeat"
+        case .daily: "Every day"
+        case .weekdays: "Every weekday (Mon\u{2013}Fri)"
+        case .weekly: "Weekly on \(fmt.weekdayShort(start))"
+        case .biweekly: "Every 2 weeks on \(fmt.weekdayShort(start))"
+        case .monthly: "Monthly on day \(fmt.math.day(start))"
+        case .yearly: "Yearly on \(fmt.math.day(start)) \(fmt.monthShort(start))"
+        }
+    }
+
+    /// The custom rows: `r` with `interval` changed by `d` (1 ... 99). No rule yet: weekly on the start's day.
+    public static func stepInterval(_ r: Recurrence?, by d: Int, start: Date, math: CalendarMath) -> Recurrence {
+        var x = r ?? rule(.weekly, start: start, math: math)!
+        x.interval = min(max(x.interval + d, 1), 99)
+        return x
+    }
+
+    /// The next (or previous) unit: day, week, month, year. A weekly rule gets the start's day.
+    public static func stepFrequency(_ r: Recurrence?, by d: Int, start: Date, math: CalendarMath) -> Recurrence {
+        var x = r ?? rule(.weekly, start: start, math: math)!
+        let all = Recurrence.Frequency.allCases
+        let i = all.firstIndex(of: x.frequency) ?? 0
+        x.frequency = all[(i + d + all.count) % all.count]
+        x.weekdays = x.frequency == .weekly ? [math.calendar.component(.weekday, from: start)] : []
+        return x
+    }
+
+    /// The end, a month at a time: never, then the end of the start's day 1, 2, 3 ... months on; back from the first month is never.
+    public static func stepUntil(_ r: Recurrence?, by d: Int, start: Date, math: CalendarMath) -> Recurrence {
+        var x = r ?? rule(.weekly, start: start, math: math)!
+        let day = math.startOfDay(start)
+        let months: Int = x.until.map { u in
+            (1...240).first { math.addDays(math.addMonths(day, $0), 1) > u } ?? 240
+        } ?? 0
+        let n = max(0, months + d)
+        x.until = n == 0 ? nil : math.addDays(math.addMonths(day, n), 1).addingTimeInterval(-1)
+        return x
+    }
+
+    /// The starts of a rule's occurrences from the first one (`first`, included) to `limit`, at most `cap`.
+    public static func starts(_ r: Recurrence, first: Date, through limit: Date, math: CalendarMath, cap: Int = 1000) -> [Date] {
+        let end = min(limit, r.until ?? limit)
+        let minutes = math.minutesSinceMidnight(first)
+        let day0 = math.startOfDay(first)
+        var out: [Date] = []
+        func add(_ day: Date) -> Bool {
+            let d = math.date(on: day, minutes: minutes)
+            guard d <= end else { return false }
+            if d >= first { out.append(d) }
+            return out.count < cap
+        }
+        switch r.frequency {
+        case .daily:
+            var i = 0
+            while add(math.addDays(day0, i * r.interval)) { i += 1 }
+        case .weekly:
+            let days = Set(r.weekdays.isEmpty ? [math.calendar.component(.weekday, from: first)] : r.weekdays)
+            var week = math.startOfWeek(day0)
+            weeks: while week <= end {
+                for i in 0..<7 {
+                    let d = math.addDays(week, i)
+                    guard days.contains(math.calendar.component(.weekday, from: d)) else { continue }
+                    if !add(d) { break weeks }
+                }
+                week = math.addDays(week, 7 * r.interval)
+            }
+        case .monthly, .yearly:
+            let step = r.frequency == .monthly ? r.interval : 12 * r.interval
+            let dom = math.day(day0)
+            var i = 0
+            while true {
+                let m = math.addMonths(math.startOfMonth(day0), i * step)
+                if m > end { break }
+                let d = math.addDays(m, dom - 1)
+                if math.isSameMonth(d, m), !add(d) { break }
+                i += 1
+            }
+        }
+        return out
+    }
+}

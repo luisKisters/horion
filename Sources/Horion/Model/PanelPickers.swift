@@ -196,6 +196,81 @@ extension AppModel {
     }
 }
 
+// MARK: Repeat
+
+/// The Repeat menu (`PanelMenu.repeats`): the common rules for the event's start ("Weekly on Thu"), then the custom rule in three
+/// rows that Left and Right (or their ‹ › buttons) change: every N, the unit, the end. A rule change goes to the whole series.
+extension AppModel {
+    static let customRepeatKeys = ["rep:every", "rep:unit", "rep:until"]
+
+    var repeatChoices: [PanelMenuChoice] {
+        guard let e = selectedEvent else { return [] }
+        let until = e.recurrence?.until
+        return RepeatChoice.allCases.map { c in
+            PanelMenuChoice(key: "rep:\(c.rawValue)") { [weak self] in
+                guard let self else { return }
+                setSelectedRecurrence(RepeatRules.rule(c, start: e.start, math: math, until: c == .none ? nil : until))
+            }
+        } + Self.customRepeatKeys.map { PanelMenuChoice(key: $0, run: {}, staysOpen: true) }
+    }
+
+    /// The row the menu opens on: the event's rule, or the custom rows.
+    func repeatKey(_ e: CalendarEvent) -> String {
+        if e.recurrence == nil && e.seriesID != nil { return "rep:every" }
+        return RepeatRules.choice(of: e.recurrence, start: e.start, math: math).map { "rep:\($0.rawValue)" } ?? "rep:every"
+    }
+
+    func openRepeatMenu(byKeyboard: Bool = false) {
+        if panelMenus.open == .repeats && !byKeyboard { closePanelMenu(); return }
+        panelMenus.stop = .repeats
+        openPanelMenuByKeyboard(.repeats)
+    }
+
+    /// Left and Right on a custom row (and its buttons): every N, the unit, the end.
+    func stepCustomRepeat(_ key: String, by d: Int) {
+        guard let e = selectedEvent else { return }
+        let r: Recurrence
+        switch key {
+        case "rep:every": r = RepeatRules.stepInterval(e.recurrence, by: d, start: e.start, math: math)
+        case "rep:unit": r = RepeatRules.stepFrequency(e.recurrence, by: d, start: e.start, math: math)
+        case "rep:until": r = RepeatRules.stepUntil(e.recurrence, by: d, start: e.start, math: math)
+        default: return
+        }
+        setSelectedRecurrence(r)
+        panelMenus.highlight = key
+    }
+
+    /// Writes a new rule. A repeating event changes as a whole series (EventKit saves its main event for the future events, Google
+    /// patches the main event); the event being created only keeps it. Guests hear about it.
+    func setSelectedRecurrence(_ r: Recurrence?) {
+        guard var e = selectedEvent, editorCanEdit(e), e.recurrence != r else { return }
+        let before = e
+        e.recurrence = r
+        if draft?.id == e.id { draft = e; reload(); return }
+        flushPendingEdit()
+        let span: EditSpan = before.seriesID != nil ? .all : .this
+        let guests = e.attendees.contains { !$0.isMe }
+        do {
+            let saved = try store.update(e, span: span, notify: guests && store.canSendUpdates(calendarID: e.calendarID))
+            storeChanged()
+            // the occurrence on screen stays selected when the new rule still has it
+            if event(id: e.id) == nil {
+                let day = DateInterval(start: math.startOfDay(e.start), end: math.addDays(math.startOfDay(e.start), 1))
+                let same = store.events(in: day).first { $0.title == e.title && $0.calendarID == e.calendarID && ($0.seriesID != nil || r == nil) }
+                selectedEventID = same?.id ?? saved.id
+            }
+        } catch { showToast("Could not save the repeat rule") }
+    }
+
+    /// The custom rows' texts: "Every 2", "weeks", "No end" / "Until 26 Feb 2027".
+    func customRepeatTexts(_ e: CalendarEvent) -> (every: String, unit: String, until: String) {
+        let r = e.recurrence ?? RepeatRules.rule(.weekly, start: e.start, math: math)!
+        let unit: String = switch r.frequency { case .daily: "day"; case .weekly: "week"; case .monthly: "month"; case .yearly: "year" }
+        return ("Every \(r.interval)", r.interval == 1 ? unit : unit + "s",
+                r.until.map { "Until \(PanelText.day($0, fmt)) \(math.year($0))" } ?? "No end")
+    }
+}
+
 /// `TimeZoneList.all` names some 400 zones: made once per day it is asked for.
 @MainActor
 enum ZoneListCache {

@@ -148,3 +148,55 @@ struct PanelZoneList: View {
         }
     }
 }
+
+/// The Repeat menu: the common rules with a check on the event's, then "Custom": every N, the unit and the end, each changed with
+/// ‹ › (Left and Right on the keyboard's row).
+struct PanelRepeatMenu: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        if let e = model.selectedEvent {
+            let current = e.recurrence == nil && e.seriesID != nil ? nil : RepeatRules.choice(of: e.recurrence, start: e.start, math: model.math)
+            let hl = model.panelMenus.highlight
+            let custom = model.customRepeatTexts(e)
+            ForEach(RepeatChoice.allCases, id: \.self) { c in
+                let key = "rep:\(c.rawValue)"
+                PopItem(check: current == c, key: key, highlighted: hl == key, action: {
+                    model.closePanelMenu()
+                    model.setSelectedRecurrence(RepeatRules.rule(c, start: e.start, math: model.math, until: c == .none ? nil : e.recurrence?.until))
+                }) { Text(RepeatRules.label(c, start: e.start, fmt: model.fmt)) }
+            }
+            PopSep()
+            PopSection(text: current == nil && e.recurrence != nil ? "Custom (this event)" : "Custom", indent: true)
+            CustomRepeatRow(key: "rep:every", text: custom.every, checked: current == nil && e.recurrence != nil, highlighted: hl == "rep:every")
+            CustomRepeatRow(key: "rep:unit", text: custom.unit, checked: false, highlighted: hl == "rep:unit")
+            CustomRepeatRow(key: "rep:until", text: custom.until, checked: false, highlighted: hl == "rep:until")
+        }
+    }
+}
+
+/// One custom row: the value, then ‹ › that step it (the row is no button: a click on its text does nothing).
+struct CustomRepeatRow: View {
+    @Environment(AppModel.self) private var model
+    let key: String
+    let text: String
+    let checked: Bool
+    let highlighted: Bool
+    @State private var hover = false
+    @Environment(\.hoverWash) private var wash
+
+    var body: some View {
+        HStack(spacing: 10) {
+            PanelIcon(name: .check, size: 14, color: Theme.fg).opacity(checked ? 1 : 0).frame(width: 14)
+            Text(text).font(.textTab).foregroundStyle(Theme.fg).lineLimit(1)
+            Spacer(minLength: 0)
+            ChromeIconButton(icon: .left, small: true, help: "Less  \u{2190}") { model.stepCustomRepeat(key, by: -1) }
+            ChromeIconButton(icon: .right, small: true, help: "More  \u{2192}") { model.stepCustomRepeat(key, by: 1) }
+        }
+        .padding(.leading, 10).padding(.trailing, 3)
+        .frame(maxWidth: .infinity, minHeight: Dim.row, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: Radius.inner).fill(hover || highlighted ? wash : Color.clear))
+        .onHover { hover = $0 }
+        .tourAnchor(key)
+    }
+}

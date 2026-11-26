@@ -61,6 +61,7 @@ struct PanelMenuLayer: View {
         case .endTime: 184
         case .datePicker: 236
         case .timeZone: 420
+        case .repeats: 264
         }
     }
 
@@ -84,11 +85,11 @@ struct PanelMenuLayer: View {
             x = r.minX - 6
             y = r.maxY + 4
             if y + h > win.height - 8 { y = r.minY - h - 4 }
-        case .maps, .places, .reminders, .call, .availability, .visibility:
+        case .maps, .places, .reminders, .call, .availability, .visibility, .repeats:
             // `r` is the field's text frame. The menu's first row text sits 16 in (6 padding, 10 row padding), 40 after a check column,
             // 42 after a 16 pt logo (the maps and call menus line up the item text, not the section heading).
             let menuText: CGFloat = switch m {
-            case .reminders, .availability, .visibility: 40
+            case .reminders, .availability, .visibility, .repeats: 40
             case .places: 39
             default: 42
             }
@@ -210,6 +211,7 @@ struct PanelMenuContent: View {
             case .startTime, .endTime: PanelTimeList(menu: menu)
             case .datePicker: PanelDatePicker()
             case .timeZone: PanelZoneList()
+            case .repeats: PanelRepeatMenu()
             case .send:
                 PopItem(key: "menu:discard", danger: true, action: { model.discardUnsent() }) { Text("Discard changes") }
                 PopItem(key: "menu:quiet", action: { model.sendUnsent(notify: false) }) { Text("Save without sending") } end: {

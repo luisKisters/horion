@@ -94,6 +94,36 @@ final class DemoStore: CalendarStore {
         return event
     }
 
+    /// A new rule (the Repeat menu): the series is made again from its first occurrence, at the edited time of day, a year and a
+    /// bit ahead. The edited occurrence keeps its id; "Does not repeat" leaves only it.
+    private func reseries(old: CalendarEvent, new event: CalendarEvent, insertingOld: Bool = true) {
+        let members = insertingOld ? (old.seriesID.map { sid in events.filter { $0.seriesID == sid } } ?? [old]) : []
+        let first = members.min { $0.start < $1.start } ?? old
+        let gone = Set(members.map(\.id))
+        events.removeAll { gone.contains($0.id) }
+        defer {
+            events.sort { $0.start != $1.start ? $0.start < $1.start : $0.id < $1.id }
+            recomputeMax()
+        }
+        guard let r = event.recurrence else {
+            var e = event
+            e.seriesID = nil
+            events.append(e)
+            return
+        }
+        let sid = old.seriesID ?? "series.\(old.id)"
+        let dur = event.end.timeIntervalSince(event.start)
+        let from = event.isAllDay ? math.startOfDay(first.start) : math.date(on: first.start, minutes: math.minutesSinceMidnight(event.start))
+        for s in RepeatRules.starts(r, first: min(from, event.start), through: math.addDays(from, 400), math: math) {
+            var e = event
+            e.seriesID = sid
+            e.start = s
+            e.end = s.addingTimeInterval(dur)
+            e.id = math.isSameDay(s, event.start) ? event.id : "\(sid)@\(Int(s.timeIntervalSince1970))"
+            events.append(e)
+        }
+    }
+
     private func insert(_ e: CalendarEvent) {
         let i = lowerBound(e.start)
         events.insert(e, at: i)
@@ -105,6 +135,11 @@ final class DemoStore: CalendarStore {
         if failWrites { throw WriteFailed() }
         guard let idx = events.firstIndex(where: { $0.id == event.id }) else { return event }
         let old = events[idx]
+        if old.recurrence != event.recurrence {
+            reseries(old: old, new: event)
+            onChange?()
+            return event
+        }
         var targets: [Int] = [idx]
         if span != .this, let sid = old.seriesID {
             targets = events.indices.filter { events[$0].seriesID == sid && (span == .all || events[$0].start >= old.start) }
@@ -137,6 +172,12 @@ final class DemoStore: CalendarStore {
     func create(_ event: CalendarEvent, notify: Bool) throws -> CalendarEvent {
         if failWrites { throw WriteFailed() }
         notices.append((event.id, "create", notify))
+        // a new repeating event (the draft saved): its occurrences. Undo and tests put single events back through `create(_:)`.
+        if event.recurrence != nil && event.seriesID == nil {
+            reseries(old: event, new: event, insertingOld: false)
+            onChange?()
+            return event
+        }
         return try create(event)
     }
 

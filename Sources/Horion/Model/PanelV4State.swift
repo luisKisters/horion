@@ -13,6 +13,8 @@ enum PanelMenu: String, Hashable, CaseIterable {
     case datePicker
     /// The event's time zone: a list searched by typing.
     case timeZone
+    /// The Repeat menu: the common rules, then a custom one.
+    case repeats
 }
 
 /// Edits to an event with guests that are not sent yet (v4 Phase 7b): `base` is what the store has, `edited` what the editor shows.

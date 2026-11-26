@@ -221,6 +221,15 @@ final class EventKitStore: CalendarStore {
         return Recurrence(frequency: f, interval: r.interval, weekdays: (r.daysOfTheWeek ?? []).map { $0.dayOfTheWeek.rawValue }, until: r.recurrenceEnd?.endDate)
     }
 
+    /// Back to EventKit (the Repeat menu): weekly rules name their days, an end is a date.
+    nonisolated static func rule(_ r: Recurrence) -> EKRecurrenceRule {
+        let f: EKRecurrenceFrequency = switch r.frequency { case .daily: .daily; case .weekly: .weekly; case .monthly: .monthly; case .yearly: .yearly }
+        let days = r.frequency == .weekly ? r.weekdays.compactMap { EKWeekday(rawValue: $0).map { EKRecurrenceDayOfWeek($0) } } : []
+        return EKRecurrenceRule(recurrenceWith: f, interval: r.interval, daysOfTheWeek: days.isEmpty ? nil : days, daysOfTheMonth: nil,
+                                monthsOfTheYear: nil, weeksOfTheYear: nil, daysOfTheYear: nil, setPositions: nil,
+                                end: r.until.map { EKRecurrenceEnd(end: $0) })
+    }
+
     // MARK: Writing
 
     @discardableResult
@@ -268,6 +277,8 @@ final class EventKitStore: CalendarStore {
         ek.endDate = e.isAllDay ? e.end.addingTimeInterval(-1) : e.end
         ek.availability = e.availability == .free ? .free : .busy
         ek.url = e.conferencing.isEmpty ? nil : URL(string: e.conferencing)
+        // the rule only when it changed (the Repeat menu saves the series' main event with `.futureEvents`)
+        if ek.recurrenceRules?.first.map(Self.convert) != e.recurrence { ek.recurrenceRules = e.recurrence.map { [Self.rule($0)] } }
         if e.isAllDay { ek.timeZone = nil }      // all-day events are floating dates
         else if let tz = TimeZone(identifier: e.timeZoneID) { ek.timeZone = tz }
         if let cal = store.calendar(withIdentifier: e.calendarID), cal.allowsContentModifications, ek.calendar?.calendarIdentifier != cal.calendarIdentifier { ek.calendar = cal }

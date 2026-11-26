@@ -139,6 +139,8 @@ public enum GoogleMapping {
             } + resources.filter { $0.resource == true }
             any = true
         }
+        // the rule goes to the series' main event (the store sends a rule change for the whole series); an empty list ends repeating
+        set(old.recurrence, new.recurrence) { g.recurrence = new.recurrence.map { [RRule.format($0, zone: zone)] } ?? [] }
         set(old.reminders, new.reminders) { g.reminders = GReminders(useDefault: false, overrides: new.reminders.map { GReminder(minutes: $0) }) }
         set(old.colorHex, new.colorHex) { g.colorId = new.colorHex.flatMap(GoogleColors.colorId(hex:)) ?? "" }
         set(old.availability, new.availability) { g.transparency = new.availability == .free ? "transparent" : "opaque" }

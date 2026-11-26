@@ -3,7 +3,7 @@ import Foundation
 /// One keyboard stop in the event panel (design/mockup-v20, "Flat Tab"): every field, switch, button and menu, top to bottom.
 /// Delete and Close are not stops.
 public enum PanelStop: Hashable, Sendable {
-    case title, date, start, end, allDay, timeZone, findTime, guest, going, addCall, link, join, place, notes, calendar, busy, visibility
+    case title, date, start, end, allDay, timeZone, repeats, findTime, guest, going, addCall, link, join, place, notes, calendar, busy, visibility
     case reminder(Int)
     case addReminder
 
@@ -18,7 +18,7 @@ public enum PanelStop: Hashable, Sendable {
     /// Return, Space or Down opens a menu at this stop.
     public var opensMenu: Bool {
         switch self {
-        case .timeZone, .addCall, .calendar, .busy, .visibility, .reminder, .addReminder: true
+        case .timeZone, .repeats, .addCall, .calendar, .busy, .visibility, .reminder, .addReminder: true
         default: false
         }
     }
@@ -32,6 +32,7 @@ public enum PanelStop: Hashable, Sendable {
         case .end: "e"
         case .allDay: "a"
         case .timeZone: "z"
+        case .repeats: "r"
         case .findTime: "f"
         case .guest: "p"
         case .going: "g"
@@ -81,6 +82,7 @@ public enum PanelTabOrder {
         if c.canEdit && !c.isAllDay { s += [.start, .end] }
         if c.canEdit { s.append(.allDay) }
         if c.canEdit && !c.isAllDay { s.append(.timeZone) }
+        if c.canEdit { s.append(.repeats) }
         if c.findTime { s.append(.findTime) }
         if c.canAddGuests { s.append(.guest) }
         if c.going { s.append(.going) }
