@@ -35,10 +35,11 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "$PR" ]; then echo "code=true" >> "$GITHUB_OUTPUT"; exit 0; fi
-          files="$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --jq '.[].filename')"
+          # A renamed file lists both paths, so moving code into design/ still counts as code.
+          files="$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --jq '.[] | .filename, (.previous_filename // empty)')"
           echo "$files"
           # Code unless every changed file is Markdown, under design/ or under artifacts/.
-          if echo "$files" | grep -qvE '(\.md$|^design/|^artifacts/)'; then code=true; else code=false; fi
+          if grep -qvE '(\.md$|^design/|^artifacts/)' <<<"$files"; then code=true; else code=false; fi
           echo "code=$code" | tee -a "$GITHUB_OUTPUT"
 
   verify:
