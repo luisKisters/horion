@@ -18,7 +18,7 @@ struct PanelFoot: View {
                 if model.store.canSendUpdates(calendarID: e.calendarID) && e.attendees.contains(where: { !$0.isMe }) {
                     SplitButton(title: "Send invite", menu: .inviteSend, help: "Send invite  \u{2318}\u{21A9}") { model.saveDraft() }
                 } else {
-                    PanelFillButton(title: "Save", key: "\u{21A9}") { model.saveDraft() }.frame(height: Dim.field)
+                    PanelFillButton(title: "Save", key: "\u{21A9}") { model.saveDraft() }
                 }
             } else {
                 Text("Not sent yet").font(.small).foregroundStyle(Theme.fg3)
@@ -28,54 +28,30 @@ struct PanelFoot: View {
         }
         .padding(.horizontal, 14).padding(.vertical, 12)
         .background(Theme.rail)
+        .shade(.sidebar)
         .overlay(alignment: .top) { Hairline() }
     }
 }
 
-/// `.btn.ghost`: fg2 text, a wash on hover, 32 pt.
+/// A Ghost `HButton` with one keycap (the editor foot's Discard).
 struct GhostButton: View {
     let title: String
     var key: String?
     let action: () -> Void
-    @State private var hover = false
     var body: some View {
-        let h = hover || HoverProbe.shared.target == "btn:\(title)"
-        Button(action: action) {
-            HStack(spacing: 6) {
-                Text(title).font(.textMedium).foregroundStyle(h ? Theme.fg : Theme.fg2)
-                if let key { Keycap(text: key) }
-            }
-            .padding(.horizontal, 12).frame(height: Dim.field)
-            .background(RoundedRectangle(cornerRadius: Radius.control).fill(h ? Theme.hoverRail : Color.clear))
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(PressStyle(scale: 0.97))
-        .onHover { hover = $0 }
-        .tourAnchor("btn:\(title)")
+        HButton(title: title, kind: .ghost, keys: key.map { [$0] } ?? [], probe: "btn:\(title)", action: action).tourAnchor("btn:\(title)")
     }
 }
 
-/// `.btn`: bg2, 32 pt, radius 8, 500.
+/// A Secondary `HButton` (the delete dialog's Cancel).
 struct PlainButton: View {
     let title: String
     let action: () -> Void
-    @State private var hover = false
-    var body: some View {
-        let h = hover || HoverProbe.shared.target == "btn:\(title)"
-        Button(action: action) {
-            Text(title).font(.textMedium).foregroundStyle(Theme.fg)
-                .padding(.horizontal, 12).frame(height: Dim.field)
-                .background(RoundedRectangle(cornerRadius: Radius.control).fill(h ? Theme.bg3 : Theme.bg2))
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(PressStyle(scale: 0.97))
-        .onHover { hover = $0 }
-        .tourAnchor("btn:\(title)")
-    }
+    var body: some View { HButton(title: title, kind: .secondary, probe: "btn:\(title)", action: action).tourAnchor("btn:\(title)") }
 }
 
-/// `.split`: one 32 pt button in two parts: the action, and a chevron (32 wide, a 25 % line between) that opens its menu.
-/// `red`: the destructive colour (Delete event).
+/// `.split`: one button (`Dim.button`) in two parts: the action, and a chevron (28 wide, a 25 % line between) that opens its menu.
+/// Primary, or Danger with `red` (Delete event); each part takes the kind's hover fill.
 struct SplitButton: View {
     @Environment(AppModel.self) private var model
     let title: String
@@ -87,7 +63,7 @@ struct SplitButton: View {
     @State private var hoverB = false
 
     var body: some View {
-        let fill = red ? Theme.danger : Theme.act
+        let fill = red ? Theme.danger : Theme.act, hoverFill = red ? Theme.dangerHover : Theme.actHover
         let ink = red ? Theme.onDanger : Theme.onAct
         let ha = hoverA || HoverProbe.shared.target == "split:\(title)"
         let hb = hoverB || HoverProbe.shared.target == "split:\(menu.rawValue)" || model.panelMenus.open == menu
@@ -95,21 +71,21 @@ struct SplitButton: View {
             Button(action: action) {
                 Text(title).font(.textSemibold).foregroundStyle(ink)
                     .padding(.horizontal, 12).frame(maxHeight: .infinity)
-                    .background(ink.opacity(ha ? 0.1 : 0))
+                    .background(ha ? hoverFill : .clear)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain).help(help)
             .onHover { hoverA = $0 }
             Rectangle().fill(ink.opacity(0.25)).frame(width: 1)
             Button { model.openPanelMenu(menu) } label: {
-                PanelIcon(name: .down, size: 14, color: ink).frame(width: 32).frame(maxHeight: .infinity)
-                    .background(ink.opacity(hb ? 0.1 : 0))
+                PanelIcon(name: .down, size: 14, color: ink).frame(width: 28).frame(maxHeight: .infinity)
+                    .background(hb ? hoverFill : .clear)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .onHover { hoverB = $0 }
         }
-        .frame(height: Dim.field)
+        .frame(height: Dim.button)
         .background(fill)
         .clipShape(RoundedRectangle(cornerRadius: Radius.control))
         .panelMenuAnchor(menu)

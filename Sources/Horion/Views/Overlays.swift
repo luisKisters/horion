@@ -43,7 +43,7 @@ private struct SurfaceStyle: ViewModifier {
             .clipShape(RoundedRectangle(cornerRadius: Radius.surface))
             .overlay(RoundedRectangle(cornerRadius: Radius.surface).strokeBorder(Theme.hair2, lineWidth: 1))
             .popShadow()
-            .environment(\.hoverWash, Theme.hoverPop)
+            .shade(.window)
     }
 }
 

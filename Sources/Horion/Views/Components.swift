@@ -84,6 +84,8 @@ struct ChromeIconButton: View {
 struct Keycap: View {
     let text: String
     var onAct = false
+    /// The label colour of the filled button the cap sits on (Primary: onAct, Danger: onDanger).
+    var ink: Color = Theme.onAct
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: Radius.mark)
         HStack(spacing: 1) {
@@ -93,10 +95,10 @@ struct Keycap: View {
                 else { Text(p).font(.smallTab) }
             }
         }
-        .foregroundStyle(onAct ? Theme.onAct.opacity(0.62) : Theme.fg3)
+        .foregroundStyle(onAct ? ink.opacity(0.62) : Theme.fg3)
         .padding(.horizontal, 4).frame(minWidth: 16, minHeight: 16, maxHeight: 16)
         .background(shape.fill(onAct ? Color.clear : Theme.bg2))
-        .overlay(shape.strokeBorder(onAct ? Theme.onAct.opacity(0.3) : Theme.capEdge, lineWidth: 1))
+        .overlay(shape.strokeBorder(onAct ? ink.opacity(0.3) : Theme.capEdge, lineWidth: 1))
         .fixedSize()
     }
     /// The return glyph is drawn as a symbol, so a shortcut is split around it ("⌘↩" → "⌘", "↩").
@@ -112,13 +114,14 @@ struct Keycap: View {
 struct Keycaps: View {
     let keys: [String]
     var onAct = false
+    var ink: Color = Theme.onAct
     /// Between alternatives (and around "or").
     var spacing: CGFloat = 3
     var body: some View {
         HStack(spacing: spacing) {
             ForEach(Array(Self.groups(keys).enumerated()), id: \.offset) { i, g in
                 if i > 0 { Text("or").font(.small).foregroundStyle(Theme.fg3) }
-                Keycap(text: g, onAct: onAct)
+                Keycap(text: g, onAct: onAct, ink: ink)
             }
         }
     }
@@ -128,8 +131,89 @@ struct Keycaps: View {
     }
 }
 
-/// `.btn`: 32 pt (28 small), radius 8, 12.5 / 500. Plain is fg2 with a hover wash, line adds a hair2 edge and fg text,
-/// fill is inverted ink. `quiet` is the line button with fg3 text and a hair edge (Today while today is on screen).
+/// The kinds of button (design/mockup-v21 round 1). One height (`Dim.button`, 26), radius 9, 12 pt sides, the same on every shade:
+/// - primary: the ink fill (`act`, `onAct` 600). One per place: Save, Join, Send.
+/// - secondary: the neutral button. Its fill, edge and hover come from the shade it sits on (`ShadeColors`), fg1 500.
+/// - ghost: text only, fg2 500; on hover the shade's hover fill and fg1. Icon buttons are ghosts too.
+/// - danger: the red fill with a white 600 label, only to confirm a delete.
+/// Disabled: the label in fg4; Primary and Danger lose their fill for the shade's selected fill.
+enum ButtonKind: Sendable { case primary, secondary, ghost, danger }
+
+/// The face of a button of one kind: fill, edge, label colour, height and radius. `ButtonFace` draws it around any label.
+struct ButtonColors {
+    let fill, edge, ink: Color
+    init(_ kind: ButtonKind, shade: Shade, hot: Bool, disabled: Bool = false) {
+        let s = ShadeColors.of(shade)
+        let label: Color
+        switch kind {
+        case .primary: fill = disabled ? s.selected : hot ? Theme.actHover : Theme.act; edge = .clear; label = Theme.onAct
+        case .danger: fill = disabled ? s.selected : hot ? Theme.dangerHover : Theme.danger; edge = .clear; label = Theme.onDanger
+        case .secondary: fill = hot ? s.secondaryHover : s.secondary; edge = s.secondaryEdge; label = Theme.fg
+        case .ghost: fill = hot ? s.hover : .clear; edge = .clear; label = hot ? Theme.fg : Theme.fg2
+        }
+        ink = disabled ? Theme.fg4 : label
+    }
+    static func filled(_ k: ButtonKind) -> Bool { k == .primary || k == .danger }
+}
+
+struct ButtonFace: ViewModifier {
+    let kind: ButtonKind
+    var hot = false
+    var disabled = false
+    var fullWidth = false
+    var height: CGFloat = Dim.button
+    var padding: CGFloat = Space.m
+    @Environment(\.shade) private var shade
+    func body(content: Content) -> some View {
+        let c = ButtonColors(kind, shade: shade, hot: hot && !disabled, disabled: disabled)
+        content
+            .foregroundStyle(c.ink)
+            .padding(.horizontal, padding).frame(maxWidth: fullWidth ? .infinity : nil).frame(height: height)
+            .background(RoundedRectangle(cornerRadius: Radius.control).fill(c.fill))
+            .overlay(RoundedRectangle(cornerRadius: Radius.control).strokeBorder(c.edge, lineWidth: 1))
+            .contentShape(Rectangle())
+    }
+}
+
+extension View {
+    func buttonFace(_ kind: ButtonKind, hot: Bool = false, disabled: Bool = false, fullWidth: Bool = false, height: CGFloat = Dim.button) -> some View {
+        modifier(ButtonFace(kind: kind, hot: hot, disabled: disabled, fullWidth: fullWidth, height: height))
+    }
+}
+
+/// The one text button. `probe` names it for the tours' forced hover (`HoverProbe`); `anchor` for `tourAnchor`.
+struct HButton: View {
+    let title: String
+    var kind = ButtonKind.secondary
+    var icon: String?
+    var keys: [String] = []
+    var fullWidth = false
+    var disabled = false
+    var probe: String?
+    var help = ""
+    let action: () -> Void
+    @State private var hover = false
+
+    var body: some View {
+        let hot = hover || (probe != nil && HoverProbe.shared.target == probe)
+        let filled = ButtonColors.filled(kind)
+        Button(action: action) {
+            HStack(spacing: 6) {
+                if let icon { SFIcon(name: icon, size: 12, color: ButtonColors(kind, shade: .window, hot: hot, disabled: disabled).ink) }
+                Text(title).font(filled ? .textSemibold : .textMedium).tracking(TypeTrack.text)
+                if !keys.isEmpty { Keycaps(keys: keys, onAct: filled, ink: kind == .danger ? Theme.onDanger : Theme.onAct) }
+            }
+            .buttonFace(kind, hot: hot, disabled: disabled, fullWidth: fullWidth)
+        }
+        .buttonStyle(PressStyle(scale: 0.97))
+        .disabled(disabled)
+        .onHover { hover = $0 }
+        .animation(Motion.fast, value: hot)
+        .help(help)
+    }
+}
+
+/// The old name of `HButton` (settings): plain is a Ghost, line a Secondary, fill a Primary. `quiet` is a disabled-looking Ghost.
 struct TextButton: View {
     enum Kind { case plain, line, fill }
     let title: String
@@ -140,49 +224,27 @@ struct TextButton: View {
     var quiet = false
     var disabled = false
     let action: () -> Void
-    @State private var hover = false
-    @Environment(\.hoverWash) private var wash
-
     var body: some View {
-        let h = !disabled && hover
-        let fg: Color = disabled || quiet ? Theme.fg3 : kind == .fill ? Theme.onAct : (kind == .line || h ? Theme.fg : Theme.fg2)
-        let fill: Color = kind == .fill ? (h ? Theme.actHover : Theme.act) : (h ? wash : .clear)
-        let edge: Color = kind == .fill ? .clear : (disabled || quiet ? Theme.hair : (kind == .line ? Theme.hair2 : .clear))
-        Button(action: action) {
-            HStack(spacing: 6) {
-                if let icon { SFIcon(name: icon, size: small ? 11 : 12.5, color: fg) }
-                Text(title).font(kind == .fill ? .textSemibold : .textMedium).foregroundStyle(fg)
-                if !keys.isEmpty { Keycaps(keys: keys, onAct: kind == .fill) }
-            }
-            .padding(.horizontal, small ? 10 : 12).frame(height: small ? Dim.row : Dim.field)
-            .background(RoundedRectangle(cornerRadius: Radius.control).fill(fill))
-            .overlay(RoundedRectangle(cornerRadius: Radius.control).strokeBorder(edge, lineWidth: 1))
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(PressStyle(scale: 0.97))
-        .disabled(disabled)
-        .onHover { hover = $0 }
-        .animation(Motion.fast, value: hover)
-        .animation(Motion.base, value: quiet)
+        HButton(title: title, kind: kind == .fill ? .primary : kind == .plain || quiet ? .ghost : .secondary, icon: icon, keys: keys, disabled: disabled, action: action)
     }
 }
 
-/// `.btn--fill`.
+/// A Primary `HButton`.
 struct PrimaryButton: View {
     let title: String
     var keys: [String] = []
     var small = false
     let action: () -> Void
-    var body: some View { TextButton(title: title, kind: .fill, keys: keys, small: small, action: action) }
+    var body: some View { HButton(title: title, kind: .primary, keys: keys, action: action) }
 }
 
-/// `.btn--line`.
+/// A Secondary `HButton`.
 struct SecondaryButton: View {
     let title: String
     var keys: [String] = []
     var small = false
     let action: () -> Void
-    var body: some View { TextButton(title: title, kind: .line, keys: keys, small: small, action: action) }
+    var body: some View { HButton(title: title, kind: .secondary, keys: keys, action: action) }
 }
 
 /// The one segmented control (Day / Week / Month, Going?, every settings choice), mockup-v11 `.segc`: a `surface` track, padding 2,

@@ -63,25 +63,10 @@ struct ToolbarView: View {
     }
 }
 
-/// `.btn-line` "Today": 26 pt, padding 0 12, radius 8, 12 / 400 fg1 on `raised` (Paper adds a warm 1 pt edge); hover mixes fg1 6 %
-/// into the fill. It looks the same whether or not today is on screen, as in the mockup.
+/// "Today": a Secondary `HButton` on the header (Window).
 struct TodayButton: View {
     @Environment(AppModel.self) private var model
-    @State private var hover = false
-    var body: some View {
-        let hot = hover || HoverProbe.shared.target == "today"
-        Button { model.goToToday() } label: {
-            Text("Today").font(.text).tracking(TypeTrack.text).foregroundStyle(Theme.fg)
-                .padding(.horizontal, Space.m).frame(height: Dim.iconButton)
-                .background(RoundedRectangle(cornerRadius: Radius.control).fill(hot ? Theme.buttonHover : Theme.bg2))
-                .overlay(RoundedRectangle(cornerRadius: Radius.control).strokeBorder(Theme.buttonEdge, lineWidth: 1))
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(PressStyle(scale: 0.97))
-        .onHover { hover = $0 }
-        .animation(Motion.fast, value: hot)
-        .help("Go to today  T")
-    }
+    var body: some View { HButton(title: "Today", kind: .secondary, probe: "today", help: "Go to today  T") { model.goToToday() } }
 }
 
 /// `.hdr h2`: 15 / 600 fg1 with the year in 400 fg3, line 24. In week and day view its tooltip is the ISO week.

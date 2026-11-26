@@ -28,6 +28,7 @@ struct RightPanelView: View {
         .frame(width: PanelMetrics.width)
         .frame(maxHeight: .infinity, alignment: .top)
         .background(Theme.rail)
+        .shade(.sidebar)
         .overlay(alignment: .leading) { Rectangle().fill(Theme.hair).frame(width: 1) }
     }
 }
@@ -224,7 +225,7 @@ struct PanelNextCard: View {
     }
 }
 
-/// `.join` in the right column: 30 pt, the filled ink Join of design/call-link round 3 (`JoinFillLabel`), replacing the calm v11 one.
+/// `.join` in the right column: `Dim.button`, the filled ink Join of design/call-link round 3 (`JoinFillLabel`), replacing the calm v11 one.
 struct JoinCallButton: View {
     @Environment(AppModel.self) private var model
     let event: CalendarEvent
@@ -234,7 +235,7 @@ struct JoinCallButton: View {
     var body: some View {
         let hot = hover || HoverProbe.shared.target == "join:\(event.id)"
         // design/call-link round 3: the filled ink Join with the ⌘ J keycaps, on Now and Up next alike.
-        Button { model.joinCall(event) } label: { JoinFillLabel(call: call, height: 30, hot: hot) }
+        Button { model.joinCall(event) } label: { JoinFillLabel(call: call, hot: hot) }
         .buttonStyle(PressStyle(scale: 0.98))
         .onHover { hover = $0 }
         .animation(Motion.fast, value: hot)
