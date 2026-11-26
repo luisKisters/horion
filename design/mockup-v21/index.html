@@ -369,7 +369,7 @@ function checks(m, k) {
   }
   if (kinds.includes('k3')) { add('Ghost label', v.t2, v.x, fl[1]); add('Ghost label, hover', v.t1, v.hover, fl[0]); }
   if (kinds.includes('k4')) { add('Danger label', v.bdink, v.bd, LABEL_FLOOR); add('Danger label, hover', v.bdink, v.bdh, LABEL_FLOOR); }
-  if (kinds.includes('k5')) add('Delete text', v.dtext, v.b2 === 'transparent' ? v.x : v.b2, LABEL_FLOOR);
+  if (kinds.includes('k5')) { add('Delete text', v.dtext, v.b2 === 'transparent' ? v.x : v.b2, LABEL_FLOOR); add('Delete label, hover', v.dtext, v.b2h, LABEL_FLOOR); }
   return out;
 }
 const kindList = () => C('kinds') === 'three' ? ['k1', 'k2', 'k3', 'k5'] : C('kinds') === 'now' ? ['k1', 'k2', 'k3', 'k4'] : ['k1', 'k2', 'k3', 'k4'];
@@ -492,7 +492,8 @@ function render(fade) {
   desk.innerHTML = app();
   markPreview(); audit(); drawGuides();
 }
-function preset(id) { S.scene = id; A.sel = null; save(); renderPicker(); }
+// A pending preview cleanup would restore the old scene: cancel it and drop the preview first.
+function preset(id) { clearTimeout(PT); previewOff(true); S.scene = id; A.sel = null; save(); renderPicker(); }
 
 const optLabel = d => (d.opts.find(o => o[0] === C(d.id)) || [0, C(d.id)])[1];
 function renderPicker() {
@@ -659,13 +660,15 @@ document.fonts?.ready.then(() => { fit(); drawGuides(); });
 // Agentation (agentation.com): click any element, write a note. The picker toggle turns it on and off.
 // It loads from esm.sh, so it needs the network. The mockup works without it. Its notes go into "Copy my picks".
 const deps = '?deps=react@18.3.1,react-dom@18.3.1';
-let lib = null, root = null;
+let lib = null, root = null, req = 0;
 async function set(on, open) {
+  const me = ++req;  // turning it off (or on again) while the imports load makes this call stale
   if (!on) { root?.unmount(); root = null; agtMsg('Off.'); return; }
   if (root) return;
   agtMsg('Loading from esm.sh …');
   try {
     lib = lib || await Promise.all([import('https://esm.sh/react@18.3.1'), import('https://esm.sh/react-dom@18.3.1/client' + deps), import('https://esm.sh/agentation@3.1.2' + deps)]);
+    if (me !== req) return;
     const [React, { createRoot }, { Agentation }] = lib;
     root = createRoot(document.getElementById('agentation'));
     root.render(React.createElement(Agentation, {
@@ -676,7 +679,7 @@ async function set(on, open) {
     agtMsg('On. ⌘⇧F or the button at the bottom right of the app opens it. Then click an element and write.');
     // After a click on the toggle, open the toolbar at once.
     if (open) setTimeout(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'F', code: 'KeyF', metaKey: true, shiftKey: true, bubbles: true })), 250);
-  } catch (e) { root = null; agtMsg('Did not load (no network?). The mockup works without it.'); console.info('Agentation did not load.', e); }
+  } catch (e) { if (me !== req) return; root = null; agtMsg('Did not load (no network?). The mockup works without it.'); console.info('Agentation did not load.', e); }
 }
 window.AGT = { set };
 if (!shot) set(S.agt !== false); else agtMsg('');
