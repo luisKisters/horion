@@ -5,6 +5,7 @@ Brief: the pickers missing from the event panel. Each must work by mouse and key
 
 | Decision | Recommended (built) | Other options |
 | --- | --- | --- |
+| Where the pickers open | Under the field, over the panel | Left of the panel, over the grid · In the panel, rows move down |
 | The end time list | Time, then the length (20:30 · 1 h 30) | Length first · Times only |
 | Steps in the time lists | Every 15 min | Every 30 min |
 | When the time list and mini month open | As soon as the field has focus | Only on a click or ↓ |

@@ -14,7 +14,7 @@ input { font: inherit; color: inherit; background: none; border: 0; outline: 0; 
 .shot #picker { display: none; }
 
 /* ---------- picker (outside the app) ---------- */
-#picker { width: 380px; flex: none; border-right: 1px solid #222; order: -1; background: #111113; overflow-y: auto; padding: 18px 18px 84px; }
+#picker { width: 380px; flex: none; border-left: 1px solid #222; background: #111113; overflow-y: auto; padding: 18px 18px 84px; }
 #picker h1 { font-size: 15px; font-weight: 650; color: #f2f2f4; margin: 0; }
 #picker h2 { font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: #6c6c74; font-weight: 600; margin: 22px 0 8px; }
 #picker .lede { color: #8a8a92; font-size: 12px; margin: 4px 0 14px; }
@@ -170,12 +170,19 @@ input { font: inherit; color: inherit; background: none; border: 0; outline: 0; 
 .pop.under { top: calc(100% + 4px); left: -13px; }
 .pop.right { top: calc(100% + 4px); right: -4px; }
 .pop.sheet { position: fixed; }
+.pk-left .pop.pick { right: auto; }
+.pk-inline .anc:has(> .pop.pick) { display: contents; }
+.pk-inline .prow:has(.pop.pick) { flex-wrap: wrap; row-gap: 0; }
+.pk-inline .prow:has(.pop.pick)::after { content: ''; flex-basis: 100%; order: 98; }
+.pk-inline .pop.pick { position: static; order: 99; flex: none; margin: var(--s-xs) 0 var(--s-s) calc(16px + var(--s-m) - 6px - 13px); box-shadow: none; }
+.pk-inline .pop.pick .plist { max-height: 180px !important; }
+
 .plist { max-height: 252px; overflow: auto; scrollbar-width: none; }
 .mi { display: flex; align-items: center; gap: var(--s-s); height: 28px; padding: 0 var(--s-s); border-radius: var(--r-row); white-space: nowrap; cursor: pointer; color: var(--fg); }
 .mi:hover { background: var(--hover); }
 .mi.act { background: var(--popHover); }
 .mi .ck { width: 14px; flex: none; color: var(--fg2); font-size: var(--fs-small); }
-.mi .len { margin-left: auto; padding-left: var(--s-m); color: var(--fg3); font-size: var(--fs-small); overflow: hidden; text-overflow: ellipsis; }
+.mi .len { margin-left: auto; text-align: right; padding-left: var(--s-m); color: var(--fg3); font-size: var(--fs-small); overflow: hidden; text-overflow: ellipsis; }
 .mi .lead { color: var(--fg3); font-size: var(--fs-small); width: 40px; flex: none; }
 .mi .off { color: var(--fg3); width: 76px; flex: none; }
 .mi .zn { overflow: hidden; text-overflow: ellipsis; } .mi .zn em { font-style: normal; color: var(--fg3); }
@@ -224,6 +231,11 @@ const DECISIONS = [
     ['len', 'Time, then the length (20:30 · 1 h 30)', 'Each row shows the end time and, in grey on the right, how long the event is then. This is built.'],
     ['lenfirst', 'Length first (1 h 30 · 20:30)', 'The length leads in grey, the time follows. Good when you think in “one hour”, not in clock times.'],
     ['plain', 'Times only', 'The end list looks like the start list. The length shows only next to the fields (1 h).'],
+  ] },
+  { id: 'popPlace', name: 'Where the pickers open', fb: 'Time lists, a mini month, a time zone picker and Repeat, all by mouse and keyboard.', note: 'Click the date, a time, Time zone or Repeat.', scene: 'end', hl: '.panel', opts: [
+    ['under', 'Under the field, over the panel', 'The list hangs from the field and covers the rows below. This is built.'],
+    ['left', 'Left of the panel, over the grid', 'The list opens beside the panel, level with the field. The panel stays readable; the grid is covered while it is open.'],
+    ['inline', 'In the panel, rows move down', 'The list opens in place and pushes the rows below down. Nothing covers anything, but the panel jumps.'],
   ] },
   { id: 'step', name: 'Steps in the time lists', fb: 'Time list: 15-minute steps.', note: 'Open the start or end list.', scene: 'end', hl: '[data-p="end"]', opts: [
     ['15', 'Every 15 min', '96 rows a day. Typing “19:05” still works and keeps the exact time. This is built.'],
@@ -435,15 +447,15 @@ function panel() {
     const card = !can && gm === 'card' ? `<div class="card"><b>No guests on macOS Calendar</b>Apple’s calendar API can’t send invitations. Move the event to a Google calendar to invite people. <button data-a="google">Open Accounts</button></div>` : '';
     guests = `<div class="gap"></div><div class="prow top" data-p="guests">${ic('ppl')}<div style="flex:1;min-width:0"><div style="height:var(--h-field);display:flex;align-items:center;font-weight:500">${n ? n + ' participants' : 'Participants'}</div>${list}${field}${why}${card}</div></div>`;
   }
-  const rest = `${can ? `<div class="prow">${ic('going')}<span class="dim">Going?</span><span class="going"><span class="on">Yes</span><span>Maybe</span><span>No</span></span></div>
-    <div class="prow">${ic('video')}<span>meet.example.com/cmv-hjhb</span></div><div class="join">Join meeting</div>` : ''}
+  const rest = `${can ? `<div class="prow">${ic('going')}<span class="dim">Going?</span><span class="going" data-centred><span class="on">Yes</span><span>Maybe</span><span>No</span></span></div>
+    <div class="prow">${ic('video')}<span>meet.example.com/cmv-hjhb</span></div><div class="join" data-centred>Join meeting</div>` : ''}
     <div class="prow">${ic('pin')}<span>Kitchen, 12 Harbour Street</span></div>
     <div class="prow top">${ic('notes')}<span style="padding-top:7px">Everyone brings something to eat.</span></div><div class="gap"></div>
     <div class="prow"><span class="pad" style="display:grid;place-items:center"><i style="width:12px;height:12px;border-radius:3px;background:var(--c-flat)"></i></span><button class="lbtn" data-a="cal" data-f="cal">${can ? 'Personal <span class="sub" data-centred>Google · sam.rivera</span>' : 'Home <span class="sub" data-centred>macOS Calendar · iCloud</span>'}</button></div>
     <div class="prow"><span class="pad"></span><span>Busy · <span class="dim" data-centred>Default visibility</span></span></div>
     <div class="prow">${ic('bell')}<span>10 min before</span></div>`;
   const sheet = p?.kind === 'zone' && C('zonePlace') === 'sheet';
-  return `<div class="panel" data-area="panel"><div class="search">${ic('search', 1)}Search events<kbd data-centred>/</kbd></div>
+  return `<div class="panel pk-${C('popPlace')}" data-area="panel"><div class="search">${ic('search', 1)}Search events<kbd data-centred>/</kbd></div>
     <div class="pb">${sheet ? `<div class="pop" data-p="zone" style="position:static;box-shadow:none;border:0;padding:0">${zoneInner(true)}</div>` : `<div class="ttl"><span class="bar"></span><b>${esc(e.title)}</b>${ic('trash')}${ic('x')}</div>${when}${rep}${guests}${rest}`}</div>
     ${A.toast ? `<div class="toast">${esc(A.toast)}</div>` : ''}</div>`;
 }
@@ -451,13 +463,13 @@ function timeList(k) { const st = +C('step'), a = []; if (k === 'start') { for (
 function timePop(k) {
   const p = A.pop, l = timeList(k), cur = k === 'start' ? A.ev.start : A.ev.end; if (p.val == null) p.val = slot(cur, l);
   const mode = k === 'end' ? C('endList') : 'plain';
-  return `<div data-area="menu" class="pop under" style="width:${mode === 'plain' ? 96 : 150}px"><div class="plist">${l.map(m => `<div class="mi${m === p.val ? ' act' : ''}" data-a="time" data-v="${m}"><span class="ck">${m === cur ? '✓' : ''}</span>${mode === 'lenfirst' ? `<span class="lead" data-centred>${len(m - A.ev.start)}</span>${fmtT(m)}` : fmtT(m)}${mode === 'len' ? `<span class="len">${len(m - A.ev.start)}</span>` : ''}</div>`).join('')}</div></div>`;
+  return `<div data-area="menu" class="pop under pick" style="width:${mode === 'plain' ? 96 : 150}px"><div class="plist">${l.map(m => `<div class="mi${m === p.val ? ' act' : ''}" data-a="time" data-v="${m}"><span class="ck">${m === cur ? '✓' : ''}</span>${mode === 'lenfirst' ? `<span class="lead" data-centred>${len(m - A.ev.start)}</span>${fmtT(m)}` : fmtT(m)}${mode === 'len' ? `<span class="len">${len(m - A.ev.start)}</span>` : ''}</div>`).join('')}</div></div>`;
 }
 function datePop() {
   const p = A.pop, d = p.day, first = new Date(d.getFullYear(), d.getMonth(), 1);
   let g = addD(first, -((first.getDay() + 6) % 7)), cells = '';
   for (let i = 0; i < 42; i++) { cells += `<i class="${g.getMonth() !== d.getMonth() ? 'o' : ''}${same(g, TODAY) ? ' t' : ''}${same(g, A.ev.date) ? ' c' : ''}${same(g, d) && p.picking ? ' k' : ''}" data-a="day" data-v="${+g}">${g.getDate()}</i>`; g = addD(g, 1); }
-  return `<div data-area="menu" class="pop under"><div class="pmm"><div class="h"><button data-centred data-a="month" data-v="-1">‹</button>${MOL[d.getMonth()]} ${d.getFullYear()}<button data-centred data-a="month" data-v="1">›</button></div>
+  return `<div data-area="menu" class="pop under pick"><div class="pmm"><div class="h"><button data-centred data-a="month" data-v="-1">‹</button>${MOL[d.getMonth()]} ${d.getFullYear()}<button data-centred data-a="month" data-v="1">›</button></div>
     <div class="g">${['M', 'T', 'W', 'T', 'F', 'S', 'S'].map(x => `<b>${x}</b>`).join('')}${cells}</div>
     <div class="keys" data-centred><span>↑↓ week</span>${C('dayArrows') === 'caret' ? '' : '<span>←→ day</span>'}<span>⇞⇟ month</span><span>↩ pick</span></div></div></div>`;
 }
@@ -469,11 +481,11 @@ function zoneInner(sheet) {
     <div class="plist" style="max-height:${sheet ? 700 : 300}px">${list.length ? list.map((z, i) => `<div class="mi${i === p.hi ? ' act' : ''}" data-a="zrow" data-v="${i}"><span class="ck">${z.id === A.ev.tz ? '✓' : ''}</span><span class="off">${z.off}</span><span class="zn">${narrow ? `${esc(z.city)} <em data-centred>${esc(z.name)}</em>` : `${esc(z.name)} <em data-centred>– ${esc(z.city)}</em>`}</span></div>`).join('') : `<div class="empty">No zone matches “${esc(p.q)}”.</div>`}</div>
     <div class="keys" data-centred><span>↑↓ move</span><span>↩ pick</span><span>esc close</span></div>`;
 }
-function zonePop() { const w = C('zonePlace') === 'wide' ? 580 : 296; return `<div data-area="menu" class="pop right" style="width:${w}px">${zoneInner()}</div>`; }
+function zonePop() { const w = C('zonePlace') === 'wide' ? 580 : 296; return `<div data-area="menu" class="pop right pick" style="width:${w}px">${zoneInner()}</div>`; }
 function repeatPop() {
   const p = A.pop, c = common(), cur = choiceOf(A.ev.rule); p.n = c.length + 1;
-  if (p.custom) return `<div data-area="menu" class="pop under" data-f="pop" tabindex="-1" style="width:272px">${customInner()}</div>`;
-  return `<div data-area="menu" class="pop under" data-f="pop" tabindex="-1" style="width:264px">${c.map(([k, t], i) => `<div class="mi${i === p.hi ? ' act' : ''}" data-a="rrow" data-v="${i}"><span class="ck">${k === cur ? '✓' : ''}</span>${t}</div>${i === 0 ? '<div class="sep"></div>' : ''}`).join('')}
+  if (p.custom) return `<div data-area="menu" class="pop under pick" data-f="pop" tabindex="-1" style="width:272px">${customInner()}</div>`;
+  return `<div data-area="menu" class="pop under pick" data-f="pop" tabindex="-1" style="width:264px">${c.map(([k, t], i) => `<div class="mi${i === p.hi ? ' act' : ''}" data-a="rrow" data-v="${i}"><span class="ck">${k === cur ? '✓' : ''}</span>${t}</div>${i === 0 ? '<div class="sep"></div>' : ''}`).join('')}
     <div class="sep"></div><div class="mi${p.hi === c.length ? ' act' : ''}" data-a="rrow" data-v="${c.length}"><span class="ck">${cur === null ? '✓' : ''}</span>Custom…<span class="len">›</span></div>
     ${A.ev.rule && A.ev.rule.end !== 'never' ? `<div class="keys" data-centred><span>Keeps the end: ${endText(A.ev.rule)}</span></div>` : ''}</div>`;
 }
@@ -496,7 +508,7 @@ function customInner() {
   return head + `<div class="sent" data-centred>Every ${tk('every', r.n)} ${tk('unit', r.n > 1 ? u[1] : u[0])}${r.freq === 'weekly' ? ' on ' + tk('on', r.wd.map(d => WD[d]).join(', ')) : ''}, ${endT}.</div>` + foot +
     `<div class="keys" data-centred><span>←→ part</span><span>↑↓ change</span>${cur === 'on' ? '<span>space day</span>' : ''}<span>↩ done</span></div>`;
 }
-function scopePop() { const p = A.pop; return `<div data-area="menu" class="pop under" data-f="pop" tabindex="-1" style="width:264px"><div class="q">“${esc(A.ev.title)}” repeats. Use the new rule for:</div>
+function scopePop() { const p = A.pop; return `<div data-area="menu" class="pop under pick" data-f="pop" tabindex="-1" style="width:264px"><div class="q">“${esc(A.ev.title)}” repeats. Use the new rule for:</div>
   <div class="mi${p.hi === 0 ? ' act' : ''}" data-a="scope" data-v="0">All events</div><div class="mi${p.hi === 1 ? ' act' : ''}" data-a="scope" data-v="1">This and following events</div><div class="keys" data-centred><span>↑↓ ↩</span><span>esc cancel</span></div></div>`; }
 function guestList() { const q = fold((A.text.guest || '').trim()); return q ? CONTACTS.filter(([n, m]) => !A.ev.guests.some(g => g[0] === n) && (fold(n).split(' ').some(w => w.startsWith(q)) || m.startsWith(q))) : []; }
 function guestPop() { const p = A.pop, l = guestList(); p.list = l; if (!l.length) return ''; p.hi = Math.min(p.hi || 0, l.length - 1);
@@ -509,6 +521,8 @@ function afterPaint() {
   const f = A.focus; let el = null;
   if (f) el = f.id === 'pop' ? desk.querySelector('[data-f="pop"]') : desk.querySelector(`[data-f="${f.id}"]`);
   if (el) { el.focus({ preventScroll: true }); if (el.setSelectionRange) { if (f.all) el.select(); else if (f.s != null) el.setSelectionRange(f.s, f.e); } }
+  if (C('popPlace') === 'left') { const pn = desk.querySelector('.panel'), k = desk.getBoundingClientRect().width / desk.offsetWidth;
+    desk.querySelectorAll('.pop.pick').forEach(pp => { const a = pp.parentElement.getBoundingClientRect(), pr = pn.getBoundingClientRect(); pp.style.left = (-(a.left - pr.left) / k - pp.offsetWidth - 8) + 'px'; pp.style.top = '-4px'; }); }
   const act = desk.querySelector('.pop .plist .mi.act'), li = act?.parentElement;
   if (act && li) { if (A.pop?.scroll) { li.scrollTop = act.offsetTop - li.clientHeight / 2 + act.offsetHeight / 2; A.pop.scroll = false; } else if (act.offsetTop < li.scrollTop || act.offsetTop + act.offsetHeight > li.scrollTop + li.clientHeight) li.scrollTop = act.offsetTop - li.clientHeight / 2; }
   PAINTING = false;
