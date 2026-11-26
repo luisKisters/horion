@@ -32,9 +32,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
+          CHANGED: ${{ github.event.pull_request.changed_files }}
         run: |
           set -euo pipefail
           if [ -z "$PR" ]; then echo "code=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          # The files endpoint stops at 3,000 files; with more, the list is incomplete, so run the tests.
+          if [ "${CHANGED:-0}" -ge 3000 ]; then echo "code=true" >> "$GITHUB_OUTPUT"; exit 0; fi
           # A renamed file lists both paths, so moving code into design/ still counts as code.
           files="$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --jq '.[] | .filename, (.previous_filename // empty)')"
           echo "$files"
