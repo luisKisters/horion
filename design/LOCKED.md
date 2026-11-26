@@ -95,6 +95,6 @@ The no-calendar-access empty state and recurrence editing are unchanged from v2.
 
 ## Verifying an implementation
 
-v4: render the mockup scenes with `swift scripts/render-mockup.swift`, the app states with `scripts/snapshots.sh`, and compare them
-with `scripts/compare-all.sh` (see `design/states.json`). Differences between the app and design/mockup-v4 are bugs, as
-DECISIONS.md describes.
+During a designr round, render the mockup scenes with `swift scripts/render-mockup.swift` and the app states with
+`scripts/designr-screenshots.sh --designr` (see `design/states.json`), and look at them side by side. This is a design tool,
+not a test: `scripts/verify.sh` verifies the app.

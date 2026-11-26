@@ -1,6 +1,8 @@
 #!/bin/bash
-# Full verification: build, tests, grep gates, app bundle, snapshots, walkthrough (E2E + video), perf, launch time.
-# Must pass before any step is called done.  Usage: scripts/verify.sh [--fast]   (--fast skips walkthrough video + perf)
+# Full verification: grep gates, build, tests, app bundle, walkthrough (E2E + video), feature tours, perf, launch time, DMG.
+# Must pass before any step is called done.  Usage: scripts/verify.sh [--fast]
+#   --fast: grep gates, build and tests only (what CI runs on every pull request).
+# Design screenshots are not part of verification: scripts/designr-screenshots.sh is for the designr skill only.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
@@ -32,15 +34,12 @@ step "swift test"
 swift test 2>&1 | grep -E "Test run|✘|error:" | tail -20
 swift test 2>&1 | grep -q "Test run with .* passed" || { echo "tests failed"; exit 1; }
 
-step "build app bundle"
-scripts/build-app.sh 2>&1 | tail -2
-BIN=build/Horion.app/Contents/MacOS/Horion
-codesign --verify --deep build/Horion.app && echo "signature ok"
-
-step "snapshots (every state in design/states.json)"
-CONFIG=release scripts/snapshots.sh
-
 if [ $FAST -eq 0 ]; then
+  step "build app bundle"
+  scripts/build-app.sh 2>&1 | tail -2
+  BIN=build/Horion.app/Contents/MacOS/Horion
+  codesign --verify --deep build/Horion.app && echo "signature ok"
+
   step "walkthrough: the end-to-end tour on the v4 demo week, E2E assertions + artifacts/walkthrough.mov (2x, real animations sampled in real time, cursor + captions next to it)"
   mkdir -p artifacts
   "$BIN" --walkthrough --record artifacts/walkthrough.mov | tail -4

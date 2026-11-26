@@ -4,11 +4,10 @@ build/
 node_modules/
 artifacts/tmp/
 artifacts/frames/
-artifacts/compare/
 dist/
 artifacts/*.sb-*
 artifacts/*.mov
-artifacts/snapshots/
+artifacts/screenshots/
 artifacts/perf.txt
 artifacts/*.mov.*.json
 .env
