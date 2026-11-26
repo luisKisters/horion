@@ -181,10 +181,16 @@ extension AppModel {
     /// Moves the event to another day, times unchanged. Returns false when the text is not a date.
     func setSelectedDay(_ text: String) -> Bool {
         guard let e = selectedEvent, let d = PanelText.parseDay(text, now: now, event: e.start, math: math) else { return false }
+        setSelectedDate(d)
+        return true
+    }
+
+    /// Moves the event to the day of `d`, times unchanged (the date picker).
+    func setSelectedDate(_ d: Date) {
+        guard let e = selectedEvent else { return }
         let delta = math.daysBetween(e.start, d)
         if delta != 0 { updateSelected { $0.start = math.addDays($0.start, delta); $0.end = math.addDays($0.end, delta) } }
         if !visibleDays.contains(where: { math.isSameDay($0, d) }) { go(to: d, settling: false) }
-        return true
     }
 
     func setSelectedAllDay(_ on: Bool) {

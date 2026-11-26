@@ -80,4 +80,42 @@ struct PanelPickerTests {
         #expect(key(m, "\t", ShortcutResolver.keyTab, typing: true))
         #expect(m.panelMenus.open == nil && m.panelMenus.stop == .end)
     }
+
+    // MARK: Date
+
+    @Test func dateMiniMonthByKeyboard() {
+        let m = makeModelV4()
+        let e = open(m)
+        let math = m.math
+        focus(m, .date)
+        #expect(m.panelMenus.open == .datePicker)
+        #expect(m.panelMenus.pickDay == math.startOfDay(e.start) && m.panelMenus.pickMonth == math.startOfMonth(e.start))
+        #expect(!key(m, "", ShortcutResolver.keyRight, typing: true), "before Up or Down, Left and Right move the caret")
+        #expect(key(m, "", ShortcutResolver.keyDown, typing: true))
+        #expect(key(m, "", ShortcutResolver.keyRight, typing: true))
+        #expect(m.panelMenus.pickDay == math.addDays(math.startOfDay(e.start), 8))
+        #expect(key(m, "", AppModel.keyPageDown, typing: true))
+        #expect(m.panelMenus.pickMonth.map(math.month) == math.month(math.addDays(e.start, 8)) % 12 + 1, "Page Down: a month on, the month follows")
+        #expect(key(m, "", AppModel.keyPageUp, typing: true))
+        #expect(key(m, "\r", ShortcutResolver.keyReturn, typing: true))
+        let picked = math.addDays(math.startOfDay(e.start), 8)
+        #expect(math.isSameDay(m.selectedEvent!.start, picked))
+        #expect(math.minutesSinceMidnight(m.selectedEvent!.start) == math.minutesSinceMidnight(e.start), "the time stays")
+        #expect(m.panelMenus.open == nil && m.panelMenus.stop == .date)
+    }
+
+    @Test func dateMiniMonthFollowsTypingAndClicks() {
+        let m = makeModelV4()
+        let e = open(m)
+        let math = m.math
+        focus(m, .date)
+        m.fieldPickerTyped(.date, "14 Nov")
+        #expect(m.panelMenus.pickDay.map { math.day($0) == 14 && math.month($0) == 11 } == true)
+        #expect(m.panelMenus.pickMonth.map { math.month($0) } == 11)
+        m.stepPickMonth(1)
+        #expect(m.panelMenus.pickMonth.map { math.month($0) } == 12)
+        let day = math.date(year: math.year(e.start), month: 12, day: 3)
+        m.pickDate(day)
+        #expect(math.isSameDay(m.selectedEvent!.start, day) && m.panelMenus.open == nil)
+    }
 }

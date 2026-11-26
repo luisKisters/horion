@@ -128,8 +128,10 @@ struct PanelDetailView: View {
         let dateText = days > 1 ? "\(PanelText.day(e.start, model.fmt)) \u{2013} \(PanelText.day(m.addDays(e.start, days - 1), model.fmt))" : PanelText.day(e.start, model.fmt)
         return HStack(spacing: 0) {
             PanelCommitField(value: dateText, minWidth: 84, editable: canEdit && days == 1, focusKey: .date, focus: $focus,
-                             commit: { model.setSelectedDay($0) }, onReturn: submit)
+                             commit: { model.setSelectedDay($0) }, onReturn: submit,
+                             onType: { model.fieldPickerTyped(.date, $0) }, resync: model.panelMenus.pickTick)
                 .panelStop(.date)
+                .panelMenuAnchor(.datePicker)
             if !e.isAllDay {
                 Color.clear.frame(width: 4, height: 1)
                 PanelCommitField(value: model.fmt.time(e.start), width: 52, centered: true, tabular: true, editable: canEdit, focusKey: .start, focus: $focus,

@@ -59,6 +59,7 @@ struct PanelMenuLayer: View {
         case .deleteSend: 300
         case .startTime: 112
         case .endTime: 184
+        case .datePicker: 236
         }
     }
 
@@ -77,7 +78,7 @@ struct PanelMenuLayer: View {
         case .deleteSend:
             x = r.minX - 8
             y = r.maxY + 4
-        case .startTime, .endTime:
+        case .startTime, .endTime, .datePicker:
             // the row's time under the field's (centred) time
             x = r.minX - 6
             y = r.maxY + 4
@@ -206,6 +207,7 @@ struct PanelMenuContent: View {
             case .call: call
             case .guests: PanelGuestMenu()
             case .startTime, .endTime: PanelTimeList(menu: menu)
+            case .datePicker: PanelDatePicker()
             case .send:
                 PopItem(key: "menu:discard", danger: true, action: { model.discardUnsent() }) { Text("Discard changes") }
                 PopItem(key: "menu:quiet", action: { model.sendUnsent(notify: false) }) { Text("Save without sending") } end: {

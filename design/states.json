@@ -112,6 +112,7 @@
     "call-link-card": {},
     "readonly-event": {},
     "picker-end-time": {},
+    "picker-date": {},
     "menubar-empty": {},
     "week-reference-size": {
       "state": "v4-week",

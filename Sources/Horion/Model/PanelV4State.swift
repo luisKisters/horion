@@ -9,6 +9,8 @@ enum PanelMenu: String, Hashable, CaseIterable {
     case calendar, reminders, maps, places, call, guests, send, inviteSend, deleteSend, availability, visibility
     /// The lists under the start and end fields (`PanelPickers.swift`).
     case startTime, endTime
+    /// The mini month under the date field.
+    case datePicker
 }
 
 /// Edits to an event with guests that are not sent yet (v4 Phase 7b): `base` is what the store has, `edited` what the editor shows.
@@ -53,6 +55,9 @@ final class PanelMenuState {
     var picking = false
     /// A picker chose a value: the field takes the model's text even while it keeps the keyboard.
     var pickTick = 0
+    /// The date picker's day under the keyboard, and the month it shows.
+    var pickDay: Date?
+    var pickMonth: Date?
 }
 
 /// Place search behind a protocol, so tests and snapshots never reach the network.
