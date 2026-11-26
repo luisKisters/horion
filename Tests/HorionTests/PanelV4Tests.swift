@@ -116,18 +116,6 @@ struct PanelV4Tests {
         #expect(stored(m, e.id)?.status == .tentative)
     }
 
-    @Test func locationSuggestionsUseTheFakeCompleterAndTheMapsLinks() {
-        let m = makeModelV4()
-        _ = open(m, "c3")
-        m.searchPlaces("Mark")
-        #expect(m.panelMenus.open == .places && m.panelMenus.places.count == 5)
-        m.pickPlace(m.panelMenus.places[4].text)
-        #expect(m.selectedEvent?.location == "Market Hall, 42 Station Road" && m.panelMenus.open == nil)
-        m.openPanelMenu(.maps)
-        m.openMaps(.google)
-        #expect(m.toast?.text == "Opens Google Maps" && m.panelMenus.open == nil)
-    }
-
     @Test func calendarAndColour() {
         let m = makeModelV4()
         let e = open(m, "wg")

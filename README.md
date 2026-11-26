@@ -45,7 +45,7 @@ Then launch Horion and press "Allow access". Cmd R asks macOS to re-sync remote 
 
 Settings → Accounts → "Connect Google account" signs in with Google in the system web sheet (`ASWebAuthenticationSession`, OAuth 2.0 with PKCE, no client secret) and keeps one refresh token per account in the Keychain. A connected account writes your reply (a PATCH of your own attendee entry only), guests, new Meet links (`conferenceDataVersion=1`) and lets the editor choose whether guests get an email ("Send update" is `sendUpdates=all`, "Save without sending" and "Delete event ▾ without email" are `none`). macOS Calendar's copy of the same account (a CalDAV source with the same address) is hidden while it is connected; iCloud and local calendars keep coming through EventKit. It syncs every 60 s, when the window becomes active and on ⌘R, with Google's sync tokens (a 410 answer starts a full sync), and caches the calendars and events in `~/Library/Application Support/Horion/google/`. It also reads the account's contacts and "other contacts" (People API, read only) for names and guest suggestions. Moving an event to another calendar of the same account uses Google's `move` (same event, guests and Meet link); moving it to a macOS Calendar calendar or another account is refused. A pasted call link that is not a new Meet is kept in the location (or at the end of the notes): Google only takes `conferenceData` it creates itself. Undo puts a deleted Google event back without emailing anyone; deleting a whole Google series has no undo. When Google refuses the refresh token (revoked or expired), Settings → Accounts shows "Connect again". Remove revokes the token at Google, then deletes the cache and the Keychain item. A Google account works without macOS calendar access, and macOS Calendar's copy of a connected account is hidden by address and, per event, by iCalUID.
 
-This needs an OAuth client ID, which the repository does not contain. Build with `HORION_GOOGLE_CLIENT_ID=<id>.apps.googleusercontent.com scripts/build-app.sh`: the ID and its reversed-client-ID URL scheme (`CFBundleURLTypes`) go into Info.plist. Without it, "Connect Google account" explains that a client ID is needed and does nothing else. Tests, snapshots and the tours never reach Google: they answer from JSON fixtures and an in-memory fake server (`DemoGoogleServer`).
+This needs an OAuth client ID, which the repository does not contain (see Build configuration below). `scripts/build-app.sh` writes the ID and its reversed-client-ID URL scheme (`CFBundleURLTypes`) into Info.plist. Without it, "Connect Google account" explains that a client ID is needed and does nothing else. Tests, snapshots and the tours never reach Google: they answer from JSON fixtures and an in-memory fake server (`DemoGoogleServer`).
 
 ### Names from Contacts
 
@@ -62,9 +62,10 @@ Single keys only fire when no text field is focused.
 | `K` or `Left` | Previous period | `/` or `Cmd F` | Search events (the field on top of the right column) |
 | `.` | Go to date ("oct 12", "12.10.", "next friday", "2026-12-24") | `?` | All keyboard shortcuts |
 | `D` `W` `M` | Day / Week / Month | `Delete` | Delete selected event (recurring: this / all) |
-| `` ` `` or `Cmd \` | Toggle sidebar | `Esc` | Leave the field / deselect / close |
+| `Cmd B` or `` ` `` | Toggle sidebar | `Esc` | Leave the field / deselect / close |
 | `Cmd K` | Command menu | `Cmd Z` | Undo create / move / resize / delete |
-| `Ctrl Cmd K` | Open the menu bar menu | `Cmd R` | Refresh calendars |
+| `Opt Cmd C` | Open or close the menu bar menu, from any app | `Cmd R` | Refresh calendars |
+| `Opt Cmd H` | Show or hide Horion, from any app | | |
 | `Cmd 1` | Main window | `Cmd ,` | Settings |
 
 Search lives at the top of the right column: while it has text, the matches replace Today, grouped by day; Return opens the first one, Esc leaves the field, a second Esc (with nothing selected) clears it. The column lists no shortcuts: they stay behind ? (every shortcut) and ⌘K (the command menu).
@@ -93,15 +94,25 @@ design/              design-system (the v5 hand-off: tokens, type, event recipe,
 
 AppKit is used only where SwiftUI cannot: window chrome, the key event monitor, offscreen rendering, video writing, opening the menu bar item.
 
+## Build configuration
+
+The Google client ID lives in a gitignored `.env` in the main checkout, which its worktrees share:
+
+```sh
+echo 'HORION_GOOGLE_CLIENT_ID=<id>.apps.googleusercontent.com' > .env
+```
+
+`scripts/build-app.sh` reads it when `HORION_GOOGLE_CLIENT_ID` is not already in the environment; without either it prints a note and builds without Google sign-in.
+
 ## Verify
 
 ```sh
-scripts/verify.sh          # gates, build, tests, app bundle, snapshots, walkthrough.mov + every v4 tour, perf, launch time, DMG build + mount check
-scripts/verify.sh --fast   # skips walkthrough video, perf and DMG
+scripts/verify.sh          # gates, build, tests, app bundle, walkthrough.mov + every v4 tour, perf, launch time, DMG build + mount check
+scripts/verify.sh --fast   # gates, build and tests only (what CI runs on every pull request)
 ```
 
 - **Unit tests**: `swift test` (HorionKit logic and app model).
-- **Snapshots**: `scripts/snapshots.sh` renders every state in `design/states.json` offscreen into `artifacts/snapshots/`; `swift scripts/render-mockup.swift` renders the `mockup` scene of each state from `design/mockup-v4/index.html` (`mockupDir`) into `design/mockup-v4/shots/` (committed), and `--eval "<js>"` prints a value from the mockup page (how `Tests/HorionKitTests/Fixtures/layout-v4.json`, the golden output of the mockup's `layoutDay()`, was made); `scripts/compare-all.sh` writes mockup | snapshot | diff images to `artifacts/compare/` and a mean-difference score per state to `artifacts/compare/report.json` (a report, not a gate). Every state renders the demo data, the mockup's week, so both sides show the same data. `v4-b-layout` is not app UI: a debug picture of OverlapV5 on the fixture's Wednesday evening (boxes at the v5 placements, the "+N" group and its stack rows).
+- **Design screenshots** (not a test): `scripts/designr-screenshots.sh --designr` renders every state in `design/states.json` offscreen into `artifacts/screenshots/`, for design rounds with the designr skill. It verifies nothing and is not part of `verify.sh` or CI; never run it to check a change. `swift scripts/render-mockup.swift` renders the `mockup` scene of each state from `design/mockup-v4/index.html` (`mockupDir`) into `design/mockup-v4/shots/`, and `--eval "<js>"` prints a value from the mockup page (how `Tests/HorionKitTests/Fixtures/layout-v4.json`, the golden output of the mockup's `layoutDay()`, was made).
 - **Walkthrough / E2E**: `Horion --walkthrough --record artifacts/walkthrough.mov` is the end-to-end tour of the demo week (about 65 s, frames at 2x from the 1440x900 window, H.264 avc1, 60 fps, nothing drawn into the frames) with 52 assertions: event detail and Going?, drag to create, resize, move and the undo pill, Delete and Cmd-Z, the hour gutter, Cmd-K go to date, T, / search, F Meet with, M/D/W, Settings and the menu bar. verify.sh also runs every v4 feature tour (below) for its checks. It writes `<file>.cursor.json` (cursor path and clicks in Glide's schema) and `<file>.captions.json` next to the video; the exit code is non-zero on any failure. Animated steps get a frame for every 60 fps tick: a 2x `cacheDisplay` capture takes up to ~400 ms, so while recording the Motion tokens are stretched 24x (`Motion.timeScale`), frames are captured back to back and placed on the timeline at wall-clock time / 24, and sampling stops once the picture stops changing. The video plays every animation at true speed. (Capturing the composited window instead would need Screen Recording permission and an active display session.) Keyboard shortcuts and typing are real `NSEvent`s dispatched through `NSApp.sendEvent`. Grid pointer gestures call `AppModel.gridMouseDown/Dragged/Up`, the exact functions the SwiftUI drag gesture forwards to, because synthesized mouse events cannot reach SwiftUI while the process cannot become the active app (unattended or locked session).
 - **Performance**: `Horion --perf` navigates 50 weeks forward and 50 back with 300+ events per visible week and prints p50/p95 milliseconds per navigation (model reload + SwiftUI update + layout + draw) for week and month with animations off (the gated numbers: about 11 ms p50 / 14-15 ms p95 week, 10-11 / 13-15 ms month), the week again with animations on, and cold launch. `Horion --demo --print-launch` prints launch-to-window time of the real app.
 
@@ -120,4 +131,4 @@ Launch flags: `--demo`, `--now <ISO time>`, `--snapshot <state> --out <png> [--s
 - The menu bar keeps the native `NSMenu` (plan Q5) with custom Join rows; it uses the system font on purpose so it looks native.
 - The DMG has no custom background.
 - Screen capture of the running app needs Screen Recording permission, so pixel evidence comes from the offscreen renderer; real mouse gestures were never driven through the live window, and the animations were only observed through the offscreen window.
-- `artifacts/walkthrough.mov` and the snapshots show fictional demo data only. Older git history contains the previous personal demo data.
+- `artifacts/walkthrough.mov` and the design screenshots show fictional demo data only. Older git history contains the previous personal demo data.

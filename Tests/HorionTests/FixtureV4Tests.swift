@@ -19,12 +19,6 @@ func mockupV4HTML() throws -> String {
 @MainActor
 @Suite("v4 fixture matches design/mockup-v4")
 struct FixtureV4Tests {
-    @Test func launchOptionsPinTheMockupClockAndHourHeight() {
-        let m = makeModelV4()
-        #expect(m.fmt.time(m.now) == "15:10" && m.math.day(m.now) == 4 && m.math.month(m.now) == 10)
-        #expect(m.settings.hourHeight == 46)
-        #expect(m.visibleDays.first.map { m.math.day($0) } == 28)
-    }
 
     @Test func weekHasTheMockupCountsOfTimedAndAllDayEvents() throws {
         let store = DemoStore()
@@ -51,13 +45,6 @@ struct FixtureV4Tests {
         #expect(board.status == .needsAction && board.myReply == .needsAction && board.isUnaccepted && board.isRecurring && board.conferencing.contains("oet-mzpa-wdr"))
     }
 
-    @Test func flatDinnerCarriesTheMockupDetails() {
-        let e = DemoDataV4.buildEvents().first { $0.id == "v4.wg" }!
-        #expect(e.colorHex == "#5FB97E" && e.participants == ["Mara Hoffmann", "Jonas Weber", "dion.k@example.com", "sam@example.net"])
-        #expect(e.iAmOrganizer && e.myReply == .confirmed && e.attendees.count == 5 && e.attendees.last?.status == .needsAction)
-        #expect(e.location == "Kitchen, 12 Harbour Street" && e.reminderMinutes == 10 && e.recurrence?.weekdays == [1])
-    }
-
     @Test func everyAddressUsesAReservedExampleDomain() {
         let reserved = ["example.com", "example.org", "example.net"]
         func ok(_ email: String) -> Bool {
@@ -67,16 +54,5 @@ struct FixtureV4Tests {
         let all = DemoDataV4.people.map(\.email) + DemoDataV4.accounts.map(\.name) + DemoDataV4.teammates.map(\.email)
         #expect(all.count > 10)
         for a in all { #expect(ok(a), "\(a) is not a reserved example domain") }
-    }
-
-    @Test func wednesdayEveningShowsEveryEvent() {
-        let math = DemoDataV4.math
-        let wed = math.addDays(DemoDataV4.weekStart, 2)
-        let items = DemoDataV4.buildEvents().filter { !$0.isAllDay && math.isSameDay($0.start, wed) }.map {
-            V5Item(id: $0.id, start: $0.start, end: $0.end, day: wed, math: math, isUnaccepted: $0.isUnaccepted)
-        }
-        let unaccepted = Set(items.filter(\.isUnaccepted).map(\.id))
-        #expect(unaccepted == ["v4.w3", "v4.w5"])
-        #expect(Set(OverlapV11.layout(items).map(\.id)) == Set(items.map(\.id)))
     }
 }

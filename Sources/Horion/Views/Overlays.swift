@@ -23,6 +23,7 @@ struct OverlayHost: View {
                 case .shortcuts: ShortcutsSheet().frame(maxHeight: .infinity).transition(.sheet)
                 case .settings: SettingsSheet().frame(maxHeight: .infinity).transition(.sheet)
                 case .deleteRecurring(let id): DeleteRecurringDialog(eventID: id).frame(maxHeight: .infinity).transition(.sheet)
+                case .editRecurring(let id): EditRecurringDialog(eventID: id).frame(maxHeight: .infinity).transition(.sheet)
                 case .deleteWithGuests(let id): DeleteWithGuestsDialog(eventID: id).frame(maxHeight: .infinity).transition(.sheet)
                 }
             }
@@ -42,7 +43,7 @@ private struct SurfaceStyle: ViewModifier {
             .clipShape(RoundedRectangle(cornerRadius: Radius.surface))
             .overlay(RoundedRectangle(cornerRadius: Radius.surface).strokeBorder(Theme.hair2, lineWidth: 1))
             .popShadow()
-            .environment(\.hoverWash, Theme.hoverPop)
+            .shade(.window)
     }
 }
 
@@ -273,7 +274,7 @@ struct SheetFrame<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text(title).font(.title15).tracking(TypeTrack.title).foregroundStyle(Theme.fg)
+                Text(title).font(.title15).tracking(TypeTrack.title).foregroundStyle(Theme.fg).lineLimit(1)
                 Spacer()
                 if let accessory { accessory.padding(.trailing, 8) }
                 if closable { IconButton(name: "xmark") { model.closeOverlay() } }
@@ -302,7 +303,7 @@ struct ShortcutsSheet: View {
     /// One string per row: alternatives separated by two spaces, each a whole shortcut (one cap).
     static let all: [(String, [(String, String)])] = [
         ("Move around", [("T", "Today"), ("J  \u{2192}", "Next period"), ("K  \u{2190}", "Previous period"), ("D  W  M", "Day, week, month"),
-                         (".", "Go to date"), ("`", "Sidebar")]),
+                         (".", "Go to date"), ("\u{2318}B  `", "Sidebar")]),
         ("Events", [("C", "New event at the next free slot"), ("\u{21E5}  \u{21E7}\u{21E5}", "Select next, previous event"),
                     ("\u{2191}  \u{2193}  \u{2190}  \u{2192}", "Move the selection"), ("\u{21A9}", "Edit the title"), ("\u{2325}\u{2191}  \u{2325}\u{2193}", "Move by 15 minutes"),
                     ("\u{2325}\u{2190}  \u{2325}\u{2192}", "Move by a day"), ("\u{232B}", "Delete"), ("\u{2318}Z", "Undo")]),
@@ -345,24 +346,65 @@ struct DeleteRecurringDialog: View {
     var body: some View {
         let event = model.event(id: eventID)
         let guests = event.map { model.deleteNeedsGuestDialog($0) } ?? false
-        let following = model.deleteChoices(eventID).contains(.future)
-        SheetFrame(title: "Delete recurring event", width: following ? 480 : 400, closable: false, bottom: 20) {
+        let following = model.spanChoices(eventID).contains(.future)
+        SheetFrame(title: "Delete recurring event \u{201C}\(Self.name(event))\u{201D}", width: following ? 480 : 400, closable: false, bottom: 20) {
             Text("This event repeats. Which events should be deleted?").font(.text).foregroundStyle(Theme.fg2).padding(.top, 12)
             if guests {
                 PanelSwitch(label: "Send the guests a cancellation email", isOn: model.deleteNotify) { model.deleteNotify.toggle() }.padding(.top, 10)
             }
-            HStack(spacing: 8) {
-                Spacer()
-                // The focused button is the filled one and carries ↩ (arrows, A/D, Tab move it; no keycaps for those).
-                ForEach(model.deleteChoices(eventID), id: \.title) { c in
-                    if c == model.deleteChoice {
-                        PrimaryButton(title: c.title, keys: ["↩"]) { model.chooseDelete(eventID, c) }
-                    } else {
-                        SecondaryButton(title: c.title) { model.chooseDelete(eventID, c) }
+            SpanButtons(eventID: eventID, choose: model.chooseDelete).padding(.top, 16)
+        }
+    }
+
+    static func name(_ e: CalendarEvent?) -> String { e.map { $0.title.isEmpty ? "(No title)" : $0.title } ?? "" }
+}
+
+/// Moving or resizing a repeating event (grid, keys, the editor's time) or sending a held change to one: which occurrences change.
+/// Works like the delete dialog; Cancel (or Esc) puts the event back where it was.
+struct EditRecurringDialog: View {
+    @Environment(AppModel.self) private var model
+    let eventID: String
+    var body: some View {
+        let edit = model.recurringEdit
+        let following = model.spanChoices(eventID).contains(.future)
+        SheetFrame(title: "Edit recurring event \u{201C}\(DeleteRecurringDialog.name(edit?.edited ?? model.event(id: eventID)))\u{201D}", width: following ? 480 : 400, closable: false, bottom: 20) {
+            Text("This event repeats. Which events should change?").font(.text).foregroundStyle(Theme.fg2).padding(.top, 12)
+            if let edit, Self.when(model, edit, edit.base) != Self.when(model, edit, edit.edited) {
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    Text("Time").font(.text).foregroundStyle(Theme.fg3)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(Self.when(model, edit, edit.edited)).font(.text).monospacedDigit().foregroundStyle(Theme.fg)
+                        Text(Self.when(model, edit, edit.base)).font(.text).monospacedDigit().strikethrough().foregroundStyle(Theme.fg3)
                     }
                 }
+                .padding(.top, 12)
             }
-            .padding(.top, 16)
+            SpanButtons(eventID: eventID, choose: model.chooseEdit).padding(.top, 16)
+        }
+    }
+
+    /// "21:00–21:45", with the day ("Thu Oct 1 21:00–21:45") when the change moves it to another one.
+    static func when(_ m: AppModel, _ edit: RecurringEdit, _ e: CalendarEvent) -> String {
+        let times = e.isAllDay ? "All day" : m.fmt.timeRange(e.start, e.end)
+        return m.math.isSameDay(edit.base.start, edit.edited.start) ? times : "\(m.fmt.inspectorDate(e.start)) \(times)"
+    }
+}
+
+/// The recurring dialogs' buttons. The focused one is filled and carries ↩ (arrows, A/D, Tab move it; no keycaps for those).
+private struct SpanButtons: View {
+    @Environment(AppModel.self) private var model
+    let eventID: String
+    let choose: (String, SpanChoice) -> Void
+    var body: some View {
+        HStack(spacing: 8) {
+            Spacer()
+            ForEach(model.spanChoices(eventID), id: \.title) { c in
+                if c == model.spanChoice {
+                    PrimaryButton(title: c.title, keys: ["↩"]) { choose(eventID, c) }
+                } else {
+                    SecondaryButton(title: c.title) { choose(eventID, c) }
+                }
+            }
         }
     }
 }

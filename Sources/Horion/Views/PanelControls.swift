@@ -126,6 +126,8 @@ struct PanelCommitField: View {
 struct PanelSwitch: View {
     let label: String
     let isOn: Bool
+    /// The keyboard is on it: a 2 pt focus ring around the track, 2 pt out.
+    var focused = false
     let action: () -> Void
     @State private var hover = false
     /// v11 `.sw`: a 26 x 16 track, `surface` with a hairStrong edge when off, inverted ink when on; a 12 pt knob (fg3, then onAccent)
@@ -137,6 +139,7 @@ struct PanelSwitch: View {
                     Capsule().fill(isOn ? Theme.act : Theme.bg1)
                         .overlay(Capsule().strokeBorder(isOn ? Color.clear : Theme.hair2, lineWidth: 1))
                         .frame(width: 26, height: 16)
+                        .overlay { if focused { Capsule().strokeBorder(Theme.focus, lineWidth: 2).padding(-3) } }
                     Circle().fill(isOn ? Theme.onAct : Theme.fg3).frame(width: 12, height: 12).offset(x: isOn ? 12 : 2)
                 }
                 if !label.isEmpty { Text(label).font(.small).foregroundStyle(hover ? Theme.fg : Theme.fg2) }
@@ -152,41 +155,27 @@ struct PanelSwitch: View {
 /// `kbd`: a shortcut hint (now plain grey text, see `Keycap`).
 typealias PanelKbd = Keycap
 
-/// `.btn--fill`: ink on the window, 28 pt (24 pt small).
+/// A Primary `HButton` with one keycap (the editor foot's Save).
 struct PanelFillButton: View {
     let title: String
     var small = false
     var key: String?
     var fullWidth = false
     let action: () -> Void
-    @State private var hover = false
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 6) {
-                Text(title).font(.textSemibold)
-                if let key { PanelKbd(text: key, onAct: true) }
-            }
-            .foregroundStyle(Theme.onAct)
-            .padding(.horizontal, small ? 8 : 10).frame(maxWidth: fullWidth ? .infinity : nil).frame(height: small ? Dim.row : Dim.field)
-            .background(RoundedRectangle(cornerRadius: Radius.control).fill(hover ? Theme.actHover : Theme.act))
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(PressStyle(scale: 0.97))
-        .onHover { hover = $0 }
-        .animation(Motion.fast, value: hover)
-    }
+    var body: some View { HButton(title: title, kind: .primary, keys: key.map { [$0] } ?? [], fullWidth: fullWidth, action: action) }
 }
 
-/// `.ibtn`: 26 pt square, radius 6, fg2, wash on hover.
+/// `.ibtn`: 26 pt square, radius 6, fg2, a Ghost: the hover fill of the shade it sits on.
 struct PanelIconButton: View {
     let icon: PanelIcon.Name
     let action: () -> Void
     @State private var hover = false
+    @Environment(\.hoverWash) private var wash
     var body: some View {
         Button(action: action) {
             PanelIcon(name: icon, size: Dim.iconGlyph, color: hover ? Theme.fg : Theme.fg2)
                 .frame(width: Dim.iconButton, height: Dim.iconButton)
-                .background(RoundedRectangle(cornerRadius: Radius.small).fill(hover ? Theme.hoverRail : Color.clear))
+                .background(RoundedRectangle(cornerRadius: Radius.small).fill(hover ? wash : Color.clear))
                 .contentShape(Rectangle())
         }
         .buttonStyle(PressStyle())
@@ -200,6 +189,7 @@ struct PanelIconButton: View {
 struct CopyLinkButton: View {
     let copy: () -> Bool
     @State private var hover = false
+    @Environment(\.hoverWash) private var wash
     @State private var copiedAt: Date?
     static let feedback: TimeInterval = 1.5
 
@@ -214,7 +204,7 @@ struct CopyLinkButton: View {
         } label: {
             PanelIcon(name: copied ? .check : .copy, size: Dim.iconGlyphSmall, color: hover || copied ? Theme.fg : Theme.fg3)
                 .frame(width: Dim.iconButtonSmall, height: Dim.iconButtonSmall)
-                .background(RoundedRectangle(cornerRadius: Radius.small).fill(hover ? Theme.hoverRail : Color.clear))
+                .background(RoundedRectangle(cornerRadius: Radius.small).fill(hover ? wash : Color.clear))
                 .contentShape(Rectangle())
         }
         .buttonStyle(PressStyle())
@@ -234,5 +224,44 @@ struct CopyLinkButton: View {
         .animation(Motion.fast, value: hover)
         .animation(Motion.fast, value: copied)
         .accessibilityLabel(tip)
+    }
+}
+
+/// A keyboard stop of the panel (design/mockup-v20, `PanelTabOrder`): a switch, button or menu the keyboard is on gets the 2 pt
+/// focus ring (a text field shows its own focus); while Option is held every stop shows its jump letter.
+struct PanelStopMark: ViewModifier {
+    @Environment(AppModel.self) private var model
+    let stop: PanelStop
+    var radius: CGFloat = Radius.row
+    var inset: CGFloat = -3
+    /// False: the control draws its own ring (`PanelSwitch` rings only its track).
+    var drawsRing = true
+
+    func body(content: Content) -> some View {
+        let ring = drawsRing && model.panelMenus.stop == stop && !stop.isText
+        let letter = model.panelMenus.jumpLetters ? stop.jumpLetter : nil
+        content
+            .overlay {
+                if ring {
+                    RoundedRectangle(cornerRadius: radius).strokeBorder(Theme.focus, lineWidth: 2).padding(inset).allowsHitTesting(false)
+                }
+            }
+            .overlay(alignment: .topLeading) {
+                if let letter {
+                    Text(String(letter).uppercased()).font(.smallTabSemibold).foregroundStyle(Theme.bg)
+                        .padding(.horizontal, 4).frame(minWidth: 16, minHeight: 16)
+                        .background(RoundedRectangle(cornerRadius: Radius.mark).fill(Theme.fg))
+                        .offset(x: -10, y: -8)
+                        .allowsHitTesting(false)
+                        .transition(.opacity)
+                }
+            }
+            .animation(Motion.fast, value: letter != nil)
+    }
+}
+
+extension View {
+    func panelStop(_ s: PanelStop, radius: CGFloat = Radius.row, inset: CGFloat = -3, drawsRing: Bool = true) -> some View {
+        modifier(PanelStopMark(stop: s, radius: radius, inset: inset, drawsRing: drawsRing))
     }
 }

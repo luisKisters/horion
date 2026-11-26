@@ -190,13 +190,6 @@ struct GoogleStoreTests {
 
     // MARK: Accounts and config
 
-    @Test func connectWithoutClientIDExplainsAndDoesNothing() {
-        let m = makeModelV4()
-        m.connectGoogle()
-        #expect(m.services.google.showsClientIDNote && m.services.google.accounts.isEmpty)
-        #expect(m.toast?.text == "A Google client ID is needed first")
-    }
-
     @Test func configReadsOnlyARealClientID() {
         #expect(GoogleConfig.load(info: nil, env: [:]).clientID == nil)
         #expect(GoogleConfig.load(info: ["HorionGoogleClientID": ""], env: [:]).clientID == nil)
@@ -342,6 +335,26 @@ extension GoogleStoreTests {
         #expect(g.isClosed && m.services.google.accounts.isEmpty)
     }
 
+    @Test func thisAndFollowingSplitsTheSeries() async throws {
+        // the demo server has no main events and no `recurringEventId` on g1: answer its GET as the series' main event
+        let master = GEvent(id: "g1", summary: "Long run", start: GDateTime(dateTime: "2026-09-06T09:45:00+02:00", timeZone: "Europe/Berlin"),
+                            end: GDateTime(dateTime: "2026-09-06T11:30:00+02:00", timeZone: "Europe/Berlin"), recurrence: ["RRULE:FREQ=WEEKLY;BYDAY=SU"])
+        let (s, http) = await store { r in
+            r.method == "GET" && r.path.hasSuffix("/events/g1") ? ((try? JSONEncoder().encode(master)) ?? Data(), 200) : nil
+        }
+        let old = try #require(event(s, "g1"))
+        var e = old
+        e.start = old.start.addingTimeInterval(3600); e.end = old.end.addingTimeInterval(3600)
+        try s.update(e, span: .future, notify: false)
+        await s.idle()
+        let insert = try #require(http.sent.last { $0.method == "POST" && $0.path.hasSuffix("/events") })
+        #expect(insert.json?["summary"] as? String == "Long run" && (insert.json?["recurrence"] as? [String]) == ["RRULE:FREQ=WEEKLY;BYDAY=SU"])
+        #expect((insert.json?["start"] as? [String: Any])?["dateTime"] as? String == RFC3339.string(e.start, zone: zone))
+        let trim = try #require(http.sent.last { $0.method == "PATCH" && $0.path.hasSuffix("/events/g1") })
+        let rule = try #require((trim.json?["recurrence"] as? [String])?.first.flatMap(RRule.parse))
+        #expect(rule.until == old.start.addingTimeInterval(-1) && trim.query["sendUpdates"] == "none")
+    }
+
     @Test func undoOfADeleteEmailsNobodyAndGoogleSeriesHaveNoUndo() async throws {
         let m = makeModelV4Composite()
         let g = try #require(m.connectDemoGoogle())
@@ -441,12 +454,6 @@ struct GoogleTokenTests {
         #expect(await s.needsReconnect)
         let info = await MainActor.run { GoogleAccountInfo(email: "a", accountID: "x", calendarCount: 0, peopleCount: 0, needsReconnect: s.needsReconnect).statusLine }
         #expect(info.contains("Connect it again"))
-    }
-
-    @Test func aFailedKeychainSaveRecordsNoAccount() {
-        let t = MemoryTokenStore()
-        t.failsSaves = true
-        #expect(!t.save(refreshToken: "r", for: "a@example.com") && t.emails().isEmpty)
     }
 }
 

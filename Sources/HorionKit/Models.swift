@@ -183,6 +183,8 @@ public enum ViewMode: Hashable, Sendable {
 public enum EventChange: Sendable {
     case created(CalendarEvent)
     case deleted([CalendarEvent])
+    /// "All events" or "This and following" of this occurrence: the store puts the series back (`restoreDeletedSeries`).
+    case deletedSeries(CalendarEvent)
     case updated(old: CalendarEvent, new: CalendarEvent)
 }
 

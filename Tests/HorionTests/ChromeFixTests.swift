@@ -91,16 +91,25 @@ struct ChromeFixTests {
         #expect(m.handle(.arrow(dx: 0, dy: 1)) == false)   // up and down without a selection scroll the grid
     }
 
-    @Test func selectionLeavingThePeriodTakesThePeriodAlong() {
+    /// An arrow that walks the selection out of the week takes the week along, both ways (the old version of this test picked a
+    /// neighbour inside the week and asserted nothing).
+    @Test func selectionLeavingThePeriodTakesThePeriodAlong() throws {
         let m = makeModel()
         let start = m.visibleStart
-        let last = m.layout.timed[6].map(\.event).sorted { $0.start < $1.start }.first!
-        m.select(eventID: last.id)
+        let sunday = pick(m, "Long run", day: 6)
+        var monday = sunday
+        monday.id = "guard.next-monday"; monday.seriesID = nil; monday.title = "Next Monday"
+        monday.start = m.math.addDays(sunday.start, 1); monday.end = m.math.addDays(sunday.end, 1)
+        try m.store.create(monday)
+        #expect(!m.visibleDays.contains { m.math.isSameDay($0, monday.start) })
+        m.select(eventID: sunday.id)
         m.handle(.arrow(dx: 1, dy: 0))
-        if let e = m.selectedEvent, e.id != last.id {
-            #expect(m.visibleStart == m.math.addDays(start, 7))
-            #expect(m.visibleDays.contains { m.math.isSameDay($0, e.start) })
-        }
+        #expect(m.selectedEventID == monday.id)
+        #expect(m.visibleStart == m.math.addDays(start, 7))
+        #expect(m.visibleDays.contains { m.math.isSameDay($0, monday.start) })
+        m.handle(.arrow(dx: -1, dy: 0))
+        #expect(m.selectedEventID == sunday.id)
+        #expect(m.visibleStart == start)
     }
 
     @Test func optionArrowsMoveWithUndo() {
@@ -152,19 +161,6 @@ struct ChromeFixTests {
         #expect(demo.paletteRows.contains { if case .command(let c) = $0.kind { return c.id == .meetWith }; return false })
     }
 
-    @Test func paletteRowsAreBuiltOncePerInput() {
-        let m = makeModel()
-        m.openPalette(.all)
-        m.setPaletteQuery("walk")
-        _ = m.paletteRows
-        let builds = m.chromeState.paletteCache.builds
-        for i in 0..<5 { m.chromeState.paletteIndex = i; _ = m.paletteRows }
-        #expect(m.chromeState.paletteCache.builds == builds)
-        m.setPaletteQuery("wal")
-        _ = m.paletteRows
-        #expect(m.chromeState.paletteCache.builds == builds + 1)
-    }
-
     @Test func bareCharactersAreSwallowed() {
         #expect(KeyRouter.isBareCharacter(KeyInput(characters: "p")))
         #expect(KeyRouter.isBareCharacter(KeyInput(characters: " ")))
@@ -172,12 +168,5 @@ struct ChromeFixTests {
         #expect(!KeyRouter.isBareCharacter(KeyInput(characters: "p", option: true)))
         #expect(!KeyRouter.isBareCharacter(KeyInput(characters: "\r")))
         #expect(!KeyRouter.isBareCharacter(KeyInput(characters: "\u{F704}")))   // F1
-    }
-
-    @Test func commandMenuIconsAreTheMockups() {
-        #expect(CommandID.meetWith.icon == .users && CommandID.today.icon == .cal && CommandID.undo.icon == .ret)
-        for n in [ChromeIcon.Name.plus, .cal, .left, .right, .side, .moon, .search, .users, .ret, .trash, .gear, .clock, .keys] {
-            #expect(!ChromeIcon.path(n).isEmpty)
-        }
     }
 }

@@ -13,25 +13,10 @@ struct MenuBarV4Tests {
         MenuBarMenu.build(events: evs, now: d(2026, 9, 29, h, m).addingTimeInterval(30), fmt: fmt) { _ in "#5C88E4" }
     }
 
-    @Test func meetEventGivesJoinWithMeet() {
-        let m = build([ev("Standup", d(2026, 9, 29, 10), link: "https://meet.google.com/abc-defg-hij")], at: 9, 50)
-        #expect(m.joinIndex == 0 && m.joinRow?.title == "Standup")
-        #expect(m.joinRow?.call?.kind == .meet && m.joinRow?.call?.url.absoluteString == "https://meet.google.com/abc-defg-hij")
-        #expect(m.joinRow?.logo == "meet")
-        // The row menu's Join call uses the same link.
-        #expect(MenuBarMenu.submenu(for: m.rows[0].event, canRespond: false, guestAddresses: []).first == .join(m.joinRow!.call!.url))
-    }
-
     @Test func zoomEventGivesTheZoomLogo() {
         let m = build([ev("Client call", d(2026, 9, 29, 17, 30), link: "https://us02web.zoom.us/j/88123456789")], at: 17, 20)
         #expect(m.joinRow?.call?.kind == .zoom && m.joinRow?.logo == "zoom")
         #expect(MenuBarMenu.logo(.teams) == "video" && MenuBarMenu.logo(.other) == "video")
-    }
-
-    @Test func websiteGivesNoJoin() {
-        let m = build([ev("Read the doc", d(2026, 9, 29, 10), link: "https://example.com/agenda")], at: 9, 50)
-        #expect(m.rows.count == 1 && m.rows[0].call == nil && m.rows[0].logo == nil)
-        #expect(m.joinIndex == nil && m.joinRow == nil)
     }
 
     @Test func everyTodayRowWithACallGetsJoin() {

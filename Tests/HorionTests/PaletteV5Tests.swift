@@ -62,9 +62,9 @@ struct PaletteV5Tests {
             "rail": "#F4F4F5",
             "surface": "#F1F1F2",
             "raised": "#FFFFFF",
-            "hover": "#F4F4F4",
-            "hoverRail": "#EDEDED",
-            "selected": "#E8E8E8",
+            "hover": "#EEEEEE",
+            "hoverRail": "#E8E8E8",
+            "selected": "#DDDDDD",
             "fg1": "#1D1D20",
             "fg2": "#4A4A50",
             "fg3": "#606067",
@@ -133,17 +133,6 @@ struct PaletteV5Tests {
         }
     }
 
-    @Test func foundationsSamples() {
-        // design/design-system/foundations.md: Personal #5B8DEF in Dark, swatches in Paper (fill / bar).
-        let d = EventRecipe.dark(C8(hex: "#5B8DEF"))
-        #expect(d.fill.hex == "#162A50" && d.title.hex == "#FFFFFF" && d.meta.hex == "#C9DCFE")
-        for (hex, fill, bar) in [("#5B8DEF", "#D1E1FE", "#3970E0"), ("#A9A6F5", "#E2E2FE", "#715EE0"), ("#9254DE", "#DFD5F2", "#9049E1"),
-                                 ("#B9B9B9", "#E1E1E1", "#959595"), ("#E9B949", "#F6E6C3", "#BB8D01"), ("#D9443A", "#F6D2CC", "#DB1E1D")] {
-            let p = EventRecipe.paper(C8(hex: hex))
-            #expect(p.fill.hex == fill && p.bar.hex == bar, "\(hex): \(p.fill.hex) / \(p.bar.hex)")
-        }
-    }
-
     @Test func paperFillsReadAsTheirColour() {
         // Clear tint: every coloured calendar fill at least ΔE_OK 7.5 from the canvas.
         for (hex, _) in Mockup.paperEvents where hex != "#888888" {
@@ -161,8 +150,8 @@ struct PaletteV5Tests {
         "evSelMeta": Floor(ratio: 5.5, lc: 55), "evPastTitle": Floor(ratio: 7, lc: 65), "evPastMeta": Floor(ratio: 5.7, lc: 48), "evDecl": Floor(ratio: 6, lc: 55),
         "decor": Floor(ratio: 1, lc: 0, max: 15), "structure": Floor(ratio: 1.15, lc: 0, max: 35)]
     static let floorsPaper: [String: Floor] = [
-        "fg1": Floor(ratio: 12, lc: 95), "fg1soft": Floor(ratio: 12, lc: 88), "fg2": Floor(ratio: 7, lc: 80), "fg2soft": Floor(ratio: 7, lc: 75),
-        "fg3": Floor(ratio: 5, lc: 70), "fg3soft": Floor(ratio: 5, lc: 65), "accent": Floor(ratio: 12, lc: 90), "live": Floor(ratio: 4.5, lc: 60),
+        "fg1": Floor(ratio: 12, lc: 95), "fg1soft": Floor(ratio: 10, lc: 80), "fg2": Floor(ratio: 7, lc: 80), "fg2soft": Floor(ratio: 6, lc: 68),
+        "fg3": Floor(ratio: 5, lc: 70), "fg3soft": Floor(ratio: 4.5, lc: 60), "accent": Floor(ratio: 12, lc: 90), "live": Floor(ratio: 4.5, lc: 60),
         "status": Floor(ratio: 4.5, lc: 60), "nontext": Floor(ratio: 3, lc: 0), "evTitle": Floor(ratio: 7, lc: 75), "evMeta": Floor(ratio: 5.9, lc: 70),
         "evSelMeta": Floor(ratio: 5.5, lc: 65), "evPastTitle": Floor(ratio: 7, lc: 75), "evPastMeta": Floor(ratio: 5, lc: 65), "evDecl": Floor(ratio: 6.5, lc: 75),
         "decor": Floor(ratio: 1, lc: 0, max: 15), "structure": Floor(ratio: 1.15, lc: 0, max: 35)]

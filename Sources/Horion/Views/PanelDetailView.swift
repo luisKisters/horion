@@ -30,6 +30,7 @@ struct PanelDetailView: View {
         .onChange(of: model.blurTick) { _, _ in focus = nil }
         .onChange(of: model.panelMenus.focusTick) { _, _ in focus = model.panelMenus.focusRequest }
         .onChange(of: focus) { old, new in
+            model.panelFieldFocusChanged(new)
             if old == .place && new != .place, model.panelMenus.open == .places || model.panelMenus.open == .maps {
                 after(0.15) { if focus != .place && (model.panelMenus.open == .places) { model.closePanelMenu() } }
             }
@@ -49,8 +50,9 @@ struct PanelDetailView: View {
                         .textFieldStyle(.plain)
                         .panelPlaceholder(model.isDraftOpen ? "New event" : "(No title)", when: e.title.isEmpty, font: .title15)
                         .focused($focus, equals: .title)
-                        .onSubmit { model.isDraftOpen ? model.saveDraft() : (focus = nil) }
+                        .onSubmit { submit() }
                         .editorField(focused: focus == .title, editable: true, key: "field:title")
+                        .panelStop(.title)
                 } else {
                     Text(e.title.isEmpty ? "(No title)" : e.title).lineLimit(1).truncationMode(.tail)
                 }
@@ -75,7 +77,11 @@ struct PanelDetailView: View {
             EditorRowBox(icon: .clock) {
                 VStack(alignment: .leading, spacing: 0) {
                     when(canEdit: canEdit)
-                    if canEdit { PanelSwitch(label: "All day", isOn: e.isAllDay) { model.setSelectedAllDay(!e.isAllDay) }.frame(height: 20).padding(.top, 6).padding(.bottom, 4) }
+                    if canEdit {
+                        PanelSwitch(label: "All day", isOn: e.isAllDay, focused: model.panelMenus.stop == .allDay) { model.setSelectedAllDay(!e.isAllDay) }
+                            .panelStop(.allDay, drawsRing: false)
+                            .frame(height: 20).padding(.top, 6).padding(.bottom, 4)
+                    }
                 }
             }
         case .repeats:
@@ -91,6 +97,7 @@ struct PanelDetailView: View {
                 }
                 .buttonStyle(.plain)
                 .editorField(focused: false, editable: true, key: "field:findTime")
+                .panelStop(.findTime)
             }
         case .participants:
             EditorRowBox(icon: .users) { PanelParticipants(e: e, canEdit: canEdit, focus: $focus) }
@@ -118,13 +125,16 @@ struct PanelDetailView: View {
         return HStack(spacing: 0) {
             PanelCommitField(value: dateText, minWidth: 84, editable: canEdit && days == 1, focusKey: .date, focus: $focus,
                              commit: { model.setSelectedDay($0) }, onReturn: submit)
+                .panelStop(.date)
             if !e.isAllDay {
                 Color.clear.frame(width: 4, height: 1)
                 PanelCommitField(value: model.fmt.time(e.start), width: 52, centered: true, tabular: true, editable: canEdit, focusKey: .start, focus: $focus,
                                  commit: { t in TimeParser.parse(t).map { model.setSelectedStart($0); return true } ?? false }, onReturn: submit)
+                    .panelStop(.start)
                 PanelIcon(name: .arrow).frame(width: 16)
                 PanelCommitField(value: model.fmt.time(e.end), width: 52, centered: true, tabular: true, editable: canEdit, focusKey: .end, focus: $focus,
                                  commit: { t in TimeParser.parse(t).map { model.setSelectedEnd($0) } ?? false }, onReturn: submit)
+                    .panelStop(.end)
             }
             Text(e.isAllDay ? (days > 1 ? "\(days) days" : "all day") : PanelText.editorDuration(e.durationMinutes))
                 .font(.smallTab).foregroundStyle(Theme.fg3).lineLimit(1).fixedSize().padding(.leading, 8)
@@ -157,6 +167,7 @@ struct PanelDetailView: View {
             }
             .frame(maxWidth: .infinity, minHeight: 20, alignment: .topLeading)
             .editorField(focused: editing, editable: canEdit, key: "field:notes")
+            .panelStop(.notes)
             if v.hidden {
                 HStack(spacing: 10) {
                     CallLogo(kind: .meet, size: 12)
@@ -189,22 +200,27 @@ struct PanelDetailView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .panelStop(.calendar, radius: Radius.control, inset: 0)
             .panelMenuAnchor(.calendar)
             .tourAnchor("field:calendar")
             .padding(.horizontal, -8).padding(.top, -5)
             HStack(spacing: 22) {
-                Menu {
-                    ForEach(Availability.allCases, id: \.self) { a in Button(a == .busy ? "Busy" : "Free") { model.updateSelected { $0.availability = a } } }
-                } label: { pairLabel(e.availability == .busy ? "Busy" : "Free", key: "field:busy") }
-                Menu {
-                    ForEach(EventVisibility.allCases, id: \.self) { v in Button(Self.visibility(v)) { model.updateSelected { $0.visibility = v } } }
-                } label: { pairLabel(Self.visibility(e.visibility), key: "field:vis") }
+                Button { model.openPanelMenu(.availability) } label: {
+                    pairLabel(Self.availability(e.availability), key: "field:busy", held: model.panelMenus.open == .availability)
+                }
+                .panelStop(.busy).panelMenuAnchor(.availability)
+                Button { model.openPanelMenu(.visibility) } label: {
+                    pairLabel(Self.visibility(e.visibility), key: "field:vis", held: model.panelMenus.open == .visibility)
+                }
+                .panelStop(.visibility).panelMenuAnchor(.visibility)
             }
-            .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
+            .buttonStyle(.plain).fixedSize()
             .disabled(!writable)
             .padding(.top, 6)
         }
     }
+
+    static func availability(_ a: Availability) -> String { a == .busy ? "Busy" : "Free" }
 
     static func visibility(_ v: EventVisibility) -> String {
         switch v {
@@ -214,15 +230,16 @@ struct PanelDetailView: View {
         }
     }
 
-    private func pairLabel(_ text: String, key: String) -> some View {
+    private func pairLabel(_ text: String, key: String, held: Bool) -> some View {
         HStack(spacing: 4) { Text(text).foregroundStyle(Theme.fg); PanelIcon(name: .down, size: 12) }
             .frame(minHeight: 20)
-            .editorField(focused: false, editable: true, key: key)
+            .contentShape(Rectangle())
+            .editorField(focused: false, editable: true, key: key, held: held)
     }
 
-    /// Return in a single-line field: saves the new event, or leaves the field.
+    /// Return in a single-line field: saves the new event, or saves the field and moves on to the next stop (mockup-v20).
     private func submit() {
-        if model.isDraftOpen { model.saveDraft() } else { focus = nil }
+        if model.isDraftOpen { model.saveDraft() } else { model.movePanelStop(1) }
     }
 }
 
@@ -307,6 +324,7 @@ struct PanelGoingRow: View {
             if model.canRespond(e) {
                 Segmented(options: [(ResponseStatus.confirmed, "Yes"), (.tentative, "Maybe"), (.declined, "No")], selection: e.myReply,
                           enabled: !e.iAmOrganizer) { model.setMyReply($0) }
+                    .panelStop(.going, radius: Radius.control, inset: -2)
             } else {
                 Text(PanelText.response(e.myReply)).foregroundStyle(Theme.fg)
                     .help("macOS Calendar cannot send your reply. Answer in Google Calendar.")
@@ -330,6 +348,7 @@ struct PanelReminders: View {
                 }
                 .buttonStyle(.plain)
                 .editorField(focused: false, editable: true, key: "field:addReminder", held: model.panelMenus.open == .reminders)
+                .panelStop(.addReminder)
                 .panelMenuAnchor(.reminders)
                 .padding(.top, e.reminders.isEmpty ? 0 : 7)
             } else if e.reminders.isEmpty {
@@ -362,6 +381,7 @@ struct ReminderRow: View {
         .padding(.horizontal, 8).frame(height: 28)
         .background(RoundedRectangle(cornerRadius: Radius.row).fill(h && removable ? Theme.hoverRail : Color.clear))
         .padding(.horizontal, -8).padding(.vertical, -3)
+        .panelStop(.reminder(minutes), inset: 0)
         .onHover { hover = $0 }
         .tourAnchor(key)
     }

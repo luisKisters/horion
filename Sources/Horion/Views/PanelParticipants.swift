@@ -67,6 +67,7 @@ struct PanelParticipants: View {
             .background(RoundedRectangle(cornerRadius: Radius.control).fill(focused ? Theme.bg : Color.clear))
             .overlay(RoundedRectangle(cornerRadius: Radius.control).strokeBorder(focused ? Theme.fg3 : Theme.hair2, lineWidth: focused ? 1.5 : 1))
             .padding(.horizontal, -8)
+            .panelStop(.guest)
             .padding(.top, 6)
             .panelMenuAnchor(.guests)
             .onChange(of: focused) { _, f in

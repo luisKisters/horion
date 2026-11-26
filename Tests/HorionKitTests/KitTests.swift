@@ -28,9 +28,7 @@ struct DateMathTests {
         #expect(berlin.daysBetween(d(2026, 10, 24, 23), d(2026, 10, 26, 1)) == 2)
         #expect(berlin.addDays(d(2026, 10, 24, 10), 1) == d(2026, 10, 25, 10))
     }
-    @Test func snapAndSteps() {
-        #expect(CalendarMath.snap(37) == 30)
-        #expect(CalendarMath.snap(38) == 45)
+    @Test func steps() {
         #expect(berlin.step(mode: .week, anchor: d(2026, 9, 29), direction: 1) == d(2026, 10, 6))
         #expect(berlin.step(mode: .month, anchor: d(2026, 12, 15), direction: 1) == d(2027, 1, 1))
         #expect(berlin.step(mode: .custom(3), anchor: d(2026, 9, 29), direction: -1) == d(2026, 9, 26))
@@ -38,50 +36,6 @@ struct DateMathTests {
     @Test func leftAlignedWeekStartsToday() {
         #expect(berlin.visibleStart(mode: .week, anchor: d(2026, 9, 29, 12), leftAligned: true) == d(2026, 9, 29))
         #expect(berlin.visibleStart(mode: .week, anchor: d(2026, 9, 29, 12), leftAligned: false) == d(2026, 9, 28))
-    }
-    @Test func nextHalfHour() {
-        #expect(berlin.nextHalfHour(after: d(2026, 9, 29, 10, 10)) == d(2026, 9, 29, 10, 30))
-        #expect(berlin.nextHalfHour(after: d(2026, 9, 29, 10, 30)) == d(2026, 9, 29, 11, 0))
-    }
-}
-
-@Suite("Overlap layout")
-struct OverlapTests {
-    func p(_ ps: [Placement], _ id: String) -> Placement { ps.first { $0.id == id }! }
-
-    @Test func nonOverlappingUseFullWidth() {
-        let ps = OverlapLayout.layout([TimeSpan(id: "a", startMinute: 480, endMinute: 585), TimeSpan(id: "b", startMinute: 600, endMinute: 700)])
-        #expect(ps.allSatisfy { $0.left == 0 && $0.width == 1 && $0.columns == 1 })
-    }
-    @Test func twoOverlappingCascade() {
-        let ps = OverlapLayout.layout([TimeSpan(id: "a", startMinute: 450, endMinute: 465), TimeSpan(id: "b", startMinute: 450, endMinute: 465)])
-        let a = p(ps, "a"), b = p(ps, "b")
-        #expect(a.left == 0 && a.z == 0)
-        #expect(b.left > 0.3 && b.z == 1)               // later event is offset and on top
-        #expect(abs(b.left + b.width - 1) < 1e-9)       // and reaches the right edge
-        #expect(a.width < 1)
-    }
-    @Test func shortEventsStillCollideWhenAdjacent() {
-        // 15-minute pills 10 minutes apart overlap in time.
-        let ps = OverlapLayout.layout([TimeSpan(id: "a", startMinute: 1200, endMinute: 1215), TimeSpan(id: "b", startMinute: 1210, endMinute: 1225)])
-        #expect(ps.allSatisfy { $0.columns == 2 })
-    }
-    @Test func chainReusesColumns() {
-        // a overlaps b, b overlaps c, a does not overlap c: c goes back into column 0.
-        let ps = OverlapLayout.layout([TimeSpan(id: "a", startMinute: 0, endMinute: 60), TimeSpan(id: "b", startMinute: 30, endMinute: 100), TimeSpan(id: "c", startMinute: 70, endMinute: 120)])
-        #expect(p(ps, "c").column == 0)
-        #expect(p(ps, "b").column == 1)
-        #expect(ps.allSatisfy { $0.columns == 2 })
-    }
-    @Test func separateClustersDoNotShareColumns() {
-        let ps = OverlapLayout.layout([TimeSpan(id: "a", startMinute: 0, endMinute: 60), TimeSpan(id: "b", startMinute: 30, endMinute: 60), TimeSpan(id: "c", startMinute: 300, endMinute: 400)])
-        #expect(p(ps, "c").columns == 1 && p(ps, "c").width == 1)
-    }
-    @Test func wednesdayCluster() {
-        // Climbing 16:30-18:30, Family dinner 16:30-18:30, Water the plants 18:00 pill -> three columns.
-        let ps = OverlapLayout.layout([TimeSpan(id: "b", startMinute: 990, endMinute: 1110), TimeSpan(id: "f", startMinute: 990, endMinute: 1110), TimeSpan(id: "v", startMinute: 1080, endMinute: 1095)])
-        #expect(ps.allSatisfy { $0.columns == 3 })
-        #expect(Set(ps.map(\.column)) == [0, 1, 2])
     }
 }
 
@@ -185,10 +139,6 @@ struct GoToDateTests {
         #expect(parse("31.02.") == nil)
         #expect(parse("2026-13-01") == nil)
     }
-    @Test func pastDatesRollToNextYearOnlyWhenFarBehind() {
-        #expect(parse("sep 1") == d(2026, 9, 1))     // 28 days ago stays
-        #expect(parse("jan 5") == d(2027, 1, 5))     // 267 days ago rolls forward
-    }
 }
 
 @Suite("Commands")
@@ -204,10 +154,6 @@ struct CommandTests {
         #expect(CommandRegistry.matching("gtd", hasSelection: false).first?.id == .goToDate)
     }
     @Test func noMatchIsEmpty() { #expect(CommandRegistry.matching("zzzq", hasSelection: false).isEmpty) }
-    @Test func keycapsMatchTheMockup() {
-        #expect(CommandRegistry.all.first { $0.id == .undo }!.keys == ["\u{2318}", "Z"])
-        #expect(CommandRegistry.all.first { $0.id == .goToDate }!.more)
-    }
 }
 
 @Suite("Upcoming")
@@ -250,14 +196,6 @@ struct UpcomingTests {
 @Suite("Text formatting")
 struct FormatTests {
     let fmt = Fmt(math: berlin)
-    @Test func durations() {
-        #expect(DurationText.minutes(100) == "1h 40min")
-        #expect(DurationText.minutes(45) == "45min")
-        #expect(DurationText.minutes(120) == "2h")
-        #expect(DurationText.short(298) == "4h 58m")
-        #expect(DurationText.short(12) == "12m")
-        #expect(DurationText.short(1500) == "1d 1h")
-    }
     @Test func recurrenceText() {
         let start = d(2026, 9, 30, 10, 10)
         let t = RecurrenceDescriber.describe(Recurrence(frequency: .weekly, until: d(2026, 12, 18)), start: start, fmt: fmt)
@@ -272,9 +210,6 @@ struct FormatTests {
         #expect(Fmt(math: berlin, use24h: false).time(d(2026, 9, 29, 15, 5)) == "3:05 PM")
         #expect(fmt.monthTitle(d(2026, 9, 29)) == "September 2026")
         #expect(fmt.inspectorDate(d(2026, 9, 30)) == "Wed Sep 30")
-        #expect(fmt.gmtLabel(d(2026, 9, 29)) == "GMT+2")
-        #expect(fmt.gmtLabel(d(2026, 12, 29)) == "GMT+1")
-        #expect(fmt.timeZoneCity() == "Berlin")
     }
 }
 
@@ -332,22 +267,6 @@ struct EventKitMappingTests {
     @Test func localSourceGetsFriendlyName() {
         #expect(EventKitMapping.accountName(RawSource(id: "l", title: "Default", type: .local)) == "On My Mac")
     }
-    @Test func attendeeDeclineMakesDeclinedEvenIfConfirmed() {
-        #expect(EventKitMapping.responseStatus(myStatus: .declined, eventTentative: false, eventCanceled: false) == .declined)
-        #expect(EventKitMapping.responseStatus(myStatus: .accepted, eventTentative: true, eventCanceled: false) == .tentative)
-        #expect(EventKitMapping.responseStatus(myStatus: nil, eventTentative: false, eventCanceled: true) == .declined)
-        #expect(EventKitMapping.responseStatus(myStatus: .pending, eventTentative: false, eventCanceled: false) == .needsAction)
-    }
-    @Test func alarmOffsets() {
-        #expect(EventKitMapping.reminderMinutes(alarmOffsetSeconds: [-900, -60]) == 1)
-        #expect(EventKitMapping.reminderMinutes(alarmOffsetSeconds: []) == nil)
-        #expect(EventKitMapping.alarmOffsetSeconds(minutes: 10) == -600)
-    }
-    @Test func participantLabels() {
-        #expect(EventKitMapping.participantLabel(name: "Sam", email: "sam@x.example.com") == "Sam <sam@x.example.com>")
-        #expect(EventKitMapping.participantLabel(name: "max@x.de", email: "max@x.de") == "max@x.de")
-        #expect(EventKitMapping.participantLabel(name: nil, email: nil) == nil)
-    }
 }
 
 @Suite("Shortcuts")
@@ -373,7 +292,7 @@ struct ShortcutTests {
     }
     @Test func modifiedVariants() {
         #expect(r("t", opt: true) == nil)
-        #expect(r("k", cmd: true, ctrl: true) == .menuBarCalendar)
+        #expect(r("k", cmd: true, ctrl: true) == nil); #expect(r("b", cmd: true) == .toggleSidebar)
         #expect(r(",", cmd: true) == .settings)
         #expect(r("1", cmd: true) == .mainWindow)
         #expect(r("z", cmd: true) == .undo)

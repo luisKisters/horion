@@ -15,6 +15,12 @@ enum MainWindow {
             openAction?()
         }
     }
+
+    /// The app key: hides Horion when its window is in front, else brings it forward.
+    static func toggle() {
+        let front = NSApp.isActive && !NSApp.isHidden && NSApp.windows.contains { !($0 is NSPanel) && $0.canBecomeMain && $0.isVisible && $0.isKeyWindow }
+        if front { NSApp.hide(nil) } else { show() }
+    }
 }
 
 /// Hands the main window's `openWindow` to `MainWindow`, so the menu bar can reopen a closed window.
@@ -32,6 +38,12 @@ enum MenuBarControl {
         guard let b = MenuBarController.shared?.item.button else { return false }
         b.performClick(nil)
         return true
+    }
+
+    /// The menu key: opens the menu, or closes it when it is open.
+    static func toggle() {
+        guard let c = MenuBarController.shared else { return }
+        if c.isOpen { c.menu.cancelTracking() } else { _ = open() }
     }
 }
 
@@ -136,6 +148,8 @@ struct MenuBarSubmenuPreview: View {
                         }.frame(width: 12).padding(.leading, -1)
                         Text(it.title).font(NativeMenu.font)
                         Spacer(minLength: 18)
+                        let k = MenuBarController.key(it)
+                        if !k.isEmpty { Text("\u{2318}" + k.uppercased()).font(NativeMenu.font).tracking(0.5).foregroundStyle(highlight == i ? .white.opacity(0.86) : NativeMenu.dim) }
                     }
                     .foregroundStyle(.white)
                     .padding(.horizontal, 9).frame(height: NativeMenu.rowHeight)
@@ -170,7 +184,7 @@ private struct MenuSeparator: View {
     }
 }
 
-/// `MenuBarRowView` drawn in SwiftUI: bar, start, title cut at 220 pt, icon for a row with a menu. No end time, no arrow.
+/// `MenuBarRowView` drawn in SwiftUI: bar, start, title cut at 220 pt, icon for a row with a menu, the submenu arrow. No end time.
 private struct MenuEventRow: View {
     let row: MenuBarMenuModel.Row
     let highlighted: Bool
@@ -204,7 +218,6 @@ private struct MenuEventRow: View {
                 }
                 .padding(.leading, 7).padding(.trailing, 8).frame(height: MenuBarRowView.pillHeight)
                 .background(RoundedRectangle(cornerRadius: Radius.small).fill(Color.white.opacity(hl || joinHover ? 1 : 0.92)))
-                .padding(.trailing, MenuBarRowView.trailing - 4)
             } else {
                 if let hint = row.hint {
                     Image(systemName: hint == .call ? "video" : "person.2").font(.system(size: 10))
@@ -212,6 +225,9 @@ private struct MenuEventRow: View {
                 }
                 Spacer(minLength: MenuBarRowView.trailing)
             }
+            Image(systemName: "chevron.right").font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(hl ? .white.opacity(0.86) : NativeMenu.dim)
+                .padding(.leading, MenuBarRowView.chevronGap).padding(.trailing, MenuBarRowView.trailing)
         }
         .foregroundStyle(.white)
         .frame(height: NativeMenu.rowHeight)

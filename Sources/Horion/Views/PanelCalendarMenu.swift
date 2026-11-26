@@ -13,7 +13,8 @@ struct PanelCalendarMenu: View {
                 if !cals.isEmpty {
                     PopSection(text: AccountName.display(a.name), indent: true)
                     ForEach(cals) { c in
-                        PopItem(check: e.calendarID == c.id, key: "menu:cal:\(c.id)", action: { model.setSelectedCalendar(c.id) }) {
+                        PopItem(check: e.calendarID == c.id, key: "menu:cal:\(c.id)", highlighted: model.panelMenus.highlight == "menu:cal:\(c.id)",
+                                action: { model.setSelectedCalendar(c.id) }) {
                             HStack(spacing: 10) {
                                 RoundedRectangle(cornerRadius: Radius.swatch).fill(Theme.calendarMark(c.colorHex)).frame(width: 12, height: 12)
                                 Text(c.title).lineLimit(1).truncationMode(.tail)

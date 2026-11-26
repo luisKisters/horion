@@ -8,6 +8,8 @@ import HorionKit
 final class KeyRouter {
     static let shared = KeyRouter()
     private var monitor: Any?
+    private var flagsMonitor: Any?
+    private var mouseMonitor: Any?
     private weak var model: AppModel?
 
     func install(model: AppModel) {
@@ -16,6 +18,24 @@ final class KeyRouter {
         monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self, let model = self.model else { return event }
             return MainActor.assumeIsolated { self.handle(event, model: model) ? nil : event }
+        }
+        // Option alone, held outside a text field: the panel shows its jump letters.
+        flagsMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+            guard let self, let model = self.model else { return event }
+            MainActor.assumeIsolated {
+                let mods = event.modifierFlags.intersection([.command, .option, .control, .shift])
+                let show = mods == .option && model.panelTakesKeys && !self.textFocused(in: event.window ?? NSApp.keyWindow)
+                if model.panelMenus.jumpLetters != show { model.panelMenus.jumpLetters = show }
+            }
+            return event
+        }
+        // A click takes the keyboard's ring off a switch, button or menu of the panel (a field keeps its own focus).
+        mouseMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak self] event in
+            guard let model = self?.model else { return event }
+            MainActor.assumeIsolated {
+                if let s = model.panelMenus.stop, !s.isText { model.panelMenus.stop = nil }
+            }
+            return event
         }
     }
 
@@ -30,8 +50,13 @@ final class KeyRouter {
         let input = KeyInput(characters: event.charactersIgnoringModifiers ?? "", keyCode: event.keyCode,
                              command: mods.contains(.command), option: mods.contains(.option),
                              control: mods.contains(.control), shift: mods.contains(.shift))
-        let typing = textFocused(in: event.window ?? NSApp.keyWindow)
+        let window = event.window ?? NSApp.keyWindow
+        return handle(input, typing: textFocused(in: window), window: window, model: model)
+    }
 
+    /// The routing itself, from a key press already read off the event: `typing` says a text field has the keyboard, `window`
+    /// is the one it went to (unit tests drive this without an application object).
+    func handle(_ input: KeyInput, typing: Bool, window: NSWindow?, model: AppModel) -> Bool {
         if model.overlay == .command, !input.command {
             switch input.keyCode {
             case ShortcutResolver.keyDown: model.movePaletteSelection(1); return true
@@ -47,20 +72,28 @@ final class KeyRouter {
         // ⌘↩ sends the held update, or saves (and invites) the event being created.
         if input.command && !input.option && !input.control && input.keyCode == ShortcutResolver.keyReturn && model.overlay == nil && model.sendShortcut() { return true }
 
-        // The recurring-delete dialog: ←/→ or A/D move between its buttons, Tab and ⇧Tab too (wrapping), Return takes the
-        // focused one (the safe "This event" until moved).
-        if case .deleteRecurring(let id)? = model.overlay, !input.command, !input.control, !input.option {
+        // The recurring-delete and recurring-edit dialogs: ←/→ or A/D move between the buttons, Tab and ⇧Tab too (wrapping),
+        // Return takes the focused one (the safe "This event" until moved).
+        let spanDialog: (id: String, choose: (String, SpanChoice) -> Void)? = switch model.overlay {
+        case .deleteRecurring(let id)?: (id, model.chooseDelete)
+        case .editRecurring(let id)?: (id, model.chooseEdit)
+        default: nil
+        }
+        if let (id, choose) = spanDialog, !input.command, !input.control, !input.option {
             let ch = input.characters.lowercased()
             switch input.keyCode {
-            case ShortcutResolver.keyReturn, ShortcutResolver.keyEnter: model.chooseDelete(id, model.deleteChoice); return true
-            case ShortcutResolver.keyTab: model.moveDeleteChoice(id, by: input.shift ? -1 : 1, wrap: true); return true
-            case ShortcutResolver.keyLeft: model.moveDeleteChoice(id, by: -1, wrap: false); return true
-            case ShortcutResolver.keyRight: model.moveDeleteChoice(id, by: 1, wrap: false); return true
+            case ShortcutResolver.keyReturn, ShortcutResolver.keyEnter: choose(id, model.spanChoice); return true
+            case ShortcutResolver.keyTab: model.moveSpanChoice(id, by: input.shift ? -1 : 1, wrap: true); return true
+            case ShortcutResolver.keyLeft: model.moveSpanChoice(id, by: -1, wrap: false); return true
+            case ShortcutResolver.keyRight: model.moveSpanChoice(id, by: 1, wrap: false); return true
             default:
-                if !input.shift && ch == "a" { model.moveDeleteChoice(id, by: -1, wrap: false); return true }
-                if !input.shift && ch == "d" { model.moveDeleteChoice(id, by: 1, wrap: false); return true }
+                if !input.shift && ch == "a" { model.moveSpanChoice(id, by: -1, wrap: false); return true }
+                if !input.shift && ch == "d" { model.moveSpanChoice(id, by: 1, wrap: false); return true }
             }
         }
+
+        // The event panel: Tab through its stops, keys on a switch, button or menu, Option + letter jumps (`handlePanelKey`).
+        if model.handlePanelKey(input, typing: typing) { return true }
 
         guard let action = ShortcutResolver.resolve(input, textFocused: typing) else {
             // A sheet keeps every other key from the grid underneath. Outside a field a bare character has no other
@@ -77,11 +110,11 @@ final class KeyRouter {
         case .settings?:
             if action == .settings { model.overlay = nil; return true }
             if action != .escape && action != .commandMenu && action != .showShortcuts { return true }
-        case .deleteRecurring?, .deleteWithGuests?:
+        case .deleteRecurring?, .editRecurring?, .deleteWithGuests?:
             if action != .escape { return true }
         case nil: break
         }
-        if action == .escape, typing, model.overlay == nil, let w = event.window ?? NSApp.keyWindow {
+        if action == .escape, typing, model.overlay == nil, let w = window {
             // Esc in a field of the event being created discards it at once; anywhere else the first Esc only leaves
             // the field and the next one peels the layer.
             // Esc in the right column's search field only leaves the field (and clears it next): the draft stays.
@@ -99,6 +132,6 @@ final class KeyRouter {
     }
 
     private func isSheet(_ o: Overlay?) -> Bool {
-        switch o { case .shortcuts?, .settings?, .deleteRecurring?, .deleteWithGuests?: true; default: false }
+        switch o { case .shortcuts?, .settings?, .deleteRecurring?, .editRecurring?, .deleteWithGuests?: true; default: false }
     }
 }

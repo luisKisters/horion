@@ -17,10 +17,11 @@ struct PanelLocationRow: View {
             .panelPlaceholder(EditorRow.location.placeholder!, when: e.location.isEmpty)
             .focused(focus, equals: .place).disabled(!canEdit)
             .onSubmit {
-                if open == .places, let first = model.panelMenus.places.first { model.pickPlace(first.text) } else { focus.wrappedValue = nil }
+                if open == .places, let first = model.panelMenus.places.first { model.pickPlace(first.text) } else { model.movePanelStop(1) }
             }
             .frame(maxWidth: .infinity, minHeight: 20, alignment: .leading)
             .editorField(focused: focused && open != .maps, editable: canEdit || !e.location.isEmpty, key: "field:location", held: open == .maps)
+            .panelStop(.place)
             .panelMenuAnchor(.maps)
             .panelMenuAnchor(.places)
             .contentShape(Rectangle())

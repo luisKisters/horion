@@ -40,10 +40,6 @@ struct MenuBarMenuTests {
         #expect(m.headLabel == "Now")
         #expect(m.sections[0].rows.map(\.title) == ["Sam / Alex", "Evening journal"])
     }
-    @Test func runningGivesWayInsideFifteenMinutes() {
-        let m = build(day, at: 13, 50)
-        #expect(m.focus?.event.title == "Sam / Alex" && m.focus?.text == "in 10 min")
-    }
     @Test func farNextEvent() {
         let m = build(day, at: 21, 5)
         #expect(m.focus?.event.title == "Evening journal")

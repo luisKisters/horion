@@ -147,6 +147,17 @@ public enum GoogleMapping {
         return any ? g : nil
     }
 
+    /// "This and following": a new series from the changed occurrence on, made from the series' main event `m` with `change` (a
+    /// `patch` body) on top. The old series is ended before it (`RRule.ended`).
+    public static func following(_ m: GEvent, change: GEvent, start: GDateTime, end: GDateTime) -> GEvent {
+        var g = GEvent(summary: change.summary ?? m.summary, description: change.description ?? m.description, location: change.location ?? m.location,
+                       start: start, end: end, attendees: change.attendees ?? m.attendees, reminders: change.reminders ?? m.reminders,
+                       colorId: change.colorId ?? m.colorId, recurrence: m.recurrence, transparency: change.transparency ?? m.transparency,
+                       visibility: change.visibility ?? m.visibility, guestsCanModify: m.guestsCanModify)
+        g.conferenceData = change.conferenceData ?? m.conferenceData
+        return g
+    }
+
     /// My reply: a PATCH with my own attendee entry only (`attendeesOmitted`), so the rest of the guest list stays as Google has it.
     public static func rsvp(selfEmail: String, status: ResponseStatus) -> GEvent {
         GEvent(attendees: [GAttendee(email: selfEmail, responseStatus: responseStatus(status))], attendeesOmitted: true)
@@ -165,7 +176,7 @@ public enum GoogleMapping {
                   responseStatus: responseStatus(a.status))
     }
 
-    static func times(_ e: CalendarEvent, zone: TimeZone) -> (GDateTime, GDateTime) {
+    public static func times(_ e: CalendarEvent, zone: TimeZone) -> (GDateTime, GDateTime) {
         if e.isAllDay { return (GDateTime(date: RFC3339.dayString(e.start, zone: zone)), GDateTime(date: RFC3339.dayString(e.end, zone: zone))) }
         let tz = TimeZone(identifier: e.timeZoneID) ?? zone
         return (GDateTime(dateTime: RFC3339.string(e.start, zone: tz), timeZone: tz.identifier), GDateTime(dateTime: RFC3339.string(e.end, zone: tz), timeZone: tz.identifier))
@@ -242,6 +253,15 @@ public enum RRule {
             until = f.date(from: u)
         }
         return Recurrence(frequency: f, interval: Int(kv["INTERVAL"] ?? "") ?? 1, weekdays: weekdays, until: until)
+    }
+
+    /// A series' RRULE lines ending at `until` (the second before an occurrence: it and the following ones are gone). Other lines stay.
+    public static func ended(_ lines: [String], until: Date) -> [String] {
+        lines.map { line in
+            guard var r = parse(line) else { return line }
+            r.until = until
+            return format(r, zone: TimeZone(identifier: "UTC")!)
+        }
     }
 
     public static func format(_ r: Recurrence, zone: TimeZone) -> String {

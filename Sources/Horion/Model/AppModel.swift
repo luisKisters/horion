@@ -15,6 +15,7 @@ func after(_ delay: TimeInterval, _ block: @escaping @MainActor () -> Void) {
 enum Overlay: Equatable {
     case command, shortcuts, settings
     case deleteRecurring(String)   // event id
+    case editRecurring(String)     // event id: which occurrences a held change (`recurringEdit`) goes to
     case deleteWithGuests(String)  // event id: the v4 dialog with the guest list
 }
 
@@ -72,12 +73,19 @@ final class AppModel {
     var rightColumnVisible = true
     /// The recurring-delete dialog's "send the guests a cancellation email" switch; reset each time the dialog opens.
     var deleteNotify = true
-    /// The recurring-delete dialog's focused button (filled, takes Return); starts on "This event" each time it opens.
-    var deleteChoice: DeleteChoice = .this
+    /// The recurring-delete and recurring-edit dialogs' focused button (filled, takes Return); starts on "This event" each time one opens.
+    var spanChoice: SpanChoice = .this
+    /// `spanChoices(_:)` for the open recurring dialog; cleared whenever the overlay changes.
+    @ObservationIgnored var spanChoicesCache: (id: String, choices: [SpanChoice])?
+    /// A change to a repeating event that waits for the recurring-edit dialog: drawn on the grid until it is chosen or cancelled.
+    var recurringEdit: RecurringEdit?
     var overlay: Overlay? {
         didSet {
+            if overlay != oldValue { spanChoicesCache = nil }
             // The palette fades out over 260 ms; its text field must not keep the keyboard meanwhile.
             if oldValue == .command && overlay != .command { searchText = chromeState.columnQuery.trimmingCharacters(in: .whitespaces) }
+            // The recurring-edit dialog closed without a choice (Esc, the scrim): the held change goes, the event is back where it was.
+            if case .editRecurring? = oldValue, overlay != oldValue, recurringEdit != nil { recurringEdit = nil; storeChanged() }
             if overlay == nil && oldValue != nil {
                 // Submitting with Return re-focuses the field after the action returns, so resign now and again once the event is done.
                 resignTextFocus()
@@ -305,6 +313,10 @@ final class AppModel {
             if let i = windowEvents.firstIndex(where: { $0.id == id }) { windowEvents[i] = u.edited }
             eventsByID[id] = u.edited
         }
+        if let r = recurringEdit {
+            if let i = windowEvents.firstIndex(where: { $0.id == r.edited.id }) { windowEvents[i] = r.edited }
+            eventsByID[r.edited.id] = r.edited
+        }
         // Filter and sort by index: CalendarEvent is a large reference-heavy struct, so copying it around is the real cost.
         let showDeclined = settings.showDeclined
         let hidden = hiddenCalendars
@@ -396,6 +408,7 @@ final class AppModel {
 
     private func settingsChanged(old: AppSettings) {
         if old.reduceMotion != settings.reduceMotion { Motion.override = settings.reduceMotion }
+        if old.menuShortcut != settings.menuShortcut || old.appShortcut != settings.appShortcut { MenuBarHotKey.update(settings) }
         if persist { settings.save() }
         if old.showDeclined != settings.showDeclined {
             windowRange = DateInterval(start: .distantPast, end: .distantPast)
@@ -408,6 +421,7 @@ final class AppModel {
     func event(id: String?) -> CalendarEvent? {
         guard let id else { return nil }
         if let d = draft, d.id == id { return d }
+        if let r = recurringEdit, r.edited.id == id { return r.edited }
         if let u = panelState.unsent[id] { return u.edited }
         return eventsByID[id]
     }
@@ -419,12 +433,6 @@ final class AppModel {
     func goTo(day d: Date) { settleDraft(); let day = math.startOfDay(d); setDirection(to: day); anchor = day; leftAligned = false; reload() }
     func goToToday() { settleDraft(); setDirection(to: math.startOfDay(now)); anchor = math.startOfDay(now); leftAligned = false; reload(); scrollToHourTick += 1 }
     private func setDirection(to d: Date) { navDirection = d > anchor ? 1 : (d < anchor ? -1 : 0) }
-    func leftAlignToday() {
-        settleDraft()
-        anchor = math.startOfDay(now); leftAligned = true
-        if viewMode == .month { viewMode = .week }
-        reload()
-    }
     /// Navigation settles the draft, except when the draft itself moves to another day (`settling: false`).
     func go(to date: Date, settling: Bool = true) {
         if settling { settleDraft() }
@@ -566,6 +574,7 @@ final class AppModel {
             return
         }
         if holdUnsent(before: before, after: e) { return }
+        if !textOnly && e.calendarID == before.calendarID && askSpan(base: before, edited: e, old: nil, notify: nil) { return }
         // Real stores (EventKit -> Google/iCloud) sync every save over the network: coalesce text typing into one write.
         if store.coalescesTextEdits && textOnly {
             pendingEdit = (e, span)
@@ -600,16 +609,19 @@ final class AppModel {
     func requestDeleteSelected() {
         guard let e = selectedEvent, isWritable(e) else { return }
         if isDraftOpen { discardDraft(); return }
-        if store.repeats(e) { deleteNotify = true; deleteChoice = .this; overlay = .deleteRecurring(e.id); return }
+        if store.repeats(e) { deleteNotify = true; spanChoice = .this; overlay = .deleteRecurring(e.id); return }
         if deleteNeedsGuestDialog(e) { overlay = .deleteWithGuests(e.id) } else { delete(e, span: .this) }
     }
 
     @discardableResult
     func delete(_ e: CalendarEvent, span: EditSpan, notify: Bool = true) -> Bool {
         flushPendingEdit()
+        // EventKit undoes a series delete itself: no loading every occurrence before the delete.
+        let storeUndo = span != .this && store.restoresDeletedSeries(calendarID: e.calendarID)
         let removed: [CalendarEvent]
         switch span {
         case .this: removed = [e]
+        case _ where storeUndo: removed = []
         case .all: removed = store.series(of: e)
         case .future: removed = store.series(of: e).filter { $0.start >= e.start }
         }
@@ -622,7 +634,7 @@ final class AppModel {
                 // Google lists a series as single occurrences: undo would make one new event per occurrence
                 showToast("Deleted \(title). A Google series cannot be undone.")
             } else {
-                undoStack.push(.deleted(removed))
+                undoStack.push(storeUndo ? .deletedSeries(e) : .deleted(removed))
                 showToast("Deleted \(title)", undo: true)
             }
             return true
@@ -637,6 +649,7 @@ final class AppModel {
         switch change {
         case .created(let e): try? store.delete(e, span: .this); if selectedEventID == e.id { selectedEventID = nil }
         // put back without telling anyone (`create` without notify: no new invitations); the store may give it a new id
+        case .deletedSeries(let e): store.restoreDeletedSeries(e); selectedEventID = e.id
         case .deleted(let es): let made = es.compactMap { try? store.create($0) }; selectedEventID = made.first?.id ?? es.first?.id
         case .updated(let old, let new):
             // Undo the move/resize only: text typed into the inspector since then stays.

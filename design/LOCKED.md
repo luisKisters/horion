@@ -66,10 +66,11 @@ The mockup opens on the locked design. The first option of every element in the 
 ## Menu bar: locked in design/menubar-v2
 
 `design/menubar-v2/index.html` and its `DECISIONS.md` are the spec for the menu bar menu (21 November 2026). They replace the v3 proposal and the v4 two-line rows. The v4 pick "Call logo and Join" stays.
-Rows are custom views with no arrows: bar, start time, title cut at 220 pt, and a camera or people icon for a call or guests. Today's timed rows with a call show a Join pill with the call logo instead of the icon.
+Rows are custom views: bar, start time, title cut at 220 pt, a camera or people icon for a call or guests, and a submenu arrow at the right edge (23 Nov 2026, owner request). Today's timed rows with a call show a Join pill with the call logo instead of the icon.
 Every row has a menu (Join, Going?, Email where they apply, then Copy details and Show in Horion).
 Today and tomorrow are listed in full, and the day after is one fold row. An "N more" fold appears only when the menu would be taller than half the screen.
-The same event in two calendars is one row with a two-colour bar. The countdown appears once, in the "Now" line, and is never red. The only shortcuts are ⌘, and ⌘Q.
+The same event in two calendars is one row with a two-colour bar. The countdown appears once, in the "Now" line, and is never red. Shortcuts: ⌘, and ⌘Q, and in a row's menu ⌘J Join, ⌘E Email, ⌘C Copy details, ⌘O Show in Horion. They act on the highlighted row.
+Global keys (24 Nov 2026, replacing ⌃⌘K, which Notion Calendar uses): ⌥⌘C opens the menu and closes it again, ⌥⌘H shows or hides Horion. Both can be changed or turned off in Settings → Shortcuts.
 Keys: Down and Up start at the first and last event, and Return opens the highlighted event.
 Already done in the app: the "Start transcription" button is removed from the menu bar popover.
 
@@ -94,6 +95,6 @@ The no-calendar-access empty state and recurrence editing are unchanged from v2.
 
 ## Verifying an implementation
 
-v4: render the mockup scenes with `swift scripts/render-mockup.swift`, the app states with `scripts/snapshots.sh`, and compare them
-with `scripts/compare-all.sh` (see `design/states.json`). Differences between the app and design/mockup-v4 are bugs, as
-DECISIONS.md describes.
+During a designr round, render the mockup scenes with `swift scripts/render-mockup.swift` and the app states with
+`scripts/designr-screenshots.sh --designr` (see `design/states.json`), and look at them side by side. This is a design tool,
+not a test: `scripts/verify.sh` verifies the app.

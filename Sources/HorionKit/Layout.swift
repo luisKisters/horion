@@ -1,18 +1,9 @@
 import Foundation
 
-// MARK: - Overlap layout (cascade)
-
-public struct TimeSpan: Sendable {
-    public var id: String
-    public var startMinute: Int
-    public var endMinute: Int
-    public init(id: String, startMinute: Int, endMinute: Int) {
-        self.id = id; self.startMinute = startMinute; self.endMinute = endMinute
-    }
-}
+// MARK: - Block placement
 
 public struct Placement: Equatable, Sendable {
-    /// A v3 cascade column (`OverlapLayout`).
+    /// A single full-width column (a block with no overlap layout).
     public init(id: String, column: Int, columns: Int, span: Int = 1, over: Bool = false) {
         self.id = id; self.column = column; self.columns = columns; self.span = span; self.over = over
         left = Double(column) / Double(columns); width = Double(span) / Double(columns); order = column
@@ -46,79 +37,6 @@ public struct Placement: Equatable, Sendable {
     public var visibleMinutes: Int?
     /// Paint order: the mockup's `z-index: 1 + min(level, 4)`, then the layout order.
     public var z: Int { min(level, 4) * 1000 + order }
-}
-
-public enum OverlapLayout {
-    /// Every block is at least this tall (points), so short events still collide when they would touch.
-    public static let minHeight = 19.0
-    /// The head of a block (title and time): an event only gives up the columns to its right when something there starts inside it.
-    static let head = 36.0
-    /// A short neighbour's last points may touch the corner of the head.
-    static let touch = 8.0
-
-    /// Lays out one day's spans at `pointsPerHour` (the cascade works in points, as the blocks are drawn).
-    public static func layout(_ spans: [TimeSpan], pointsPerHour: Double = 56) -> [Placement] {
-        let k = pointsPerHour / 60
-        return pack(spans.map { s in
-            let y0 = Double(s.startMinute) * k
-            return (s.id, y0, max(Double(s.endMinute) * k, y0 + minHeight))
-        })
-    }
-
-    /// The cascade packing: columns per overlap cluster, then each event reaches right across later columns
-    /// unless one of them has an event starting inside this event's head. Events that start together split the column.
-    public static func pack(_ input: [(id: String, y0: Double, y1: Double)]) -> [Placement] {
-        let items = input.indices.sorted {
-            let a = input[$0], b = input[$1]
-            if a.y0 != b.y0 { return a.y0 < b.y0 }
-            if a.y1 != b.y1 { return a.y1 > b.y1 }
-            return $0 < $1
-        }
-        var out: [Placement] = []
-        out.reserveCapacity(input.count)
-        var cluster: [(i: Int, col: Int)] = []
-        var end = -Double.infinity
-        var cols: [Double] = []
-
-        func flush() {
-            guard !cluster.isEmpty else { return }
-            let n = cols.count
-            var spans = [Int](repeating: 1, count: cluster.count)
-            for (j, it) in cluster.enumerated() {
-                let a = input[it.i]
-                let h = min(a.y1 - a.y0, head)
-                var span = 1
-                for c in (it.col + 1)..<max(it.col + 1, n) {
-                    if cluster.contains(where: { o in o.col == c && input[o.i].y0 < a.y0 + h && input[o.i].y1 > a.y0 + touch }) { break }
-                    span += 1
-                }
-                spans[j] = span
-            }
-            for (j, it) in cluster.enumerated() {
-                let a = input[it.i]
-                let over = cluster.indices.contains { k in
-                    let o = cluster[k], b = input[o.i]
-                    return k != j && o.col < it.col && o.col + spans[k] > it.col && b.y0 < a.y1 - 0.5 && b.y1 > a.y0 + 0.5
-                }
-                out.append(Placement(id: a.id, column: it.col, columns: n, span: spans[j], over: over))
-            }
-            cluster.removeAll(keepingCapacity: true)
-            cols.removeAll(keepingCapacity: true)
-            end = -Double.infinity
-        }
-
-        for i in items {
-            let it = input[i]
-            if !cluster.isEmpty && it.y0 >= end - 0.5 { flush() }
-            var c = cols.firstIndex { $0 <= it.y0 + 0.5 } ?? -1
-            if c < 0 { c = cols.count; cols.append(0) }
-            cols[c] = it.y1
-            cluster.append((i, c))
-            end = max(end, it.y1)
-        }
-        flush()
-        return out
-    }
 }
 
 // MARK: - All-day lanes

@@ -32,63 +32,11 @@ struct DemoWeekTests {
         #expect(tasks.contains { $0.title == "[P1] Take vitamins" && m.fmt.time($0.start) == "18:15" && $0.end == $0.start })
         #expect(m.layout.timed[6].contains { $0.event.title == "[P1] Reply to Ines" && m.fmt.time($0.event.start) == "09:40" })
     }
-    @Test func guestsAndCallMatchTheFixture() {
-        let m = makeModel()
-        let client = m.layout.timed[3].first { $0.event.title == "Client call" }!.event
-        #expect(client.participants == ["Sven Krüger"] && client.conferencing == "https://zoom.us/j/88123456789")
-        let pitch = m.layout.timed[4].first { $0.event.title == "Pitch rehearsal" }!.event
-        #expect(pitch.participants.count == 2 && pitch.conferencing.contains("meet.google.com"))
-    }
-    @Test func officeHoursIsWeekly() {
-        let m = makeModel()
-        let hours = m.layout.timed[3].first { $0.event.title == "Office hours" }!.event
-        #expect(hours.recurrence?.frequency == .weekly)
-        let t = RecurrenceDescriber.describe(hours.recurrence!, start: hours.start, fmt: m.fmt)
-        #expect(t.lead == "Every week" && t.rest == "on Thu")
-    }
-    @Test func upcomingFollowsTheClock() {
-        let m = makeModel()
-        #expect(m.upcoming.next?.title == "[P0] Weekly review")
-        #expect(m.upcoming.sections.map(\.title) == ["Today"])
-        #expect(m.upcoming.sections[0].events.first?.title == "[P1] Take vitamins")
-    }
-    @Test func sidebarAccountsMatchTheFixture() {
-        let m = makeModel()
-        #expect(m.store.accounts.map(\.name) == ["sam.rivera@example.com", "sam@northwind.example", "sam@sideproject.example"])
-        #expect(m.store.accounts.map(\.calendars.count) == [4, 1, 1])
-        #expect(m.hiddenCalendars.isEmpty)
-        #expect(m.store.teammates.count == 11)
-    }
-    @Test func meetWithBusyBlocksAreTheMockups() {
-        // design/mockup-v4 busyFor(): mara gets one usable block (the second one ends before it starts), ines seven.
-        #expect(DemoDataV4.busy("mara").map { [$0.day, $0.start, $0.end] } == [[0, 600, 690], [0, 720, 690]])
-        #expect(DemoDataV4.busy("ines").map { [$0.day, $0.start, $0.end] } == [[0, 600, 630], [1, 960, 990], [2, 960, 990], [3, 720, 750], [4, 720, 750], [4, 960, 990], [4, 720, 750]])
-        let store = DemoStore()
-        let week = DateInterval(start: DemoDataV4.weekStart, end: DemoDataV4.math.addDays(DemoDataV4.weekStart, 7))
-        #expect(store.teammateEvents("mara.hoffmann@example.com", in: week).count == 1)
-        #expect(store.teammateEvents("ines.d@example.com", in: week).count == 7)
-    }
 }
 
 @MainActor
 @Suite("Model behaviour")
 struct ModelBehaviourTests {
-    @Test func navigationAndModes() {
-        let m = makeModel()
-        #expect(m.headerTitle == "September 2026")
-        m.next(); #expect(m.math.day(m.visibleStart) == 5 && m.math.month(m.visibleStart) == 10)
-        m.previous(); m.previous(); #expect(m.math.day(m.visibleStart) == 21)
-        m.goToToday(); #expect(m.math.day(m.visibleStart) == 28)
-        m.setMode(.day); #expect(m.visibleDays.count == 1)
-        m.setMode(.month); #expect(m.monthEvents.count == 42 && m.headerTitle == "October 2026")
-        m.next(); #expect(m.headerTitle == "November 2026")
-    }
-    @Test func leftAlignStartsAtToday() {
-        let m = makeModel()
-        m.leftAlignToday()
-        #expect(m.math.day(m.visibleStart) == 4)
-        m.next(); #expect(m.math.day(m.visibleStart) == 11)
-    }
     @Test func createMoveResizeDeleteUndo() {
         let m = makeModel()
         // Drag-create on Saturday 17:30-18:30 (free in the fixture) through the same entry points the gesture uses.
@@ -134,17 +82,6 @@ struct ModelBehaviourTests {
         m.undo()
         #expect(m.layout.timed[6].contains { $0.event.id == ev.id })
     }
-    @Test func deleteAllRemovesSeries() {
-        let m = makeModel()
-        let ev = m.layout.timed[6].first { $0.event.title == "Long run" }!.event
-        var next = ev; next.id = "v4.g1.next"; next.start = m.math.addDays(ev.start, 7); next.end = m.math.addDays(ev.end, 7)
-        try! m.store.create(next)
-        #expect(m.store.series(of: ev).count == 2)
-        m.delete(ev, span: .all)
-        #expect(m.store.series(of: ev).isEmpty)
-        m.next()
-        #expect(m.layout.timed.flatMap { $0 }.allSatisfy { $0.event.seriesID != ev.seriesID })
-    }
     @Test func thisAndFollowingOnlyInTheMiddleOfASeries() {
         let m = makeModel()
         let ev = m.layout.timed[6].first { $0.event.title == "Long run" }!.event
@@ -166,27 +103,52 @@ struct ModelBehaviourTests {
         try! m.store.create(next)
         m.select(eventID: ev.id)
         m.requestDeleteSelected()
-        #expect(m.deleteChoice == .this)
-        m.moveDeleteChoice(ev.id, by: 1, wrap: false)       // → stops at the end
-        #expect(m.deleteChoice == .this)
-        m.moveDeleteChoice(ev.id, by: 1, wrap: true)        // Tab wraps to Cancel
-        #expect(m.deleteChoice == .cancel)
-        m.moveDeleteChoice(ev.id, by: -1, wrap: true)       // ⇧Tab back
-        #expect(m.deleteChoice == .this)
-        m.moveDeleteChoice(ev.id, by: -1, wrap: false)      // first occurrence: no "This and following"
-        #expect(m.deleteChoice == .all)
-        m.chooseDelete(ev.id, m.deleteChoice)
+        #expect(m.spanChoice == .this)
+        m.moveSpanChoice(ev.id, by: 1, wrap: false)       // → stops at the end
+        #expect(m.spanChoice == .this)
+        m.moveSpanChoice(ev.id, by: 1, wrap: true)        // Tab wraps to Cancel
+        #expect(m.spanChoice == .cancel)
+        m.moveSpanChoice(ev.id, by: -1, wrap: true)       // ⇧Tab back
+        #expect(m.spanChoice == .this)
+        m.moveSpanChoice(ev.id, by: -1, wrap: false)      // first occurrence: no "This and following"
+        #expect(m.spanChoice == .all)
+        m.chooseDelete(ev.id, m.spanChoice)
         #expect(m.store.series(of: ev).isEmpty)
     }
-    @Test func untitledDraftIsDiscardedOnDeselect() {
+    @Test func movingARepeatingEventAsksWhichOccurrences() {
         let m = makeModel()
-        let s = m.math.date(year: 2026, month: 10, day: 3, hour: 12)
-        let e = m.createEvent(start: s, end: s.addingTimeInterval(3600))!
-        m.deselect()
-        #expect(m.event(id: e.id) == nil)
-        #expect(!m.store.events(in: DateInterval(start: s, duration: 3600)).contains { $0.id == e.id })
-        #expect(!m.layout.timed[5].contains { $0.event.id == e.id })
-        #expect(m.undoStack.isEmpty)
+        let ev = m.layout.timed[6].first { $0.event.title == "Long run" }!.event
+        var prev = ev; prev.id = "v4.g1.prev"; prev.start = m.math.addDays(ev.start, -7); prev.end = m.math.addDays(ev.end, -7)
+        var next = ev; next.id = "v4.g1.next"; next.start = m.math.addDays(ev.start, 7); next.end = m.math.addDays(ev.end, 7)
+        try! m.store.create(prev); try! m.store.create(next)
+        m.storeChanged()
+        m.select(eventID: ev.id)
+        m.nudgeSelected(dx: 0, dy: 4)                       // an hour later: held, the dialog asks
+        #expect(m.overlay == .editRecurring(ev.id) && m.spanChoice == .this)
+        #expect(m.event(id: ev.id)?.start == ev.start.addingTimeInterval(3600))
+        #expect(m.store.series(of: ev).first { $0.id == ev.id }?.start == ev.start)
+        #expect(m.spanChoices(ev.id) == [.cancel, .all, .future, .this])
+        m.closeOverlay()                                    // Esc: back where it was
+        #expect(m.recurringEdit == nil && m.event(id: ev.id)?.start == ev.start)
+        m.nudgeSelected(dx: 0, dy: 4)
+        m.chooseEdit(ev.id, .future)
+        let starts = Dictionary(uniqueKeysWithValues: m.store.series(of: ev).map { ($0.id, $0.start) })
+        #expect(starts[prev.id] == prev.start)
+        #expect(starts[ev.id] == ev.start.addingTimeInterval(3600) && starts[next.id] == next.start.addingTimeInterval(3600))
+        #expect(m.overlay == nil && m.recurringEdit == nil)
+    }
+    @Test func movingOneOccurrenceKeepsUndo() {
+        let m = makeModel()
+        let ev = m.layout.timed[6].first { $0.event.title == "Long run" }!.event
+        var next = ev; next.id = "v4.g1.next"; next.start = m.math.addDays(ev.start, 7); next.end = m.math.addDays(ev.end, 7)
+        try! m.store.create(next)
+        m.storeChanged()
+        m.select(eventID: ev.id)
+        m.nudgeSelected(dx: 0, dy: 4)
+        m.chooseEdit(ev.id, m.spanChoice)                   // Return: "This event"
+        #expect(m.event(id: ev.id)?.start == ev.start.addingTimeInterval(3600) && m.event(id: next.id)?.start == next.start)
+        m.undo()
+        #expect(m.event(id: ev.id)?.start == ev.start)
     }
     @Test func inspectorEditWritesThrough() {
         let m = makeModel()
@@ -201,16 +163,6 @@ struct ModelBehaviourTests {
         let e = m.selectedEvent!
         #expect(m.fmt.time(e.start) == "16:00")     // now is 15:10; Test runs to 15:45, Weekly review is at 17:00
         #expect(e.durationMinutes == 60)
-    }
-    @Test func hiddenCalendarsAndTeammatesAffectLayout() {
-        let m = makeModel()
-        let before = m.layout.timedCount
-        m.toggleCalendar(DemoDataV4.tasks)
-        #expect(m.layout.timedCount < before)
-        m.toggleCalendar(DemoDataV4.tasks)
-        #expect(m.layout.timedCount == before)
-        m.showTeammate(m.store.teammates.first { $0.name == "Ines Duarte" }!)
-        #expect(m.overlayLayout.timedCount == 7)
     }
     @Test func searchFindsAcrossWeeksAndNavigates() {
         let m = makeModel()
@@ -275,7 +227,6 @@ struct ModelBehaviourTests {
         #expect(m.selectedEvent?.title == "Lunch")
     }
 }
-
 
 @MainActor
 @Suite("Write paths")

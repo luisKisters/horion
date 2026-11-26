@@ -1,5 +1,5 @@
 {
-  "_comment": "Named UI states rendered by `Horion --snapshot <state> --out <png> --size WxH` (scripts/snapshots.sh). An entry may override 'state' (the app state to render) and 'size'. 'mockup' is the mockupDir scene it is compared with (index.html#<mockup>, '&key=value' adds picks); scripts/render-mockup.swift writes it to <mockupDir>/shots/<mockup>.png after running the optional 'js' step, and scripts/compare-all.sh diffs it against the snapshot.",
+  "_comment": "Named UI states rendered by `Horion --snapshot <state> --out <png> --size WxH` (scripts/designr-screenshots.sh --designr, design screenshots for the designr skill, not a test). An entry may override 'state' (the app state to render) and 'size'. 'mockup' is the mockupDir scene it is compared with (index.html#<mockup>, '&key=value' adds picks); scripts/render-mockup.swift writes it to <mockupDir>/shots/<mockup>.png after running the optional 'js' step.",
   "mockupDir": "design/mockup-v4",
   "size": "1440x900",
   "states": {
@@ -99,11 +99,15 @@
     "go-to-date": {},
     "search-empty": {},
     "shortcuts-sheet": {},
+    "settings-shortcuts": {},
+    "menubar-rowmenu": {},
     "delete-recurring": {},
+    "edit-recurring": {},
     "toast": {},
     "empty-access": {},
     "create-event": {},
     "delete-recurring": {},
+    "edit-recurring": {},
     "call-link": {},
     "call-link-card": {},
     "readonly-event": {},

@@ -14,9 +14,9 @@ Neutral, with no hue cast. The Dark greys are solved for APCA targets: fg1 Lc �
 | `bg` | `#0B0B0C` | `#FBFBFB` | Canvas, grid, header, unfilled events | `InkRGB.bg` |
 | `rail` | `#070708` | `#F4F4F5` | Sidebar, right column | new `InkRGB.rail` |
 | `surface` | `#151516` | `#F1F1F2` | Cards, all-day lane, segmented track | `InkRGB.bg1` |
-| `raised` | `#1D1D1E` | `#FFFFFF` | Fields, buttons, menus, Join | `InkRGB.bg2` / `pop` |
-| `hover` | `#1C1C1C` (fitted, see States) | `#F4F4F4` | Row hover on the canvas | `Theme.hover` |
-| `selected` | `#2A2A2A` (fitted) | `#E8E8E8` | Selected row, the mini month's week band | `Theme.selected` |
+| `raised` | `#1D1D1E` | `#FFFFFF` | Fields, popover cards | `InkRGB.bg2` |
+| `hover` | `#1C1C1C` (fitted, see States) | `#EEEEEE` | Row hover on the canvas | `Theme.hover` |
+| `selected` | `#2A2A2A` (fitted) | `#DDDDDD` | Selected row, the mini month's week band | `Theme.selected` |
 | `fg1` | `#EBEBED` | `#1D1D20` | Titles, values, event titles, today pill | `InkRGB.fg` |
 | `fg2` | `#CCCCCE` | `#4A4A50` | Times, secondary rows, hour labels | `InkRGB.fg2` |
 | `fg3` | `#A8A8AA` | `#606067` | Labels, hints, group headers, icons | `InkRGB.fg3` |
@@ -38,13 +38,87 @@ Lines are mixes from `bg` toward `fg1`.
 | `todayTint` (today column, header and all-day lane included) | `#121212` | `#F5F5F5` | fitted to 1.05:1 on bg | Text and the hour line on it pass |
 | half-hour line | off | off | none | |
 
-## States (mockup-v16 round 3, locked)
-One rule on every surface, so a state is equally strong wherever it sits. Surfaces are fixed (`bg`, `rail`, `surface`, `raised`, `pop`); what sits on them is solved in code (`InkRGB.fitted`, `enum Contrast` in Theme.swift), as neutral greys:
-- **Selected**: the strongest fill up to 1.45:1 on the rail on which fg1, fg2 and fg3 still pass the soft-surface floors (Dark fg1 12 / Lc 85, fg2 7 / 63, fg3 5.5 / 45; Paper 12 / 88, 7 / 75, 5 / 65). Dark gets 1.40:1, Paper about 1.15:1 (fg1's Lc 88 caps it).
-- **Hover**: half the selected step (square root of its ratio, at most 1.15:1), on every surface: canvas, rail, raised (`raisedHover`), pop (`popHover`), and inside a selected band (`selectedHover`).
-- **Edge** (`segRing`): 3:1 on `surface` (WCAG non-text).
-- Today, the selected view and the selected segment of every segmented control use the filled `accent` pill. The mini month's today too.
-- Never pick a hover or selected hex by hand: add the surface and fit it. `ContrastSystemTests` checks the rule.
+## Shades, the text on them, and states (mockup-v21 round 1, locked)
+There are four background shades. Every shade has the same three text greys (`fg1`, `fg2`, `fg3`); everything that sits on a shade is solved from contrast in code (`InkRGB.shadeInk`, `enum Contrast` in Theme.swift), never picked per place. A view says which shade it paints with `.shade(_:)`; controls inside read it from the environment.
+
+| Shade | Hex (Dark / Paper) | Used for | Swift |
+|---|---|---|---|
+| Sidebar | `#070708` / `#F4F4F5` | Left sidebar, right column, editor foot, settings sidebar | `Shade.sidebar` (`rail`) |
+| Window | `#0B0B0C` / `#FBFBFB` | Grid, header, menus, dialogs, toasts (`pop` has the same hex) | `Shade.window` (`bg`) |
+| Inset | `#151516` / `#F1F1F2` | Search, the view-switch track, the all-day lane, cards, settings groups | `Shade.inset` (`bg1`) |
+| Raised | `#1D1D1E` / `#FFFFFF` | Fields, popover cards | `Shade.raised` (`bg2`) |
+
+**Text floors** (WCAG ratio / APCA Lc, on every shade and every state fill; `Contrast.textFloors`, checked with a margin of +.05 ratio and +.6 Lc). Paper uses WCAG AA plus a margin (round 1: "Relax Paper's floors").
+
+| Role | Dark | Paper |
+|---|---|---|
+| `fg1` primary | ≥ 12 / Lc 85 | ≥ 10 / Lc 80 |
+| `fg2` secondary | ≥ 7 / Lc 63 | ≥ 6 / Lc 68 |
+| `fg3` tertiary | ≥ 5.5 / Lc 45 | ≥ 4.5 / Lc 60 |
+| Label on a coloured fill (Danger) | ≥ 4.5 / Lc 60 | ≥ 4.5 / Lc 60 |
+
+**States on a shade** (neutral grey, binary search on the WCAG ratio against the shade):
+- `selected`: the strongest fill up to 1.45:1 on which fg1, fg2 and fg3 still pass. The system step is solved on the Sidebar (Dark 1.40:1, Paper 1.24:1); a shade gets less where its own text needs it.
+- `hover`: the square root of the selected step, at most 1.15:1 (Dark 1.15, Paper 1.11).
+- Hover inside a selected band (`selectedHover`): one hover step **back toward the shade** (darker in Dark, lighter in Paper), so its text gains contrast.
+- Edge (`segRing`): 3:1 on Inset (WCAG non-text). `todayTint`: 1.05:1 on Window.
+- Today, the selected view and the selected segment of every segmented control use the filled `accent` pill, as does the mini month's today.
+
+**The matrix.** Each cell is ratio / Lc. Every pair passes (`ContrastSystemTests.everyShadePairPasses`; 96 pairs per appearance in `design/mockup-v21`).
+
+Dark (selected 1.40:1, hover 1.15:1):
+
+| Shade | Fill | Ratio to the shade | fg1 | fg2 | fg3 |
+|---|---|---|---|---|---|
+| **Sidebar** (Left sidebar, right column) | `#070708` |  | 16.9 / 95 | 12.6 / 76 | 8.5 / 55 |
+| ↳ hover | `#1A1A1A` | 1.16 | 14.6 / 94 | 10.9 / 74 | 7.3 / 54 |
+| ↳ selected | `#2A2A2A` | 1.40 | 12.1 / 91 | 9.0 / 72 | 6.0 / 51 |
+| ↳↳ hover in selected | `#1E1E1E` | 1.16 on selected | 14.0 / 93 | 10.4 / 74 | 7.0 / 53 |
+| ↳ Secondary button | `#1A1A1A` fill, `#2F2F2F` edge, `#2A2A2A` hover | 1.16 · edge 1.50 | 14.6 / 94 | | |
+| **Window** (Grid, header, menus, dialogs) | `#0B0B0C` |  | 16.5 / 95 | 12.3 / 76 | 8.3 / 55 |
+| ↳ hover | `#1C1C1C` | 1.15 | 14.3 / 93 | 10.6 / 74 | 7.2 / 54 |
+| ↳ selected | `#2A2A2A` | 1.37 | 12.1 / 91 | 9.0 / 72 | 6.0 / 51 |
+| ↳↳ hover in selected | `#1E1E1E` | 1.16 on selected | 14.0 / 93 | 10.4 / 74 | 7.0 / 53 |
+| ↳ Secondary button | `#1C1C1C` fill, `#313131` edge, `#2A2A2A` hover | 1.15 · edge 1.51 | 14.3 / 93 | | |
+| **Inset** (Search, view-switch track, all-day lane, cards) | `#151516` |  | 15.3 / 94 | 11.4 / 75 | 7.7 / 54 |
+| ↳ hover | `#232323` | 1.16 | 13.2 / 92 | 9.8 / 73 | 6.6 / 53 |
+| ↳ selected | `#2A2A2A` | 1.27 | 12.1 / 91 | 9.0 / 72 | 6.0 / 51 |
+| ↳↳ hover in selected | `#1E1E1E` | 1.16 on selected | 14.0 / 93 | 10.4 / 74 | 7.0 / 53 |
+| ↳ Secondary button | `#232323` fill, `#363636` edge, `#2A2A2A` hover | 1.16 · edge 1.51 | 13.2 / 92 | | |
+| **Raised** (Fields, popover cards) | `#1D1D1E` |  | 14.1 / 93 | 10.5 / 74 | 7.1 / 54 |
+| ↳ hover | `#292929` | 1.16 | 12.2 / 91 | 9.1 / 72 | 6.1 / 52 |
+| ↳ selected | `#2A2A2A` | 1.17 | 12.1 / 91 | 9.0 / 72 | 6.0 / 51 |
+| ↳↳ hover in selected | `#1E1E1E` | 1.16 on selected | 14.0 / 93 | 10.4 / 74 | 7.0 / 53 |
+| ↳ Secondary button | `#292929` fill, `#3B3B3B` edge, `#2A2A2A` hover | 1.16 · edge 1.50 | 12.2 / 91 | | |
+
+Primary `#EBEBED` (hover `#DDDDDD`), label `#0B0B0C` 16.5 / 94 (hover 14.5 / 86). Danger `#B85952` (hover `#A6504A`), white label 4.6 / 77. Edge 3:1 on Inset (segRing) `#636363`. Today column `#121212`.
+
+Paper (selected 1.24:1, hover 1.11:1):
+
+| Shade | Fill | Ratio to the shade | fg1 | fg2 | fg3 |
+|---|---|---|---|---|---|
+| **Sidebar** (Left sidebar, right column) | `#F4F4F5` |  | 15.3 / 97 | 8.0 / 84 | 5.7 / 75 |
+| ↳ hover | `#E8E8E8` | 1.11 | 13.7 / 90 | 7.2 / 77 | 5.1 / 68 |
+| ↳ selected | `#DDDDDD` | 1.24 | 12.4 / 84 | 6.5 / 70 | 4.6 / 61 |
+| ↳↳ hover in selected | `#E9E9E9` | 1.12 on selected | 13.9 / 91 | 7.2 / 77 | 5.1 / 68 |
+| ↳ Secondary button | `#E8E8E8` fill, `#C9C9C9` edge, `#DDDDDD` hover | 1.11 · edge 1.51 | 13.7 / 90 | | |
+| **Window** (Grid, header, menus, dialogs) | `#FBFBFB` |  | 16.2 / 101 | 8.5 / 88 | 6.0 / 79 |
+| ↳ hover | `#EEEEEE` | 1.12 | 14.5 / 94 | 7.6 / 80 | 5.4 / 71 |
+| ↳ selected | `#E3E3E3` | 1.24 | 13.1 / 87 | 6.9 / 74 | 4.9 / 65 |
+| ↳↳ hover in selected | `#EFEFEF` | 1.12 on selected | 14.6 / 94 | 7.7 / 81 | 5.4 / 72 |
+| ↳ Secondary button | `#EEEEEE` fill, `#CFCFCF` edge, `#E3E3E3` hover | 1.12 · edge 1.51 | 14.5 / 94 | | |
+| **Inset** (Search, view-switch track, all-day lane, cards) | `#F1F1F2` |  | 14.9 / 95 | 7.8 / 82 | 5.5 / 73 |
+| ↳ hover | `#E5E5E5` | 1.12 | 13.3 / 88 | 7.0 / 75 | 5.0 / 66 |
+| ↳ selected | `#DDDDDD` | 1.20 | 12.4 / 84 | 6.5 / 70 | 4.6 / 61 |
+| ↳↳ hover in selected | `#E9E9E9` | 1.12 on selected | 13.9 / 91 | 7.2 / 77 | 5.1 / 68 |
+| ↳ Secondary button | `#E5E5E5` fill, `#C6C6C6` edge, `#DDDDDD` hover | 1.12 · edge 1.51 | 13.3 / 88 | | |
+| **Raised** (Fields, popover cards) | `#FFFFFF` |  | 16.8 / 104 | 8.8 / 90 | 6.2 / 81 |
+| ↳ hover | `#F2F2F2` | 1.12 | 15.0 / 96 | 7.9 / 82 | 5.6 / 73 |
+| ↳ selected | `#E7E7E7` | 1.24 | 13.6 / 90 | 7.1 / 76 | 5.0 / 67 |
+| ↳↳ hover in selected | `#F3F3F3` | 1.11 on selected | 15.2 / 97 | 7.9 / 83 | 5.6 / 74 |
+| ↳ Secondary button | `#F2F2F2` fill, `#D2D2D2` edge, `#E7E7E7` hover | 1.12 · edge 1.51 | 15.0 / 96 | | |
+
+Primary `#1D1D20` (hover `#272727`), label `#FBFBFB` 16.2 / 103 (hover 14.4 / 102). Danger `#B4382D` (hover `#A23229`), white label 5.9 / 84. Edge 3:1 on Inset (segRing) `#8B8B8B`. Today column `#F5F5F5`.
 
 ## Event recipe (bar + tint)
 The calendar colour goes in as an OKLCH hue H, with its own chroma C₀ as the upper limit. The same recipe applies to every calendar, so no calendar looks louder than another.

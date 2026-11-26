@@ -66,6 +66,7 @@ struct SettingsNav: View {
         .frame(width: 200, alignment: .topLeading)
         .frame(maxHeight: .infinity, alignment: .top)
         .background(Theme.rail)
+        .shade(.sidebar)
         .overlay(alignment: .trailing) { Rectangle().fill(Theme.hair).frame(width: 1) }
         .tourAnchor("settings:pages")
     }
@@ -377,6 +378,17 @@ struct SettingsShortcutsPage: View {
     @Environment(AppModel.self) private var model
     var body: some View {
         SettingsLede(text: "Every shortcut, also under ? in the app. Single keys work whenever the caret is not in a field.")
+        SettingsGroup {
+            SettingsRow(title: "From any app", strong: true, first: true) { EmptyView() }
+            SettingsRow(title: "Open the menu bar menu", detail: "Press it again to close the menu.") {
+                ShortcutRecorder(shortcut: model.settings.menuShortcut, other: model.settings.appShortcut,
+                                 fallback: .menuDefault) { model.settings.menuShortcut = $0 }
+            }
+            SettingsRow(title: "Show or hide Horion", detail: "Hides Horion when it is in front, else brings it forward.") {
+                ShortcutRecorder(shortcut: model.settings.appShortcut, other: model.settings.menuShortcut,
+                                 fallback: .appDefault) { model.settings.appShortcut = $0 }
+            }
+        }
         ForEach(ShortcutsSheet.groups(meetWith: model.store.canOverlayTeammates), id: \.0) { g in
             SettingsGroup {
                 SettingsRow(title: g.0, strong: true, first: true) { EmptyView() }
