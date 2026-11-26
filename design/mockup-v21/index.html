@@ -154,7 +154,7 @@ input { font: inherit; color: inherit; background: none; border: 0; outline: 0; 
 .guest { display: flex; align-items: center; gap: var(--s-s); height: 26px; }
 .guest .st { width: 14px; text-align: center; font-size: var(--fs-small); }
 .st.y { color: var(--ok); } .st.m { color: var(--warn); } .st.n { color: var(--danger); } .st.w { color: var(--fg3); }
-.gfield { width: 100%; height: var(--h-field); border: 1px solid var(--hair2); border-radius: var(--r-ctl); padding: 0 var(--s-s); margin: var(--s-xs) 0 0 -8px; background: none; color: var(--fg); font: var(--fs-ui) var(--font); outline: none; }
+.gfield { height: var(--h-field); border: 1px solid var(--hair2); border-radius: var(--r-ctl); padding: 0 var(--s-s); margin: var(--s-xs) 0 0 calc(-1 * var(--s-s) - 1px); width: calc(100% + 1px); background: none; color: var(--fg); font: var(--fs-ui) var(--font); outline: none; }
 .gfield:focus { border-color: var(--fg3); }
 .gfield[readonly] { color: var(--fg4); }
 .why { display: flex; align-items: center; gap: var(--s-s); color: var(--fg3); font-size: var(--fs-small); margin: var(--s-xs) 0 0 0; }
@@ -785,7 +785,7 @@ function drawGuides() {
     }
     area.querySelectorAll('input, textarea').forEach(el => {
       const r = el.getBoundingClientRect(); if (!vis(r) || el.closest(CENTRED)) return;
-      const cs = getComputedStyle(el); push(L, r.left + parseFloat(cs.paddingLeft) + parseFloat(cs.borderLeftWidth), r, (el.value || el.placeholder || '').slice(0, 24));
+      const cs = getComputedStyle(el); push(L, r.left + (parseFloat(cs.paddingLeft) + parseFloat(cs.borderLeftWidth)) * k, r, (el.value || el.placeholder || '').slice(0, 24));
     });
     area.querySelectorAll('.ic, svg').forEach(el => {
       const r = el.getBoundingClientRect(); if (!vis(r) || el.closest(CENTRED)) return;
