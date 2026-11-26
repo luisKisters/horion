@@ -62,19 +62,20 @@ struct GlobalShortcut: Codable, Equatable {
         // by key code first: arrows, Return, Tab and Delete are recorded with one-glyph names ("←")
         if let c = Self.functionKeys[Int(keyCode)] { return String(Character(UnicodeScalar(UInt16(c))!)) }
         if let s = [kVK_Space: " ", kVK_Return: "\r", kVK_Tab: "\t", kVK_Delete: "\u{8}"][Int(keyCode)] { return s }
-        return key.count == 1 ? Self.character(for: keyCode) ?? key.lowercased() : ""
+        return key.count == 1 ? Self.character(for: keyCode, command: flags.contains(.command)) ?? key.lowercased() : ""
     }
 
     /// What the key types in the current keyboard layout: the hot key goes by key code, so the menu item that takes the
     /// key while the menu is open must too, also after a layout change.
-    private static func character(for keyCode: UInt16) -> String? {
+    /// With ⌘ held when the shortcut has it: layouts such as "Dvorak - QWERTY ⌘" type other characters then.
+    private static func character(for keyCode: UInt16, command: Bool) -> String? {
         guard let source = TISCopyCurrentKeyboardLayoutInputSource()?.takeRetainedValue(),
               let ptr = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData) else { return nil }
         let layout = Unmanaged<CFData>.fromOpaque(ptr).takeUnretainedValue() as Data
         var dead: UInt32 = 0, length = 0
         var chars = [UniChar](repeating: 0, count: 4)
         let status = layout.withUnsafeBytes { raw in
-            UCKeyTranslate(raw.bindMemory(to: UCKeyboardLayout.self).baseAddress!, keyCode, UInt16(kUCKeyActionDisplay), 0,
+            UCKeyTranslate(raw.bindMemory(to: UCKeyboardLayout.self).baseAddress!, keyCode, UInt16(kUCKeyActionDisplay), command ? UInt32(cmdKey >> 8) & 0xFF : 0,
                            UInt32(LMGetKbdType()), OptionBits(kUCKeyTranslateNoDeadKeysBit), &dead, chars.count, &length, &chars)
         }
         guard status == noErr, length > 0 else { return nil }
