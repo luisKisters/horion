@@ -11,10 +11,21 @@ struct GlobalShortcut: Codable, Equatable {
     var on = true
 
     static let mask: NSEvent.ModifierFlags = [.control, .option, .shift, .command]
-    /// ⌥⌘C opens and closes the menu bar menu.
-    static let menuDefault = GlobalShortcut(keyCode: UInt16(kVK_ANSI_C), modifiers: NSEvent.ModifierFlags([.option, .command]).rawValue, key: "C")
-    /// ⌥⌘H shows or hides the Horion window.
-    static let appDefault = GlobalShortcut(keyCode: UInt16(kVK_ANSI_H), modifiers: NSEvent.ModifierFlags([.option, .command]).rawValue, key: "H")
+    /// ⌃⌘E opens and closes the menu bar menu.
+    static let menuDefault = GlobalShortcut(keyCode: UInt16(kVK_ANSI_E), modifiers: NSEvent.ModifierFlags([.control, .command]).rawValue, key: "E")
+    /// ⌃⌘R shows or hides the Horion window.
+    static let appDefault = GlobalShortcut(keyCode: UInt16(kVK_ANSI_R), modifiers: NSEvent.ModifierFlags([.control, .command]).rawValue, key: "R")
+    /// Earlier defaults (⌥⌘C and ⌥⌘H, then ⌃⌥E and ⌃⌥R): saved settings that still have one get the new default.
+    static let oldDefaults: [GlobalShortcut] = [
+        (kVK_ANSI_C, [.option, .command], "C"), (kVK_ANSI_H, [.option, .command], "H"),
+        (kVK_ANSI_E, [.control, .option], "E"), (kVK_ANSI_R, [.control, .option], "R"),
+    ].map { (code: Int, mods: NSEvent.ModifierFlags, key: String) in GlobalShortcut(keyCode: UInt16(code), modifiers: mods.rawValue, key: key) }
+
+    /// This shortcut, or `new` (keeping on/off) when it is one of the old defaults.
+    func replacingOldDefault(with new: GlobalShortcut) -> GlobalShortcut {
+        guard Self.oldDefaults.contains(where: sameKeys) else { return self }
+        var s = new; s.on = on; return s
+    }
 
     var flags: NSEvent.ModifierFlags { NSEvent.ModifierFlags(rawValue: modifiers).intersection(Self.mask) }
 
@@ -37,8 +48,6 @@ struct GlobalShortcut: Codable, Equatable {
 
     /// The menu item key equivalent that shows this shortcut, when the key is a plain character.
     var keyEquivalent: String { key.count == 1 ? key.lowercased() : "" }
-
-    func matches(_ e: NSEvent) -> Bool { on && e.keyCode == keyCode && e.modifierFlags.intersection(Self.mask) == flags }
 
     func sameKeys(_ o: GlobalShortcut) -> Bool { keyCode == o.keyCode && flags == o.flags }
 

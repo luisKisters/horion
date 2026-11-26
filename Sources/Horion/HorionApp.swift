@@ -17,7 +17,8 @@ struct HorionApp: App {
     private let model = AppContext.model
 
     var body: some Scene {
-        WindowGroup(id: "main") {
+        // One window, never a group: `openWindow(id: "main")` brings this one back instead of opening a copy.
+        Window("Horion", id: "main") {
             RootView()
                 .environment(model)
                 .frame(minWidth: 1100, minHeight: 700)
@@ -85,6 +86,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         MainActor.assumeIsolated { MenuBarHotKey.unregister() }
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
+    /// A Dock click with the window closed reopens it.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag { MainActor.assumeIsolated { MainWindow.show() } }
+        return true
+    }
 }
 
 struct AppCommands: Commands {
