@@ -12,3 +12,4 @@
 - 2026-11-27 | review | low | cua check | A cua-driver that is recording would save pictures of the desktop with every key press | fixed: yes, the run refuses while recording is on
 - 2026-11-27 | review | low | cua check | A second run could start in the moment between taking the lock and writing its pid | fixed: yes, a lock without a pid counts as taken
 - 2026-11-27 | review | low | cua check | The lock was in /tmp, where another user of the Mac could place a link | fixed: yes, it is in the user's own temp folder
+- 2026-11-27 | review | low | cua check | Two runs starting at once could both take over the lock of a dead run | fixed: yes, only the run that moves the old lock away gets it

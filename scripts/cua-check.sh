@@ -34,6 +34,9 @@ LOCK="${TMPDIR:-/tmp}/horion-cua-check.lock"
 if ! mkdir "$LOCK" 2>/dev/null; then
   OWNER="$(cat "$LOCK/pid" 2>/dev/null)"
   if [ -z "$OWNER" ] || kill -0 "$OWNER" 2>/dev/null; then echo "another cua-check is running"; exit 2; fi
+  # The owner is dead. Moving its lock away works for one run only, so two runs cannot both take it over.
+  mv "$LOCK" "$LOCK.$$" 2>/dev/null && mkdir "$LOCK" 2>/dev/null || { echo "another cua-check is running"; exit 2; }
+  rm -f "$LOCK.$$/pid"; rmdir "$LOCK.$$"
 fi
 echo $$ > "$LOCK/pid"
 
