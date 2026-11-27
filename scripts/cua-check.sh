@@ -28,17 +28,10 @@ if ! cua-driver status >/dev/null 2>&1; then
   cua-driver status >/dev/null 2>&1 || { echo "the cua-driver daemon does not start"; exit 3; }
 fi
 
-# One run at a time on this Mac, across all worktrees. The lock is in this user's own temp folder.
-# A lock whose run is dead is taken over; a lock without a pid belongs to a run that is just starting.
+# One run at a time on this Mac, across all worktrees. shlock takes the lock in one step and takes over
+# the lock of a run that is dead. The lock is in this user's own temp folder.
 LOCK="${TMPDIR:-/tmp}/horion-cua-check.lock"
-if ! mkdir "$LOCK" 2>/dev/null; then
-  OWNER="$(cat "$LOCK/pid" 2>/dev/null)"
-  if [ -z "$OWNER" ] || kill -0 "$OWNER" 2>/dev/null; then echo "another cua-check is running"; exit 2; fi
-  # The owner is dead. Moving its lock away works for one run only, so two runs cannot both take it over.
-  mv "$LOCK" "$LOCK.$$" 2>/dev/null && mkdir "$LOCK" 2>/dev/null || { echo "another cua-check is running"; exit 2; }
-  rm -f "$LOCK.$$/pid"; rmdir "$LOCK.$$"
-fi
-echo $$ > "$LOCK/pid"
+shlock -f "$LOCK" -p $$ || { echo "another cua-check is running"; exit 2; }
 
 STATE=artifacts/tmp/app-state
 PID=""; REOPEN=0
@@ -48,7 +41,7 @@ cleanup() {
     for _ in $(seq 20); do kill -0 "$PID" 2>/dev/null || break; sleep 0.25; done   # gone before the installed one takes the keys
   fi
   [ $REOPEN -eq 1 ] && open -g /Applications/Horion.app
-  rm -f "$LOCK/pid"; rmdir "$LOCK" 2>/dev/null
+  rm -f "$LOCK"
 }
 trap cleanup EXIT
 trap 'exit 2' INT TERM
