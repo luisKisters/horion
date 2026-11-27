@@ -28,10 +28,12 @@ if ! cua-driver status >/dev/null 2>&1; then
   cua-driver status >/dev/null 2>&1 || { echo "the cua-driver daemon does not start"; exit 3; }
 fi
 
-# One run at a time on this Mac, across all worktrees. A lock whose run is dead is taken over.
-LOCK=/tmp/horion-cua-check.lock
+# One run at a time on this Mac, across all worktrees. The lock is in this user's own temp folder.
+# A lock whose run is dead is taken over; a lock without a pid belongs to a run that is just starting.
+LOCK="${TMPDIR:-/tmp}/horion-cua-check.lock"
 if ! mkdir "$LOCK" 2>/dev/null; then
-  if kill -0 "$(cat "$LOCK/pid" 2>/dev/null)" 2>/dev/null; then echo "another cua-check is running"; exit 2; fi
+  OWNER="$(cat "$LOCK/pid" 2>/dev/null)"
+  if [ -z "$OWNER" ] || kill -0 "$OWNER" 2>/dev/null; then echo "another cua-check is running"; exit 2; fi
 fi
 echo $$ > "$LOCK/pid"
 
@@ -69,6 +71,8 @@ if pgrep -fl 'Horion.app/Contents/MacOS/Horion'; then
 fi
 
 cua() { perl -e 'alarm shift; exec @ARGV' 40 cua-driver call "$@"; }
+# A recording cua-driver would save pictures of the desktop with every key press.
+cua get_recording_state '{}' | grep -q '"enabled": *false' || { echo "cua-driver is recording: run cua-driver recording stop first"; exit 2; }
 windows_json() { cua list_windows "{\"pid\":$PID}"; }
 # How many normal windows Horion has, on screen or not. More than one is the "second window" bug.
 windows() { windows_json | python3 -c "import sys,json; print(sum(1 for w in json.load(sys.stdin)['windows'] if w['layer']==0))"; }
@@ -103,8 +107,9 @@ gkey "$APP_KEY";  expect "closed: the key opens one window again" hidden=0 windo
 "$STATE" hide "$PID"; sleep 1.5; expect "hidden with ⌘H" hidden=1 window=0
 gkey "$APP_KEY";  expect "hidden with ⌘H: the key shows it, still one window" hidden=0 window=1 windows=1
 PRESS="{\"tool\":\"hotkey\",\"args\":{\"keys\":[$APP_KEY],\"scope\":\"desktop\",\"post_action_wait\":\"none\"}}"
-cua run_steps "{\"steps\":[$PRESS,$PRESS,$PRESS]}" | grep -q '"ok": *true' || { echo "FAIL  cua could not send three quick presses"; exit 1; }
-sleep 1.5;        expect "three quick presses: each one counts, so it ends hidden" hidden=1 window=0 windows=1
+burst() { cua run_steps "{\"steps\":[$1]}" | grep -q '"ok": *true' || { echo "FAIL  cua could not send quick presses"; exit 1; }; sleep 1.5; }
+burst "$PRESS,$PRESS";        expect "two quick presses: it is in front again" hidden=0 window=1 windows=1
+burst "$PRESS,$PRESS,$PRESS"; expect "three quick presses: it ends hidden, so each press counts" hidden=1 window=0 windows=1
 
 echo "== the menu key: $MENU_KEY"
 gkey "$MENU_KEY"; expect "Horion hidden: the key opens the menu bar menu" menu=1

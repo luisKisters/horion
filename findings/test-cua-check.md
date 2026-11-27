@@ -8,3 +8,7 @@
 - 2026-11-27 | review | low | cua check | The permission test also matched 12 or 20 | fixed: yes
 - 2026-11-27 | review | low | cua check | "⌘M minimises" and "⌘W closes" only check that no window is on screen, not which of the two happened | fixed: no, the checks after them (the key brings one window back) are what matters
 - 2026-11-27 | missed by check | medium | menu bar | The tours never press a real global shortcut, so PR #56 merged with its shortcuts untested | fixed: yes, scripts/cua-check.sh presses them
+- 2026-11-27 | review | medium | cua check | Three quick presses ending hidden also passed when only the first press counted | fixed: yes, two quick presses must end in front and three must end hidden
+- 2026-11-27 | review | low | cua check | A cua-driver that is recording would save pictures of the desktop with every key press | fixed: yes, the run refuses while recording is on
+- 2026-11-27 | review | low | cua check | A second run could start in the moment between taking the lock and writing its pid | fixed: yes, a lock without a pid counts as taken
+- 2026-11-27 | review | low | cua check | The lock was in /tmp, where another user of the Mac could place a link | fixed: yes, it is in the user's own temp folder
