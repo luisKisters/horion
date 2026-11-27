@@ -20,6 +20,7 @@ Brief: the pickers missing from the event panel. Each must work by mouse and key
 - ← → in the date field: the caret moving before ↑/↓ felt wrong. Now ← → always move days while the mini month is open; Esc closes it to move the caret (the `always` option).
 - Every panel menu opens left of the panel, not only the pickers: reminders, availability, visibility, call, maps, places and the send menus too.
 - The time lists hug their rows: start 64 pt, end 136 pt (no empty space right of the times). The end list shows the length on the right, short ("1 h 30").
+- The short menus hug their rows too: reminders 136 pt, Busy/Free 84 pt, visibility 164 pt, Add conferencing 190 pt. The calendar menu stays 224 pt: the colour grid sets its width.
 ## Locked in v20
 | Element | Pick |
 | --- | --- |

@@ -9,7 +9,7 @@ enum SnapshotPanel {
     /// The other panel states: a new event, the recurring delete question, an event on a read-only calendar.
     static let states = ["create-event", "delete-recurring", "readonly-event", "call-link", "call-link-card"]
     /// The field pickers (`PanelPickers.swift`): the end time list with lengths.
-    static let pickerStates = ["picker-start-time", "picker-end-time", "picker-date", "picker-zone", "picker-repeat", "guests-eventkit"]
+    static let pickerStates = ["picker-start-time", "picker-end-time", "picker-date", "picker-zone", "picker-repeat", "guests-eventkit", "menu-availability", "menu-visibility", "menu-call-draft"]
 
     /// Puts the model into the named state. Returns false for names this area does not define.
     static func apply(_ state: String, _ m: AppModel) -> Bool {
@@ -63,6 +63,16 @@ enum SnapshotPanel {
             SnapshotV4.scroll(m, to: 18 * DemoDataV4.hourHeight - 160)
             return true
         case "picker-start-time": open("wg"); m.openFieldPicker(.start)
+        case "menu-availability": open("wg"); m.openPanelMenu(.availability)
+        case "menu-visibility": open("wg"); m.openPanelMenu(.visibility)
+        case "menu-call-draft":
+            // a new event: the Meet row says the link is made on save (the longest call text)
+            let s = m.math.date(on: m.math.addDays(DemoDataV4.weekStart, 5), minutes: 18 * 60)
+            m.createEvent(start: s, end: s.addingTimeInterval(3600))
+            m.titleFocusPending = false
+            m.openPanelMenu(.call)
+            SnapshotV4.scroll(m, to: 18 * DemoDataV4.hourHeight - 160)
+            return true
         case "picker-end-time": open("wg"); m.openFieldPicker(.end)
         case "guests-eventkit":
             // a macOS Calendar event: the guests are read-only and the row says why

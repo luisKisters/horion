@@ -52,9 +52,9 @@ struct PanelMenuLayer: View {
         case .maps: 272
         case .places: 296
         case .reminders: 136
-        case .availability: 160
-        case .visibility: 210
-        case .call: 280
+        case .availability: 84
+        case .visibility: 164
+        case .call: 190
         case .send, .inviteSend: 260
         case .deleteSend: 300
         case .startTime: 64
@@ -218,7 +218,7 @@ struct PanelMenuContent: View {
             let key = "menu:avail:\(a.rawValue)"
             PopItem(check: cur == a, key: key, highlighted: model.panelMenus.highlight == key, action: {
                 model.closePanelMenu(); model.updateSelected { $0.availability = a }
-            }) { Text(PanelDetailView.availability(a)) }
+            }) { Text(PanelDetailView.availability(a)).lineLimit(1).fixedSize() }
         }
     }
 
@@ -228,7 +228,7 @@ struct PanelMenuContent: View {
             let key = "menu:vis:\(v.rawValue)"
             PopItem(check: cur == v, key: key, highlighted: model.panelMenus.highlight == key, action: {
                 model.closePanelMenu(); model.updateSelected { $0.visibility = v }
-            }) { Text(PanelDetailView.visibility(v)) }
+            }) { Text(PanelDetailView.visibility(v)).lineLimit(1).fixedSize() }
         }
     }
 
