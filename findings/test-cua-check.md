@@ -13,3 +13,4 @@
 - 2026-11-27 | review | low | cua check | A second run could start in the moment between taking the lock and writing its pid | fixed: yes, a lock without a pid counts as taken
 - 2026-11-27 | review | low | cua check | The lock was in /tmp, where another user of the Mac could place a link | fixed: yes, it is in the user's own temp folder
 - 2026-11-27 | review | low | cua check | Two runs starting at once could both take over the lock of a dead run | fixed: yes, the lock is now taken with the system's `shlock`, in one step
+- 2026-11-27 | review | low | cua check | If a run dies and another starts within the same second, the new run says "another cua-check is running" once | fixed: no, running it again a second later works and nothing is harmed
