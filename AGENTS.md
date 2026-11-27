@@ -48,8 +48,8 @@ Read the code before you ask. Never ask what you can look up.
     - A visual bug: no new test.
     - A feature: test its rules, not its views.
 5. If your ticket fixes a bug that an earlier check did not catch, add one line to the findings file that says why the check missed it.
-6. The tours cannot press a real global shortcut, open the real menu bar item or move the real mouse. If your ticket changes one of these, say in the PR that it was not tested with real input.
-7. Run one build or one test run at a time. This Mac has 8 GB of memory.
+6. The tours cannot press a real global shortcut or open the real menu bar menu. If your ticket changes one of these, run `scripts/cua-check.sh` and add a check for your change. It presses real keys on this Mac's screen for about a minute. If it exits with 3, cua is not set up on this Mac: say in the PR that it was not tested with real input. The real mouse is not covered yet.
+7. Run one build, one test run or one `cua-check` at a time. This Mac has 8 GB of memory.
 
 ## The PR
 

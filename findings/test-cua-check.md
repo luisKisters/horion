@@ -1,0 +1,10 @@
+- 2026-11-27 | review | high | cua check | After a failed check the run went on, so later global keys could reach another app | fixed: yes, it stops at the first failure
+- 2026-11-27 | review | high | cua check | Another running Horion only got a warning, and nothing checked that the installed one really quit | fixed: yes, any other Horion stops the run
+- 2026-11-27 | review | medium | cua check | The installed Horion was started again while the test app could still hold the shortcuts | fixed: yes, cleanup waits until the test app is gone
+- 2026-11-27 | review | medium | cua check | A failed build was ignored, so the check could test an old app and pass | fixed: yes
+- 2026-11-27 | review | medium | cua check | The "two quick presses" check also passed when no press arrived | fixed: yes, three presses must end hidden
+- 2026-11-27 | review | medium | cua check | The test app was found by name and could be a leftover from an earlier run | fixed: yes, the script starts it and keeps its pid
+- 2026-11-27 | review | low | cua check | A lock left by a killed run blocked every later run | fixed: yes, a dead run's lock is taken over
+- 2026-11-27 | review | low | cua check | The permission test also matched 12 or 20 | fixed: yes
+- 2026-11-27 | review | low | cua check | "⌘M minimises" and "⌘W closes" only check that no window is on screen, not which of the two happened | fixed: no, the checks after them (the key brings one window back) are what matters
+- 2026-11-27 | missed by check | medium | menu bar | The tours never press a real global shortcut, so PR #56 merged with its shortcuts untested | fixed: yes, scripts/cua-check.sh presses them
