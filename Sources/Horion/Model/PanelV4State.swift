@@ -519,8 +519,6 @@ extension AppModel {
     }
 
 
-    /// "Find a new time": the guests' calendars side by side (Meet with).
-    func findNewTime() { store.canOverlayTeammates ? openPalette(.meet) : showToast(Self.meetWithUnavailable) }
 
     func copyGuestAddress(_ a: Attendee) {
         guard !a.email.isEmpty else { return }

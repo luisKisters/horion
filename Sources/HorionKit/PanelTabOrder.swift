@@ -3,7 +3,7 @@ import Foundation
 /// One keyboard stop in the event panel (design/mockup-v20, "Flat Tab"): every field, switch, button and menu, top to bottom.
 /// Delete and Close are not stops.
 public enum PanelStop: Hashable, Sendable {
-    case title, date, start, end, allDay, timeZone, repeats, findTime, guest, guestsCard, going, addCall, link, join, place, notes, calendar, busy, visibility
+    case title, date, start, end, allDay, timeZone, repeats, guest, guestsCard, going, addCall, link, join, place, notes, calendar, busy, visibility
     case reminder(Int)
     case addReminder
 
@@ -33,7 +33,6 @@ public enum PanelStop: Hashable, Sendable {
         case .allDay: "a"
         case .timeZone: "z"
         case .repeats: "r"
-        case .findTime: "f"
         case .guest, .guestsCard: "p"
         case .going: "g"
         case .addCall, .link: "c"
@@ -61,7 +60,6 @@ public struct PanelStopContext: Equatable, Sendable {
     /// The date field takes typing (one day only).
     public var dateEditable: Bool
     public var isAllDay: Bool
-    public var findTime: Bool
     public var going: Bool
     public var canAddGuests: Bool
     /// The NoGuestsCard takes the guest field's place (a macOS Calendar event I may change): its "Open Accounts" button is a stop.
@@ -69,8 +67,8 @@ public struct PanelStopContext: Equatable, Sendable {
     public var call: Call
     public var reminders: [Int]
 
-    public init(canEdit: Bool, writable: Bool, dateEditable: Bool, isAllDay: Bool, findTime: Bool, going: Bool, canAddGuests: Bool, guestsCard: Bool = false, call: Call, reminders: [Int]) {
-        self.canEdit = canEdit; self.writable = writable; self.dateEditable = dateEditable; self.isAllDay = isAllDay; self.findTime = findTime
+    public init(canEdit: Bool, writable: Bool, dateEditable: Bool, isAllDay: Bool, going: Bool, canAddGuests: Bool, guestsCard: Bool = false, call: Call, reminders: [Int]) {
+        self.canEdit = canEdit; self.writable = writable; self.dateEditable = dateEditable; self.isAllDay = isAllDay
         self.going = going; self.canAddGuests = canAddGuests; self.guestsCard = guestsCard; self.call = call; self.reminders = reminders
     }
 }
@@ -85,7 +83,6 @@ public enum PanelTabOrder {
         if c.canEdit { s.append(.allDay) }
         if c.canEdit && !c.isAllDay { s.append(.timeZone) }
         if c.canEdit { s.append(.repeats) }
-        if c.findTime { s.append(.findTime) }
         if c.canAddGuests { s.append(.guest) } else if c.canEdit && c.guestsCard { s.append(.guestsCard) }
         if c.going { s.append(.going) }
         switch c.call {

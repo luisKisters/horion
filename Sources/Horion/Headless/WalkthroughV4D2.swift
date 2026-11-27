@@ -51,7 +51,7 @@ extension WalkthroughV4 {
         d.check(rows == EditorRow.allCases, "Flat dinner shows every row in order (\(rows.count))")
         d.hold(0.6)
         d.say("Hover each row: fields light up where they can change")
-        for k in ["field:title", "field:findTime", "guest:me", "namehint", "joinbig", "field:location", "field:notes", "field:calendar", "rem:10"] {
+        for k in ["field:title", "guest:me", "namehint", "joinbig", "field:location", "field:notes", "field:calendar", "rem:10"] {
             hoverKey(d, m, k, fx: k == "joinbig" ? 0.5 : 0.25, hold: 0.2)
         }
         HoverProbe.shared.target = nil

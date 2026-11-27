@@ -5,7 +5,7 @@ import Testing
 @Suite("Panel tab order")
 struct PanelTabOrderTests {
     func ctx(canEdit: Bool = true, writable: Bool = true, allDay: Bool = false, call: PanelStopContext.Call = .add, reminders: [Int] = [10]) -> PanelStopContext {
-        PanelStopContext(canEdit: canEdit, writable: writable, dateEditable: canEdit, isAllDay: allDay, findTime: false, going: false,
+        PanelStopContext(canEdit: canEdit, writable: writable, dateEditable: canEdit, isAllDay: allDay, going: false,
                          canAddGuests: canEdit, call: call, reminders: reminders)
     }
 

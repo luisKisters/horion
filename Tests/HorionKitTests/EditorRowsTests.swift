@@ -4,7 +4,7 @@ import Foundation
 
 @Suite("v4 editor rows")
 struct EditorRowsTests {
-    let all: [EditorRow] = [.title, .when, .repeats, .findTime, .participants, .going, .call, .location, .notes, .calendar, .reminders]
+    let all: [EditorRow] = [.title, .when, .repeats, .participants, .going, .call, .location, .notes, .calendar, .reminders]
 
     @Test func rowOrderFollowsTheMockup() {
         #expect(EditorRow.allCases == all)
@@ -20,12 +20,12 @@ struct EditorRowsTests {
     }
 
     @Test func invitedAndDraftRows() {
-        // invited: Going? but no "Find a new time" (I cannot move the event)
+        // invited: Going?
         let invited = EditorRows.rows(EditorContext(hasOthers: true, canEdit: false, isDraft: false, hasMyEntry: true))
-        #expect(invited.contains(.going) && !invited.contains(.findTime))
+        #expect(invited.contains(.going))
         // a new event with guests: nothing to answer yet
         let draft = EditorRows.rows(EditorContext(hasOthers: true, canEdit: true, isDraft: true, hasMyEntry: true))
-        #expect(!draft.contains(.going) && draft.contains(.findTime))
+        #expect(!draft.contains(.going))
     }
 
     @Test func sharedFieldsAreTheOnesToSend() {

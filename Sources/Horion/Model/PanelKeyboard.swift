@@ -62,7 +62,7 @@ extension AppModel {
             : canEdit ? .add : .none
         let canAddGuests = canEdit && store.canEditParticipants(calendarID: e.calendarID)
         return PanelStopContext(canEdit: canEdit, writable: isWritable(e), dateEditable: canEdit && days == 1, isAllDay: e.isAllDay,
-                                findTime: rows.contains(.findTime), going: rows.contains(.going) && canRespond(e) && !e.iAmOrganizer,
+                                going: rows.contains(.going) && canRespond(e) && !e.iAmOrganizer,
                                 canAddGuests: canAddGuests, guestsCard: canEdit && !canAddGuests, call: call, reminders: e.reminders)
     }
 
@@ -150,7 +150,6 @@ extension AppModel {
         case .allDay: setSelectedAllDay(!e.isAllDay)
         case .timeZone: openZonePicker(byKeyboard: true)
         case .repeats: openRepeatMenu(byKeyboard: true)
-        case .findTime: findNewTime()
         case .guestsCard: openAccountsForGuests()
         case .join: joinCall(e)
         case .addCall: openPanelMenuByKeyboard(.call)

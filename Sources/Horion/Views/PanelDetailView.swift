@@ -4,7 +4,7 @@ import HorionKit
 
 /// The event in the right column (design/mockup-v4 `detail()`): a 20 pt icon column (x 20 to 36) and a text column from 48, 20 pt
 /// line boxes in 32 pt rows; fields and hover boxes bleed 8 pt. Every row is always there (`EditorRows`); an empty one shows its
-/// placeholder in fg3. Order: title, when, repeat, "Find a new time", participants, Going?, call, location, notes, calendar, reminders.
+/// placeholder in fg3. Order: title, when, repeat, participants, Going?, call, location, notes, calendar, reminders.
 /// While `draftEventID` is the selected event it is the new event: title focused, the foot (`PanelFoot`) has Discard and Save.
 struct PanelDetailView: View {
     @Environment(AppModel.self) private var model
@@ -93,15 +93,6 @@ struct PanelDetailView: View {
             }
         case .repeats:
             EditorRowBox(icon: .repeats) { repeats(canEdit: canEdit) }
-        case .findTime:
-            EditorRowBox(icon: .sparkle) {
-                Button { model.findNewTime() } label: {
-                    Text("Find a new time").foregroundStyle(Theme.fg2).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .editorField(focused: false, editable: true, key: "field:findTime")
-                .panelStop(.findTime)
-            }
         case .participants:
             EditorRowBox(icon: .users) { PanelParticipants(e: e, canEdit: canEdit, focus: $focus) }
         case .going:

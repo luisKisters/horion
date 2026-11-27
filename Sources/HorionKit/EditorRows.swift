@@ -2,7 +2,7 @@ import Foundation
 
 /// One row of the event editor (design/mockup-v4 `detail()`), in the order the right column shows them.
 public enum EditorRow: String, CaseIterable, Sendable {
-    case title, when, repeats, findTime, participants, going, call, location, notes, calendar, reminders
+    case title, when, repeats, participants, going, call, location, notes, calendar, reminders
 
     /// What an empty row shows, in fg3. Nil for rows that always have a value.
     public var placeholder: String? {
@@ -14,7 +14,7 @@ public enum EditorRow: String, CaseIterable, Sendable {
         case .location: "Add location"
         case .notes: "Add notes"
         case .reminders: "Add reminder"
-        case .when, .findTime, .going, .calendar: nil
+        case .when, .going, .calendar: nil
         }
     }
 }
@@ -40,12 +40,11 @@ public struct EditorContext: Equatable, Sendable {
 }
 
 public enum EditorRows {
-    /// Every row is always there (an empty one shows its placeholder), except two that need people: "Find a new time" needs other
-    /// guests and the right to move the event; "Going?" needs an invitation (my entry and other guests) that is saved.
+    /// Every row is always there (an empty one shows its placeholder), except "Going?": it needs an invitation (my entry and
+    /// other guests) that is saved.
     public static func rows(_ c: EditorContext) -> [EditorRow] {
         EditorRow.allCases.filter { r in
             switch r {
-            case .findTime: c.hasOthers && c.canEdit
             case .going: c.hasMyEntry && c.hasOthers && !c.isDraft
             default: true
             }
